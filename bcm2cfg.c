@@ -62,7 +62,7 @@ static void calc_md5(unsigned char *buf, long size, unsigned char *md5)
 {
 	MD5_CTX c;
 	MD5_Init(&c);
-	MD5_Update(&c, buf + 16, size - 16);
+	MD5_Update(&c, buf, size);
 	MD5_Update(&c, md5key, sizeof(md5key));
 	MD5_Final(md5, &c);
 }
@@ -125,7 +125,7 @@ static int do_verify(unsigned char *buf, size_t len, bool verbose)
 	memcpy(actual, buf, 16);
 
 	memset(buf, 0, 16);
-	calc_md5(buf, len, expected);
+	calc_md5(buf + 16, len - 16, expected);
 
 	if (memcmp(actual, expected, 16)) {
 		printf("bad checksum: ");
@@ -199,12 +199,15 @@ static int do_crypt(unsigned char *buf, size_t len, const char *outfile, const c
 	}
 
 	calc_md5(buf + 16, len - 16, block);
-	printf("new checksum: ");
-	print_md5(stdout, block);
-	printf("\n");
 
 	if (!xfwrite(block, 16, fp)) {
 		goto out;
+	}
+
+	if (!password) {
+		printf("new checksum: ");
+		print_md5(stdout, block);
+		printf("\n");
 	}
 
 	err = 0;
@@ -226,7 +229,7 @@ static void usage()
 			"\n"
 			"operations:\n"
 			"  -v            verify input file\n"
-			"  -f            fix checksum of input file\n"
+			"  -f            fix checksum\n"
 			"  -d            decrypt input file\n"
 			"  -e            encrypt input file\n"
 			"\n"
