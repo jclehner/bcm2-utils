@@ -58,11 +58,11 @@ static void print_md5(FILE *fp, unsigned char *md5)
 	}
 }
 
-static void calc_md5(unsigned char *buf, long size, unsigned char *md5)
+static void md5_calc(unsigned char *buf, long size, unsigned char *md5)
 {
 	MD5_CTX c;
 	MD5_Init(&c);
-	MD5_Update(&c, buf + 16, size - 16);
+	MD5_Update(&c, buf, size);
 	MD5_Update(&c, md5key, sizeof(md5key));
 	MD5_Final(md5, &c);
 }
@@ -124,8 +124,7 @@ static int do_verify(unsigned char *buf, size_t len, bool verbose)
 	unsigned char actual[16], expected[16];
 	memcpy(actual, buf, 16);
 
-	memset(buf, 0, 16);
-	calc_md5(buf, len, expected);
+	md5_calc(buf + 16, len - 16, expected);
 
 	if (memcmp(actual, expected, 16)) {
 		printf("bad checksum: ");
@@ -145,14 +144,14 @@ static int do_verify(unsigned char *buf, size_t len, bool verbose)
 
 static int do_crypt(unsigned char *buf, size_t len, const char *outfile, const char *password, bool decrypt)
 {
-	unsigned char block[16];
-	int err = 1;
 
-	FILE *fp = fopen(outfile, "w");
-	if (!fp) {
-		perror(outfile);
+	if (len < 16) {
+		fprintf(stderr, "error: file too small\n");
 		return 1;
 	}
+
+	unsigned char *obuf = NULL, *wbuf = NULL;
+	int err = 1;
 
 	if (password) {
 		unsigned char key[32];
@@ -166,50 +165,60 @@ static int do_crypt(unsigned char *buf, size_t len, const char *outfile, const c
 			AES_set_encrypt_key(key, 256, &aes);
 		}
 
-		if (fseek(fp, 16, SEEK_SET) < 0) {
-			perror("fseek");
-			goto out;
+		obuf = malloc(len - 16);
+		if (!obuf) {
+			perror("malloc");
+			return 1;
 		}
 
-		unsigned char *p = buf;
-		size_t remaining = len;
+		unsigned char *oblock = obuf;
+		unsigned char *iblock = buf + 16;
+		size_t remaining = len - 16;
 
 		while (remaining >= 16) {
 			if (decrypt) {
-				AES_decrypt(p, block, &aes);
+				AES_decrypt(iblock, oblock, &aes);
 			} else {
-				AES_encrypt(p, block, &aes);
-			}
-
-			if (!xfwrite(block, 16, fp)) {
-				goto out;
+				AES_encrypt(iblock, oblock, &aes);
 			}
 
 			remaining -= 16;
-			p += 16;
+			iblock += 16;
+			oblock += 16;
 		}
 
 		if (remaining) {
-			if (!xfwrite(buf, remaining, fp)) {
-				goto out;
-			}
+			memcpy(oblock, iblock, remaining);
 		}
 
-		rewind(fp);
+		wbuf = obuf;
+	} else {
+		wbuf = buf + 16;
 	}
 
-	calc_md5(buf + 16, len - 16, block);
-	printf("new checksum: ");
-	print_md5(stdout, block);
-	printf("\n");
-
-	if (!xfwrite(block, 16, fp)) {
+	FILE *fp = fopen(outfile, "w");
+	if (!fp) {
+		perror(outfile);
 		goto out;
+	}
+
+	unsigned char md5[16];
+	md5_calc(wbuf, len - 16, md5);
+
+	if (!xfwrite(md5, 16, fp) || !xfwrite(wbuf, len - 16, fp)) {
+		goto out;
+	}
+
+	if (!password) {
+		printf("new checksum: ");
+		print_md5(stdout, md5);
+		printf("\n");
 	}
 
 	err = 0;
 
 out:
+	free(obuf);
 	fclose(fp);
 	return err;
 }
@@ -226,12 +235,12 @@ static void usage()
 			"\n"
 			"operations:\n"
 			"  -v            verify input file\n"
-			"  -f            fix checksum of input file\n"
+			"  -f            fix checksum\n"
 			"  -d            decrypt input file\n"
 			"  -e            encrypt input file\n"
+			"  -l            list contents\n"
 			"\n"
 			"options:\n"
-			"  -l            dump backup file\n"
 			"  -p <password> backup password\n"
 			"  -o <output>   output file\n"
 			"  -n            ignore bad checksum\n"
@@ -293,6 +302,11 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	if (list) {
+		fprintf(stderr, "error: not implemented\n");
+		return 1;
+	}
+
 	if (optind == argc) {
 		fprintf(stderr, "error: no input file specified\n");
 		return 1;
@@ -331,12 +345,9 @@ int main(int argc, char **argv)
 	if (!ret) {
 		if (encrypt || decrypt) {
 			ret = do_crypt(buf, len, outfile, password, decrypt);
-		} else if (fixmd5) {
-			ret = do_fixmd5(buf, len, outfile ? outfile : infile);
-		} else if (list) {
-			fprintf(stderr, "error: not implemented\n");
-			ret = 1;
 		}
+	} else if (fixmd5) {
+		ret = do_fixmd5(buf, len, outfile ? outfile : infile);
 	}
 
 	free(buf);
