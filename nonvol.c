@@ -22,6 +22,13 @@
 #include <stdio.h>
 #include "nonvol.h"
 
+/*
+ * In-flash group format:
+ * length, including length field (2 bytes)
+ * magic (4 bytes)
+ * version (4 bytes, 2 major, 2 minor)
+ */
+
 static struct bcm2_nv_groupdef groups[] = {
 	{
 		.magic.s = "UPC.",
@@ -160,12 +167,12 @@ static struct bcm2_nv_groupdef groups[] = {
 		.name = "eRouter IPv6 Firewall Settings",
 	},
 	{
-		.magic.s = "v6fw",
-		.name = "eRouter IPv6 Firewall Settings",
-	},
-	{
 		.magic.n = 0x50530d56,
 		.name = "ProgramStore Device Settings"
+	},
+	{
+		.magic.n = 0xf2a1f61f,
+		.name = "HAL Interface Settings"
 	},
 	{
 		.magic.n = 0,

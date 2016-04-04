@@ -47,17 +47,17 @@ union bcm2_nv_group_magic {
 	char s[4];
 };
 
-struct bcm2_nv_group_ver {
+struct bcm2_nv_ver {
 	uint16_t maj;
 	uint16_t min;
 } __attribute__((packed));
 
 struct bcm2_nv_optdef {
 	char name[64];
-	// offset within group
-	size_t offset;
 	// type
 	enum bcm2_nv_type type;
+	// offset within group
+	size_t offset;
 	// size (only for some types)
 	ssize_t size;
 };
@@ -72,8 +72,8 @@ struct bcm2_nv_groupdef {
 struct bcm2_nv_group {
 	struct bcm2_nv_group *next;
 	union bcm2_nv_group_magic magic;
+	struct bcm2_nv_ver ver;
 	const char *name;
-	uint32_t version;
 	size_t offset;
 	uint16_t size;
 	bool invalid;

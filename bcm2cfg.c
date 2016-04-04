@@ -19,12 +19,14 @@
 
 #include <openssl/md5.h>
 #include <openssl/aes.h>
+#include <arpa/inet.h>
 #include <stdbool.h>
 #include <getopt.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <ctype.h>
 #include "nonvol.h"
 
 // "TMM_TC7200\0\0\0\0\0\0"
@@ -120,7 +122,7 @@ static bool xfwrite(const void *buf, size_t len, FILE *fp)
 
 	return true;
 }
-static int do_verify(unsigned char *buf, size_t len, bool verbose)
+static int do_verify(unsigned char *buf, size_t len, int verbosity)
 {
 	unsigned char actual[16], expected[16];
 	memcpy(actual, buf, 16);
@@ -128,13 +130,15 @@ static int do_verify(unsigned char *buf, size_t len, bool verbose)
 	calc_md5(buf + 16, len - 16, expected);
 
 	if (memcmp(actual, expected, 16)) {
-		printf("bad checksum: ");
-		print_md5(stdout, actual);
-		printf(", expected ");
-		print_md5(stdout, expected);
-		printf("\n");
+		if (verbosity) {
+			printf("bad checksum: ");
+			print_md5(stdout, actual);
+			printf(", expected ");
+			print_md5(stdout, expected);
+			printf("\n");
+		}
 		return 1;
-	} else if (verbose) {
+	} else if (verbosity > 1) {
 		printf("checksum ok : ");
 		print_md5(stdout, actual);
 		printf("\n");
@@ -224,19 +228,50 @@ out:
 	return err;
 }
 
-static int do_fixmd5(unsigned char *buf, size_t len, const char *outfile)
+static int do_fix(unsigned char *buf, size_t len, const char *outfile)
 {
-	return do_crypt(buf, len, outfile, NULL, false);
+	bool fixed = false;
+	uint16_t *size = (uint16_t*)(buf + 16 + 74 + 4);
+	if (ntohs(*size) != len) {
+		if (len > 0xffff) {
+			fprintf(stderr, "error: input file exceeds maximum file size\n");
+			return 1;
+		}
+
+		printf("updated size: %u -> %zu\n", ntohs(*size), len);
+		*size = htons(len);
+		fixed = true;
+	}
+
+	int ret = 0;
+
+	if (do_verify(buf, len, 0) != 0) {
+		// this simply updates the md5 sum
+		ret = do_crypt(buf, len, outfile, NULL, false);
+		fixed = true;
+	}
+
+	if (!ret && !fixed) {
+		printf("nothing to fix :-)\n");
+	}
+
+	return ret;
 }
 
 static char *magic_to_str(union bcm2_nv_group_magic *m)
 {
 	static char str[32];
-	sprintf(str, "%04x ", m->n);
-	unsigned i = 0;
-	for (; i < 4; ++i) {
-		char c = m->s[i];
-		sprintf(str, "%s%c", str, isprint(c) ? c : ' ');
+	unsigned k = 0;
+
+	str[0] = '\0';
+
+	for (; k < 2; ++k) {
+		unsigned i = 0;
+		for (; i < 4; ++i) {
+			char c = m->s[i];
+			sprintf(str, k ? "%s%c" : "%s%02x", str, isprint(c) ? c : ' ');
+		}
+		sprintf(str, "%s ", str);
 	}
 
 	return str;
@@ -244,23 +279,36 @@ static char *magic_to_str(union bcm2_nv_group_magic *m)
 
 static int do_list(unsigned char *buf, size_t len)
 {
-	const size_t off = 96;
+	// md5(16) + magic(74) + version(4) + size(2)
+	size_t off = (16 + 74 + 4 + 2);
 
 	if (len < off) {
 		fprintf(stderr, "error: file too short to be config file\n");
 		return 1;
 	}
 
-	printf("magic: %.74s\n", buf + 16);
+	buf += 16;
+
+	printf("  magic: %.74s\n", buf);
+	buf += 74;
+
+	printf("version: %d.%d\n", ntohs(*(uint16_t*)buf), ntohs(*(uint16_t*)(buf + 2)));
+	buf += 4;
+
+	uint16_t size = ntohs(*(uint16_t*)buf);
+	printf("   size: %d b %s\n", size, size != len ? "(does not match filesize)" : "");
+	buf += 2;
+
 	struct bcm2_nv_group *groups, *group;
 	size_t remaining = 0;
-	groups = group = bcm2_nv_parse_groups(buf + off, len - off, &remaining);
+	groups = group = bcm2_nv_parse_groups(buf, len - off, &remaining);
 	if (!groups) {
 		return 1;
 	}
 
 	for (; group; group = group->next) {
-		printf("  %5zx:  %s  %-40s (%u bytes)", group->offset, magic_to_str(&group->magic), group->name, group->size);
+		printf("  %5zx:  %s   %-40s (%u bytes)", group->offset,
+				magic_to_str(&group->magic), group->name, group->size);
 		if (group->invalid) {
 			printf(" (invalid)");
 		}
@@ -283,7 +331,7 @@ static void usage(int exitstatus)
 			"\n"
 			"operations:\n"
 			"  -v            verify input file\n"
-			"  -f            fix checksum\n"
+			"  -f            fix checksum and file size\n"
 			"  -d            decrypt input file\n"
 			"  -e            encrypt input file\n"
 			"  -l            list contents\n"
@@ -305,7 +353,7 @@ static void usage(int exitstatus)
 
 int main(int argc, char **argv)
 {
-	int verify = 0, fixmd5 = 0, decrypt = 0, encrypt = 0, list = 0;
+	int verify = 0, fix = 0, decrypt = 0, encrypt = 0, list = 0;
 	int noverify = 0;
 	const char *outfile = NULL;
 	const char *infile = NULL;
@@ -321,7 +369,8 @@ int main(int argc, char **argv)
 				verify = 1;
 				break;
 			case 'f':
-				fixmd5 = 1;
+				fix = 1;
+				noverify = 1;
 				break;
 			case 'd':
 				decrypt = 1;
@@ -349,7 +398,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if ((verify + fixmd5 + decrypt + encrypt + list) != 1) {
+	if ((verify + fix + decrypt + encrypt + list) != 1) {
 		usage(1);
 	}
 
@@ -385,7 +434,7 @@ int main(int argc, char **argv)
 	int ret = 0;
 
 	if (verify || !noverify) {
-		 ret = do_verify(buf, len, !noverify);
+		 ret = do_verify(buf, len, verify ? 2 : 1);
 	}
 
 	if (!ret) {
@@ -394,8 +443,10 @@ int main(int argc, char **argv)
 		} else if (list) {
 			ret = do_list(buf, len);
 		}
-	} else if (fixmd5) {
-		ret = do_fixmd5(buf, len, outfile ? outfile : infile);
+	}
+	
+	if (fix) {
+		ret = do_fix(buf, len, outfile ? outfile : infile);
 	}
 
 	free(buf);
