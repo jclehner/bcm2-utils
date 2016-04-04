@@ -228,7 +228,7 @@ static int do_fixmd5(unsigned char *buf, size_t len, const char *outfile)
 	return do_crypt(buf, len, outfile, NULL, false);
 }
 
-static void usage()
+static void usage(int exitstatus)
 {
 	fprintf(stderr,
 			"usage: bcm2cfg [options]\n"
@@ -241,6 +241,7 @@ static void usage()
 			"  -l            list contents\n"
 			"\n"
 			"options:\n"
+			"  -h            show help\n"
 			"  -p <password> backup password\n"
 			"  -o <output>   output file\n"
 			"  -n            ignore bad checksum\n"
@@ -250,7 +251,7 @@ static void usage()
 			"profiles:\n"
 #endif
 			"\n");
-	exit(1);
+	exit(exitstatus);
 }
 
 
@@ -292,14 +293,16 @@ int main(int argc, char **argv)
 			case 'o':
 				outfile = optarg;
 				break;
+			case 'h':
+				usage(0);
+				break;
 			default:
-				usage();
+				usage(1);
 		}
 	}
 
 	if ((verify + fixmd5 + decrypt + encrypt + list) != 1) {
-		usage();
-		return 1;
+		usage(1);
 	}
 
 	if (list) {
