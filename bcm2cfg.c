@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "nonvol.h"
 
 // "TMM_TC7200\0\0\0\0\0\0"
 uint8_t md5key[] = {
@@ -58,7 +59,7 @@ static void print_md5(FILE *fp, unsigned char *md5)
 	}
 }
 
-static void md5_calc(unsigned char *buf, long size, unsigned char *md5)
+static void calc_md5(unsigned char *buf, long size, unsigned char *md5)
 {
 	MD5_CTX c;
 	MD5_Init(&c);
@@ -124,7 +125,7 @@ static int do_verify(unsigned char *buf, size_t len, bool verbose)
 	unsigned char actual[16], expected[16];
 	memcpy(actual, buf, 16);
 
-	md5_calc(buf + 16, len - 16, expected);
+	calc_md5(buf + 16, len - 16, expected);
 
 	if (memcmp(actual, expected, 16)) {
 		printf("bad checksum: ");
@@ -203,7 +204,7 @@ static int do_crypt(unsigned char *buf, size_t len, const char *outfile, const c
 	}
 
 	unsigned char md5[16];
-	md5_calc(wbuf, len - 16, md5);
+	calc_md5(wbuf, len - 16, md5);
 
 	if (!xfwrite(md5, 16, fp) || !xfwrite(wbuf, len - 16, fp)) {
 		goto out;
@@ -226,6 +227,53 @@ out:
 static int do_fixmd5(unsigned char *buf, size_t len, const char *outfile)
 {
 	return do_crypt(buf, len, outfile, NULL, false);
+}
+
+static char *magic_to_str(union bcm2_nv_group_magic *m)
+{
+	static char str[32];
+	sprintf(str, "%04x ", m->n);
+	unsigned i = 0;
+	for (; i < 4; ++i) {
+		char c = m->s[i];
+		sprintf(str, "%s%c", str, isprint(c) ? c : ' ');
+	}
+
+	return str;
+}
+
+static int do_list(unsigned char *buf, size_t len)
+{
+	const size_t off = 96;
+
+	if (len < off) {
+		fprintf(stderr, "error: file too short to be config file\n");
+		return 1;
+	}
+
+	printf("magic: %.74s\n", buf + 16);
+	struct bcm2_nv_group *groups, *group;
+	size_t remaining = 0;
+	groups = group = bcm2_nv_parse_groups(buf + off, len - off, &remaining);
+	if (!groups) {
+		return 1;
+	}
+
+	for (; group; group = group->next) {
+		printf("  %5zx:  %s  %-40s (%u bytes)", group->offset, magic_to_str(&group->magic), group->name, group->size);
+		if (group->invalid) {
+			printf(" (invalid)");
+		}
+		printf("\n");
+	}
+
+	if (remaining) {
+		printf("  (failed to parse last %zu bytes)\n", remaining);
+	}
+
+	bcm2_nv_free_groups(groups);
+
+	return 0;
 }
 
 static void usage(int exitstatus)
@@ -305,11 +353,6 @@ int main(int argc, char **argv)
 		usage(1);
 	}
 
-	if (list) {
-		fprintf(stderr, "error: not implemented\n");
-		return 1;
-	}
-
 	if (optind == argc) {
 		fprintf(stderr, "error: no input file specified\n");
 		return 1;
@@ -348,6 +391,8 @@ int main(int argc, char **argv)
 	if (!ret) {
 		if (encrypt || decrypt) {
 			ret = do_crypt(buf, len, outfile, password, decrypt);
+		} else if (list) {
+			ret = do_list(buf, len);
 		}
 	} else if (fixmd5) {
 		ret = do_fixmd5(buf, len, outfile ? outfile : infile);
