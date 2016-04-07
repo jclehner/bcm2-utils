@@ -57,9 +57,8 @@ void progress_add(struct progress *p, unsigned n)
 		p->speed_now = p->tmp / (now - p->last);
 		p->speed_avg = (p->cur - p->min) / (now - p->beg);
 
-		unsigned speed = p->speed_avg < p->speed_now ? p->speed_avg : p->speed_now;
-		if (speed) {
-			gmtime_days((p->max - p->cur) / speed, &p->eta_days, &p->eta);
+		if (p->speed_avg) {
+			gmtime_days((p->max - p->cur) / p->speed_avg, &p->eta_days, &p->eta);
 		} else {
 			p->eta.tm_year = 0xffff;
 		}
