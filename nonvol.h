@@ -53,24 +53,6 @@ union bcm2_nv_group_magic {
 	char s[4];
 };
 
-struct bcm2_nv_optdef {
-	char name[64];
-	char id[16];
-	// type
-	enum bcm2_nv_type type;
-	// offset within group
-	size_t offset;
-	// size (only for some types)
-	ssize_t size;
-};
-
-struct bcm2_nv_groupdef {
-	union bcm2_nv_group_magic magic;
-	char name[64];
-	char id[16];
-	struct bcm2_nv_optdef opts[64];
-};
-
 struct bcm2_nv_group {
 	struct bcm2_nv_group *next;
 	union bcm2_nv_group_magic magic;
