@@ -307,8 +307,9 @@ static int do_list(unsigned char *buf, size_t len)
 	}
 
 	for (; group; group = group->next) {
-		printf("  %5zx:  %s   %-40s (%u bytes)", group->offset,
-				magic_to_str(&group->magic), group->name, group->size);
+		printf("  %5zx:  %s   %-40s (%d.%d) (%u bytes)", group->offset,
+				magic_to_str(&group->magic), group->name, group->version[0],
+				group->version[1], group->size);
 		if (group->invalid) {
 			printf(" (invalid)");
 		}
@@ -389,6 +390,9 @@ int main(int argc, char **argv)
 				break;
 			case 'o':
 				outfile = optarg;
+				break;
+			case 'P':
+				profile = optarg;
 				break;
 			case 'h':
 				usage(0);

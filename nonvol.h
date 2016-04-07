@@ -39,7 +39,13 @@ enum bcm2_nv_type {
 	// mac address
 	BCM2_MAC = 6,
 	// byte array
-	BCM2_BYTEARR = 7
+	BCM2_BYTEARR = 7,
+	// 8 bit number
+	BCM2_N8 = 8,
+	// 16 bit number
+	BCM2_N16 = 9,
+	// 32 bit number
+	BCM2_N32 = 10
 };
 
 union bcm2_nv_group_magic {
@@ -47,13 +53,9 @@ union bcm2_nv_group_magic {
 	char s[4];
 };
 
-struct bcm2_nv_ver {
-	uint16_t maj;
-	uint16_t min;
-} __attribute__((packed));
-
 struct bcm2_nv_optdef {
 	char name[64];
+	char id[16];
 	// type
 	enum bcm2_nv_type type;
 	// offset within group
@@ -65,14 +67,14 @@ struct bcm2_nv_optdef {
 struct bcm2_nv_groupdef {
 	union bcm2_nv_group_magic magic;
 	char name[64];
-	bool versioned;
-	struct bcm2_nv_optdef *opts;
+	char id[16];
+	struct bcm2_nv_optdef opts[64];
 };
 
 struct bcm2_nv_group {
 	struct bcm2_nv_group *next;
 	union bcm2_nv_group_magic magic;
-	struct bcm2_nv_ver ver;
+	uint8_t version[2];
 	const char *name;
 	size_t offset;
 	uint16_t size;

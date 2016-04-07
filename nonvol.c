@@ -22,6 +22,24 @@
 #include <stdio.h>
 #include "nonvol.h"
 
+struct nv_optdef {
+	char name[64];
+	char id[16];
+	// type
+	enum bcm2_nv_type type;
+	// offset within group
+	size_t offset;
+	// size (only for some types)
+	ssize_t size;
+};
+
+struct nv_groupdef {
+	union bcm2_nv_group_magic magic;
+	char name[64];
+	char id[16];
+	struct nv_optdef opts[64];
+};
+
 /*
  * In-flash group format:
  * length, including length field (2 bytes)
@@ -29,81 +47,97 @@
  * version (4 bytes, 2 major, 2 minor)
  */
 
-static struct bcm2_nv_groupdef groups[] = {
+static struct nv_groupdef groups[] = {
 	{
 		.magic.s = "UPC.",
 		.name = "UPC Settings",
-		.versioned = true,
 	},
 	{
 		.magic.s = "CMAp",
 		.name = "BFC App Settings",
-		.versioned = true,
 	},
 	{
 		.magic.s = "TR69",
 		.name = "TR69 App Settings",
-		.versioned = true,
 	},
 	{
 		.magic.s = "MSC.",
 		.name = "Media Server App Settings",
-		.versioned = true
 	},
 	{
 		.magic.s = "NAS.",
 		.name = "NAS App Settings",
-		.versioned = true
 	},
 	{
 		.magic.s = "THOM",
+		.id = "thombfc",
 		.name = "Thomson BFC Settings",
-		.versioned = true,
+		.opts = {
+			{
+				.name = "Console mode",
+				.id = "console",
+				.type = BCM2_N8
+			},
+		}
 	},
 	{
 		.magic.s = "TRG.",
 		.name = "Thomson Residential Gateway Settings",
-		.versioned = true,
 	},
 	{
 		.magic.s = "RG..",
 		.name = "Broadcom Residential Gateway Settings",
-		.versioned = true
 	},
 	{
 		.magic.s = "CDP.",
 		.name = "CDP Settings",
-		.versioned = true
 	},
 	{
 		.magic.s = "CAP.",
 		.name = "CAP Settings",
-		.versioned = true
 	},
 	{
 		.magic.s = "bpi ",
 		.name = "CM BPI Settings",
-		.versioned = true
 	},
 	{
 		.magic.s = "FIRE",
 		.name = "Firewall Settings",
-		.versioned = true
 	},
 	{
 		.magic.s = "MLog",
 		.name = "User Interface Settings",
-		.versioned = true
+		.id = "ui",
+		.opts = {
+			{
+				.name = "HTTP username",
+				.id = "http_user_id",
+				.type = BCM2_PSTRING
+			},
+			{
+				.name = "HTTP password",
+				.id = "http_user_pw",
+				.type = BCM2_PSTRING
+			},
+			{
+				.name = "HTTP admin username",
+				.id = "http_admin_id",
+				.type = BCM2_PSTRING
+			},
+			{
+				.name = "HTTP admin password",
+				.id = "http_admin_pw",
+				.type = BCM2_PSTRING
+			},
+		}
 	},
 	{
 		.magic.s = "T802",
 		.name = "Thomson Wi-Fi Settings",
-		.versioned = true
 	},
 	{
 		.magic.s = "8021",
 		.name = "Broadcom Wi-Fi Settings",
-		.versioned = true
 	},
 	{
 		.magic.s = "WiGu",
@@ -120,7 +154,6 @@ static struct bcm2_nv_groupdef groups[] = {
 	{
 		.magic.s = "FACT",
 		.name = "Factory Settings",
-		.versioned = true
 	},
 	{
 		.magic.n = 0xd0c20100,
@@ -175,17 +208,21 @@ static struct bcm2_nv_groupdef groups[] = {
 		.name = "HAL Interface Settings"
 	},
 	{
+		.magic.s = "AVS\0",
+		.name = "AVS Management Settings"
+	},
+	{
 		.magic.n = 0,
 		.name = ""
 	},
 };
 
-struct bcm2_nv_groupdef *find_groupdef(union bcm2_nv_group_magic *m)
+struct nv_groupdef *find_groupdef(union bcm2_nv_group_magic *m)
 {
-	struct bcm2_nv_groupdef *groupdef = groups;
+	struct nv_groupdef *groupdef = groups;
 
 	for (; *groupdef->name; ++groupdef) {
-		if (!memcmp(m->s, groupdef->magic.s, 4) || groupdef->magic.n == htonl(m->n)) {
+		if (groupdef->magic.n == m->n || htonl(groupdef->magic.n) == m->n) {
 			return groupdef;
 		}
 	}
@@ -195,7 +232,6 @@ struct bcm2_nv_groupdef *find_groupdef(union bcm2_nv_group_magic *m)
 
 struct bcm2_nv_group *bcm2_nv_parse_groups(unsigned char *buf, size_t len, size_t *remaining)
 {
-	//struct bcm2_nv_group_ver ver;
 	struct bcm2_nv_group *groups = NULL, *group;
 
 	if (len < 6) {
@@ -218,8 +254,9 @@ struct bcm2_nv_group *bcm2_nv_parse_groups(unsigned char *buf, size_t len, size_
 		group->offset = len - *remaining;
 		group->size = ntohs(*(uint16_t*)buf);
 		memcpy(group->magic.s, buf + 2, 4);
+		memcpy(group->version, buf + 6, 2);
 
-		struct bcm2_nv_groupdef *def = find_groupdef(&group->magic);
+		struct nv_groupdef *def = find_groupdef(&group->magic);
 		if (def) {
 			group->name = def->name;
 		} else {
