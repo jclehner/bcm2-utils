@@ -1,6 +1,6 @@
 /**
  * bcm2-utils - bcm2cfg
- * Copyright (C) 2016 Joseph Lehner <joseph.c.lehner@gmail.com>
+ * Copyright (C) 2016 Joseph C. Lehner <joseph.c.lehner@gmail.com>
  *
  * bcm2-utils is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,30 +27,34 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
+#include "profile.h"
 #include "nonvol.h"
+#include "common.h"
 
-// "TMM_TC7200\0\0\0\0\0\0"
-uint8_t md5key[] = {
-    0x54, 0x4d, 0x4d, 0x5f,
-    0x54, 0x43, 0x37, 0x32,
-    0x30, 0x30, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00
-};
+static struct bcm2_profile *profile = NULL;
 
-static void gen_key(const char *password, unsigned char *key)
+static bool parse_hexstr(const char *hexstr, char *buf, size_t *len)
 {
-	unsigned i = 0;
-	for (; i < 32; ++i) {
-		key[i] = i & 0xff;
+	size_t l = strlen(hexstr);
+	if (!(l % 2) && (l <= *len * 2)) {
+		size_t i = 0;
+		for (; i < l && hexstr[i * 2]; ++i) {
+			char ch[3];
+			unsigned val;
+			memcpy(ch, hexstr + (i * 2), 2);
+			ch[2] = '\0';
+			if (sscanf(ch, "%02x", &val) != 1) {
+				return false;
+			}
+
+			buf[i] = val & 0xff;
+		}
+
+		*len = i;
+		return true;
 	}
 
-	if (password && *password) {
-		size_t len = strlen(password);
-		if (len > 32) {
-			len = 32;
-		}
-		memcpy(key, password, len);
-	}
+	return false;
 }
 
 static void print_md5(FILE *fp, unsigned char *md5)
@@ -61,13 +65,26 @@ static void print_md5(FILE *fp, unsigned char *md5)
 	}
 }
 
-static void calc_md5(unsigned char *buf, long size, unsigned char *md5)
+static bool calc_md5(unsigned char *buf, long size, unsigned char *md5)
 {
 	MD5_CTX c;
 	MD5_Init(&c);
 	MD5_Update(&c, buf, size);
-	MD5_Update(&c, md5key, sizeof(md5key));
+
+	if (profile->cfg_md5key[0]) {
+		char key[64];
+		size_t len = sizeof(key);
+		if (!parse_hexstr(profile->cfg_md5key, key, &len)) {
+			fprintf(stderr, "error: failed to parse md5key of profile '%s'\n",
+					profile->name);
+			return false;
+		}
+
+		MD5_Update(&c, key, len);
+	}
+
 	MD5_Final(md5, &c);
+	return true;
 }
 
 static int read_file(const char *filename, unsigned char **buf, size_t *len)
@@ -122,12 +139,15 @@ static bool xfwrite(const void *buf, size_t len, FILE *fp)
 
 	return true;
 }
+
 static int do_verify(unsigned char *buf, size_t len, int verbosity)
 {
 	unsigned char actual[16], expected[16];
 	memcpy(actual, buf, 16);
 
-	calc_md5(buf + 16, len - 16, expected);
+	if (!calc_md5(buf + 16, len - 16, expected)) {
+		return 1;
+	}
 
 	if (memcmp(actual, expected, 16)) {
 		if (verbosity) {
@@ -149,7 +169,6 @@ static int do_verify(unsigned char *buf, size_t len, int verbosity)
 
 static int do_crypt(unsigned char *buf, size_t len, const char *outfile, const char *password, bool decrypt)
 {
-
 	if (len < 16) {
 		fprintf(stderr, "error: file too small\n");
 		return 1;
@@ -160,7 +179,16 @@ static int do_crypt(unsigned char *buf, size_t len, const char *outfile, const c
 
 	if (password) {
 		unsigned char key[32];
-		gen_key(password, key);
+		if (!profile->cfg_keyfun) {
+			fprintf(stderr, "error: no key derivation function in profile '%s'\n",
+					profile->name);
+			return 1;
+		}
+
+		if (!profile->cfg_keyfun(password, key)) {
+			fprintf(stderr, "error: key derivation function failed\n");
+			return 1;
+		}
 
 		AES_KEY aes;
 
@@ -208,7 +236,9 @@ static int do_crypt(unsigned char *buf, size_t len, const char *outfile, const c
 	}
 
 	unsigned char md5[16];
-	calc_md5(wbuf, len - 16, md5);
+	if (!calc_md5(wbuf, len - 16, md5)) {
+		goto out;
+	}
 
 	if (!xfwrite(md5, 16, fp) || !xfwrite(wbuf, len - 16, fp)) {
 		goto out;
@@ -328,25 +358,28 @@ static int do_list(unsigned char *buf, size_t len)
 static void usage(int exitstatus)
 {
 	fprintf(stderr,
-			"usage: bcm2cfg [options]\n"
+			"Usage: bcm2cfg [options]\n"
 			"\n"
-			"operations:\n"
-			"  -v            verify input file\n"
-			"  -f            fix checksum and file size\n"
-			"  -d            decrypt input file\n"
-			"  -e            encrypt input file\n"
-			"  -l            list contents\n"
+			"Commands:\n"
+			"  -V              Verify input file\n"
+			"  -f              Fix checksum and file size\n"
+			"  -d              Decrypt input file\n"
+			"  -e              Encrypt input file\n"
+			"  -l              List contents\n"
 			"\n"
-			"options:\n"
-			"  -h            show help\n"
-			"  -p <password> backup password\n"
-			"  -o <output>   output file\n"
-			"  -n            ignore bad checksum\n"
-#if 0
-			"  -P <profile>  device profile\n"
+			"Options:\n"
+			"  -h              Show help\n"
+			"  -p <password>   Backup password\n"
+			"  -o <output>     Output file\n"
+			"  -n              Ignore bad checksum\n"
+			"  -L              List profiles\n"
+			"  -P <profile>    Select device profile\n"
+			"  -O <var>=<arg>  Override profile variable\n"
+			"  -v              Verbose operation\n"
 			"\n"
-			"profiles:\n"
-#endif
+			"bcm2cfg " VERSION " Copyright (C) 2016 Joseph C. Lehner\n"
+			"Licensed under the GNU GPLv3; source code is available at\n"
+			"https://github.com/jclehner/bcm2utils\n"
 			"\n");
 	exit(exitstatus);
 }
@@ -355,18 +388,19 @@ static void usage(int exitstatus)
 int main(int argc, char **argv)
 {
 	int verify = 0, fix = 0, decrypt = 0, encrypt = 0, list = 0;
-	int noverify = 0;
+	int noverify = 0, verbosity = 0;
 	const char *outfile = NULL;
 	const char *infile = NULL;
 	const char *password = NULL;
-	const char *profile = NULL;
 
 	int c;
 	opterr = 0;
 
-	while ((c = getopt(argc, argv, "vfdelp:o:n")) != -1) {
+	profile = bcm2_profile_find("generic");
+
+	while ((c = getopt(argc, argv, "Vfdelp:o:nvP:O:L")) != -1) {
 		switch (c) {
-			case 'v':
+			case 'V':
 				verify = 1;
 				break;
 			case 'f':
@@ -391,8 +425,13 @@ int main(int argc, char **argv)
 			case 'o':
 				outfile = optarg;
 				break;
+			case 'L':
+			case 'O':
 			case 'P':
-				profile = optarg;
+			case 'v':
+				if (!handle_common_opt(c, optarg, &verbosity, &profile)) {
+					return 1;
+				}
 				break;
 			case 'h':
 				usage(0);
@@ -426,6 +465,16 @@ int main(int argc, char **argv)
 	if (!outfile && (encrypt || decrypt)) {
 		fprintf(stderr, "error: no output file specified\n");
 		return 1;
+	}
+
+	if (!strcmp(profile->name, "generic")) {
+		printf("warning: generic profile selected - ");
+		if (verify) {
+			printf("verification is likely to fail\n");
+		} else {
+			printf("disabling verification\n");
+			noverify = 1;
+		}
 	}
 
 	unsigned char *buf = NULL;

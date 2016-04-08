@@ -1,10 +1,10 @@
 CC ?= cc
-CFLAGS ?= -Wall -g
+CFLAGS ?= -Wall -g -DVERSION=\"$(shell git describe --always)\"
 
-bcm2cfg_OBJ = bcm2cfg.o nonvol.o
-bcm2dump_OBJ = bcm2dump.o code.o bootloader.o \
+bcm2cfg_OBJ = common.o nonvol.o profile.o bcm2cfg.o
+bcm2dump_OBJ = common.o code.o bootloader.o \
 			   mipsasm.o progress.o profile.o \
-			   serial.o
+			   serial.o bcm2dump.o
 
 .PHONY: all clean
 

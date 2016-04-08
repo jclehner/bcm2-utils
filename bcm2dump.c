@@ -2,9 +2,7 @@
 #include "bcm2dump.h"
 #include "profile.h"
 #include "mipsasm.h"
-
-#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
-#define VERSION "0.9"
+#include "common.h"
 
 static struct bcm2_profile *profile = NULL;
 static struct bcm2_addrspace *space = NULL;
@@ -18,177 +16,6 @@ static int opt_verbosity = 0;
 static const char *opt_codefile = NULL;
 static const char *opt_filename = NULL;
 static const char *opt_ttydev = NULL;
-
-
-static struct bcm2_profile *find_profile(const char *name)
-{
-	struct bcm2_profile *profile = bcm2_profile_find(name);
-	if (!profile) {
-		fprintf(stderr, "error: profile '%s' not found\n", name);
-	}
-
-	return profile;
-}
-
-static char *pretty_num(uint32_t n)
-{
-	static char buf[32];
-
-	if (!(n % (1024 * 1024))) {
-		sprintf(buf, "%u M", n / (1024 * 1024));
-	} else if (!(n % 1024)) {
-		sprintf(buf, "%u K", n / 1024);
-	} else {
-		sprintf(buf, "%u", n);
-	}
-
-	return buf;
-}
-
-static void list_and_exit(const char *name)
-{
-	struct bcm2_profile *profile;
-
-	if (name) {
-		profile = find_profile(name);
-		if (!profile) {
-			exit(1);
-		}
-
-		printf("PROFILE '%s': %s\n", profile->name, profile->pretty);
-		printf("======================================================\n");
-
-#define DUMP_NUM(o, x, fmt) printf("%-10s " fmt "\n", #x, o->x)
-		DUMP_NUM(profile, baudrate, "%u");
-		DUMP_NUM(profile, pssig, "0x%04x");
-		printf("\n");
-		if (opt_verbosity) {
-			DUMP_NUM(profile, loadaddr, "0x%08x");
-			DUMP_NUM(profile, buffer, "0x%08x");
-			DUMP_NUM(profile, buflen, "%u");
-			DUMP_NUM(profile, kseg1mask, "0x%08x");
-			DUMP_NUM(profile, printf, "0x%08x");
-			DUMP_NUM(profile, scanf, "0x%08x");
-			printf("%-10s 0x%08x '%s'\n", "magic", profile->magic.addr, profile->magic.data);
-			printf("\n");
-		}
-#undef DUMP_NUM
-
-		struct bcm2_addrspace *space = profile->spaces;
-
-		if (!space->name[0]) {
-			printf("(no address spaces defined)\n");
-		} else {
-			for (; space->name[0]; ++space) {
-				printf("SPACE '%s': 0x%08x-", space->name, space->min);
-				if (space->size) {
-					printf("0x%08x (%s) ", space->min + space->size, 
-							pretty_num(space->size));
-				} else {
-					printf("? ");
-				}
-
-				printf("%c", space->read.addr ? 'R' : ' ');
-				printf("%c", space->write.addr ? 'W' : ' ');
-
-				if (strcmp(space->name, "ram") && space->ram) {
-					printf(" (ram)");
-				}
-
-				printf("\n");
-				printf("name------------------offset--------size--------------\n");
-				
-				struct bcm2_partition *part = space->parts;
-				if (!part->name[0]) {
-					printf("(no partitions defined)\n");
-					continue;
-				}
-
-				for (; part->name[0]; ++part) {
-					printf("%-16s  0x%08x  0x%08x  (%s)\n", part->name, part->offset, part->size, 
-							pretty_num(part->size));
-				}
-
-				if (opt_verbosity) {
-					printf("\n");
-					struct bcm2_func *funcs[] = { &space->read, &space->write };
-					unsigned i = 0;
-					for (; i < 2; ++i) {
-						if (!funcs[i]->addr) {
-							continue;
-						}
-
-						printf("%s: 0x%08x, mode 0x%02x\n",
-								i ? "write" : "read ", funcs[i]->addr,
-								funcs[i]->mode);
-
-						unsigned k = 0;
-						for (; funcs[i]->patch[k].addr && k < BCM2_PATCH_NUM; ++k) {
-							printf("patch%u: 0x%08x -> %08x\n", k,
-									funcs[i]->patch[k].addr, funcs[i]->patch[k].word);
-						}
-					}
-				}
-
-				printf("\n");
-			}
-		}
-	} else {
-		profile = bcm2_profiles;
-		for (; profile->name[0]; ++profile) {
-			printf("%-16s  %s\n", profile->name, profile->pretty);
-		}
-	}
-
-	exit(0);
-}
-
-static bool strtou(const char *str, unsigned *n, bool quiet)
-{
-	int base = !strncmp(str, "0x", 2) ? 16 : 10;
-	char *end = NULL;
-	unsigned long val = strtoul(str, &end, base);
-
-	if (base == 10 && *end) {
-		switch (*end) {
-			case 'M':
-			case 'm':
-				val *= 1024;
-				// fall through
-			case 'K':
-			case 'k':
-				val *= 1024;
-				++end;
-				break;
-
-			default:
-				break;
-		}
-	}
-
-	if (*end == '+' || *end == '-') {
-		unsigned off;
-		if (!strtou(end + 1, &off, true)) {
-			fprintf(stderr, "error: invalid offset specification: %s\n", end);
-			return false;
-		}
-
-		if (*end == '+') {
-			val += off;
-		} else {
-			val -= off;
-		}
-	} else if (*end) {
-		if (!quiet) {
-			fprintf(stderr, "error: invalid %s number: %s\n", base == 16 ? "hex" : "dec", str);
-		}
-		return false;
-	}
-
-	*n = val;
-
-	return true;
-}
 
 static bool dump_opt_slow(int fd, unsigned offset, unsigned length, FILE *fp)
 {
@@ -533,32 +360,10 @@ static bool resolve_offset_and_length(unsigned *off, unsigned *len, bool need_le
 	return true;
 }
 
-static bool handle_profile_override(const char *name)
-{
-	char *value = strchr(name, '=');	
-	if (value) {
-		*value = '\0';
-		++value;
-
-#define HANDLE_PROF_OVERRIDE_NUM(x) \
-		do { if (!strcmp(name, #x)) { if (strtou(value, &profile->x, true)) return true; } } while(0)
-
-		HANDLE_PROF_OVERRIDE_NUM(baudrate);
-		HANDLE_PROF_OVERRIDE_NUM(loadaddr);
-		HANDLE_PROF_OVERRIDE_NUM(buffer);
-		HANDLE_PROF_OVERRIDE_NUM(kseg1mask);
-		HANDLE_PROF_OVERRIDE_NUM(printf);
-#undef HANDLE_PROF_OVERRIDE_NUM
-	}
-
-	fprintf(stderr, "error: invalid profile override '%s=%s'\n", name, value);
-	return false;
-}
-
 static void usage_and_exit(int status)
 {
 	fprintf(status == 0 ? stdout : stderr,
-			"Usage: bcm2dump [command]...\n"
+			"Usage: bcm2dump [command] [options]...\n"
 			"\n"
 			"Commands:\n"
 			"  dump            Dump ram/flash contents\n"
@@ -589,7 +394,7 @@ static void usage_and_exit(int status)
 			"\n"
 			"Binary prefixes k/K (1024) and m/M (1024^2) are supported.\n"
 			"\n"
-			"bcm2dump " VERSION " Copyright(C) 2016 Joseph C. Lehner\n"
+			"bcm2dump " VERSION " Copyright (C) 2016 Joseph C. Lehner\n"
 			"Licensed under the GNU GPLv3; source code is available at\n"
 			"https://github.com/jclehner/bcm2utils\n"
 			"\n");
@@ -612,7 +417,6 @@ static bool is_valid_command(const char *cmd)
 static int parse_options(int argc, char **argv)
 {
 	int c;
-	bool override = false, have_profile = false;
 	const char *spaceopt = NULL;
 
 	profile = bcm2_profile_find("generic");
@@ -632,7 +436,16 @@ static int parse_options(int argc, char **argv)
 				usage_and_exit(0);
 				break;
 			case 'L':
-				list_and_exit(have_profile ? profile->name : NULL);
+			case 'O':
+			case 'P':
+			case 'v':
+				if (!handle_common_opt(c, optarg, &opt_verbosity, &profile)) {
+					return -1;
+				}
+
+				if (++opt_verbosity >= 3) {
+					ser_debug = true;
+				}
 				break;
 			case 'a':
 				spaceopt = optarg;
@@ -652,30 +465,6 @@ static int parse_options(int argc, char **argv)
 			case 'd':
 				opt_ttydev = optarg;
 				break;
-			case 'v':
-				if (++opt_verbosity >= 3) {
-					ser_debug = true;
-				}
-				break;
-			case 'O':
-				if (!handle_profile_override(optarg)) {
-					return -1;
-				}
-				override = true;
-				break;
-			case 'P':
-				if (override) {
-					fprintf(stderr, "error: must specify -P before -O\n");
-					return -1;
-				}
-				profile = bcm2_profile_find(optarg);
-				if (!profile) {
-					fprintf(stderr, "error: profile '%s' not found\n", optarg);
-					return -1;
-				}
-				have_profile = true;
-				break;
-				// fall through
 			default:
 				usage_and_exit(1);
 				break;

@@ -18,7 +18,27 @@
  */
 
 #include <string.h>
+#include <stdio.h>
 #include "profile.h"
+#include "common.h"
+
+static bool keyfun_tc7200(const char *password, unsigned char *key)
+{
+	unsigned i = 0;
+	for (; i < 32; ++i) {
+		key[i] = i & 0xff;
+	}
+
+	if (password && *password) {
+		size_t len = strlen(password);
+		if (len > 32) {
+			len = 32;
+		}
+		memcpy(key, password, len);
+	}
+
+	return true;
+}
 
 struct bcm2_profile bcm2_profiles[] = {
 	{
@@ -42,7 +62,8 @@ struct bcm2_profile bcm2_profiles[] = {
 		.kseg1mask = 0x20000000,
 		.printf = 0x83f8b0c0,
 		.scanf = 0x83f8ba94,
-		// not yet used
+		.cfg_md5key = "544d4d5f544337323030000000000000",
+		.cfg_keyfun = &keyfun_tc7200,
 		.magic = { 0x83f8e618, "2.4.0alpha18p1" },
 		.spaces = {
 			{
@@ -88,7 +109,9 @@ struct bcm2_profile bcm2_profiles[] = {
 				},
 			}
 		}
-	}
+	},
+	// end marker
+	{ .name = "" },
 };
 
 void *find_by_name(const char *name, void *list, size_t elemsize)
@@ -125,4 +148,3 @@ struct bcm2_partition *bcm2_addrspace_find_partition(struct bcm2_addrspace *addr
 {
 	return find_by_name(name, addrspace->parts, sizeof(*addrspace->parts));
 }
-
