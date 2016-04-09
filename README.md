@@ -1,6 +1,6 @@
 # bcm2-utils
 
-*B*road*c*om *c*able *m*odem utilities.
+**B**road**c**o**m** **c**able **m**odem utilities.
 
 * `bcm2dump`: A utility to dump ram/flash via a serial console
 * `bcm2cfg`: A utility to modify/encrypt/decrypt the configuration
