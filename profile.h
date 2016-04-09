@@ -137,7 +137,7 @@ struct bcm2_profile {
 	// before calculating its checksum. specify as a hex string 
 	char cfg_md5key[65];
 	// default encryption keys for backups without a password
-	char cfg_defkeys[8][64];
+	char cfg_defkeys[8][65];
 	// key derivation function for encrypted configuration files.
 	// key is a 32 byte buffer (256 bit RSA). return false if
 	// key derivation failed.

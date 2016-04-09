@@ -68,17 +68,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		}
 	},
 	{
-		.name = "twg850",
-		.pretty = "Thomson TWG-850",
-		.cfg_keyfun = &keyfun_dumb,
-	},
-	{
-		.name = "twg870",
-		.pretty = "Thomson TWG-870",
-		.cfg_keyfun = &keyfun_dumb,
-	},
-	{
-		.name = "tc7200",
+		.name = "TC7200",
 		.pretty = "Technicolor TC-7200/TC-7200.U",
 		.baudrate = 115200,
 		.pssig = 0xa825,
@@ -91,7 +81,6 @@ struct bcm2_profile bcm2_profiles[] = {
 		.cfg_keyfun = &keyfun_tc7200,
 		.cfg_defkeys = {
 			"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
-			"0000000000000000000000000000000000000000000000000000000000000000"
 		},
 		.magic = { 0x83f8e618, "2.4.0alpha18p1" },
 		.spaces = {
@@ -148,7 +137,7 @@ void *find_by_name(const char *name, void *list, size_t elemsize)
 	char *p = list;
 
 	for (; *p; p += elemsize) {
-		if (!strcmp(p, name)) {
+		if (!strcasecmp(p, name)) {
 			return p;
 		}
 	}
