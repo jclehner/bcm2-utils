@@ -29,26 +29,29 @@ Main Menu:
 
 ```
 
-Dumping flash requires the "write memory" and "jump to arbitrary address",
-and a device profile. Speed is around 4.4 kilobytes/s when using 115200 baud.
+Dumping flash requires the "write memory" and "jump to arbitrary address" options,
+plus an appropriate device profile. Speed is around 4.4 kilobytes/s when using
+115200 baud.
 
 Without a device profile, or if only "read memory" is available, `bcm2dump`
 can only be used to dump ram. Speed in that case is slower, around
 500 byte/s on a 115200 baud line.
 
 Firmware images are usually in Broadcom's ProgramStore format. Utilities for
-extraction and packing are available from Broadcom (and GPLv3'd!):
+extraction and compression are available from Broadcom (and GPLv3'd!):
 
 https://github.com/Broadcom/aeolus/tree/master/ProgramStore
 
 ## bcm2cfg
 
-This utility works with the `GatewaySettings.bin` file that is used on some
+This utility handles the `GatewaySettings.bin` file that is used on some
 devices (e.g. Technicolor TC7200, Thomson TWG850, Thomson TWG870). Given
 a device profile, it can be used to encrypt, decrypt, verify the
 settings file. Dumping an unencrypted file also works without a device profile.
 
-At the moment, encrypted files must be decrypted before dumping them.
+This utility is currently alpha-ish at best!
+
+Encrypted files must be decrypted before dumping them.
 
 # Usage
 ###### bcm2dump
@@ -102,9 +105,9 @@ dump:   0.67% (0x019cb800) 4656|1782 bytes/s (ETA      01:05:47)
 ...
 ```
 
-Dumping an 128 kilobytes from ram at `0x80004000`:
+Dumping 128 kilobytes from ram at `0x80004000`:
 ```
-$ bcm2dump dump -P tc7200 -d /dev/ttyUSB0 -a ram -f image1.bin -o 0x80004000 -n 128k
+$ bcm2dump dump -P tc7200 -d /dev/ttyUSB0 -a ram -f foobar.bin -o 0x80004000 -n 128k
 ```
 
 # Writing a device profile
@@ -114,9 +117,10 @@ All current definitions can be found in [profile.c](profile.c).
 
 To add a new device profile, you'll first have to get hold of the bootloader code.
 An easy way to locate the bootloader is to jump to an arbitrary location in RAM,
-and then study the exception handler's output. To be safe, you could write an
-opcode to RAM that will cause a crash, and then jump to that location. Something
-like `sw zero, 0(zero)` (0xac000000) is always a safe bet:
+and then study the exception handler's output. Jumping to a random address is
+one way to crash your device, but to be safe, you could write an opcode to RAM
+that will cause a crash, and then jump to that location. Something
+like `sw $zero, 0($zero)` (`0xac000000`) is always a safe bet:
 
 ```
 Write memory.  Hex address: 0x80000000
@@ -142,7 +146,7 @@ cause: 0x0000800c               addr: 0x00000000
 
 The most important info here is `ra`, but we can also see many other
 references to `0x83f8XXXX`, so it's safe to assume that the bootloader is
-loaded somewhere at this location.
+loaded somewhere around this address.
 
 Restart the device, go into the main menu again, and we can fire up
 `bcm2dump` to dump the bootloader code from ram. The bootloader is usually
@@ -156,7 +160,7 @@ dump:   4.50% (0x83f62e18)  528| 525 bytes/s (ETA      00:07:57)
 ...
 ```
 
-Load the image in your favorite disassembler and start looking. The
+Load the image in your favorite disassembler and start digging. The
 `printf` address should be very easy to find; combined with a suitable
 suitable location to store the dump code (currently around 512 bytes),
 you'll be able to dump ram at "full" speed (4.4 kilobyte/s). Note that
@@ -183,7 +187,7 @@ BCM2_RET_OK_LEN: function returns length on success
 ```
 
 Use a string from the bootloader code as the profile's magic to support
-profile auto-detection.
+profile auto-detection (coming soon).
 
 `cfg_md5key` and `cfg_keyfun` aside, the profile can be completed by
 studying the bootloader code. The `cfg_` stuff is used by `bcm2cfg`,
