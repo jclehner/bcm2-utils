@@ -63,11 +63,17 @@ static void list_profile_and_exit(const char *name, int verbosity)
 
 		printf("PROFILE '%s': %s\n", profile->name, profile->pretty);
 		printf("======================================================\n");
-
-#define DUMP(o, x, fmt) printf("%-10s " fmt "\n", #x, o->x)
+#define DUMP(o, x, fmt) printf("%-10s  " fmt "\n", #x, o->x)
 		DUMP(profile, baudrate, "%u");
 		DUMP(profile, pssig, "0x%04x");
+		printf("%-10s  %s\n", "endianness", profile->mipsel ? "little" : "big");
 		DUMP(profile, cfg_md5key, "%s");
+
+		unsigned i = 0;
+		for (; profile->cfg_defkeys[i][0]; ++i) {
+			printf("-%10s  %s\n", i ? "" : "cfg_defkeys", profile->cfg_defkeys[i]);
+		}
+
 		printf("\n");
 		if (verbosity) {
 			DUMP(profile, loadaddr, "0x%08x");
@@ -95,8 +101,12 @@ static void list_profile_and_exit(const char *name, int verbosity)
 					printf("? ");
 				}
 
-				printf("%c", space->read.addr ? 'R' : ' ');
-				printf("%c", space->write.addr ? 'W' : ' ');
+				if (!strcmp(space->name, "ram")) {
+					printf("RW");
+				} else {
+					printf("%c", space->ram || space->read.addr ? 'R' : ' ');
+					printf("%c", space->write.addr ? 'W' : ' ');
+				}
 
 				if (strcmp(space->name, "ram") && space->ram) {
 					printf(" (ram)");
@@ -112,7 +122,7 @@ static void list_profile_and_exit(const char *name, int verbosity)
 				}
 
 				for (; part->name[0]; ++part) {
-					printf("%-16s  0x%08x  0x%08x  (%s)\n", part->name, part->offset, part->size, 
+					printf("%-16s  0x%08x  0x%08x  (%ss)\n", part->name, part->offset, part->size, 
 							pretty_num(part->size));
 				}
 

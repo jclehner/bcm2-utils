@@ -21,7 +21,12 @@
 #define BCM2_UTILS_H
 #include <stdbool.h>
 #include <stdint.h>
+
 #define BCM2_PATCH_NUM 4
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 enum bcm2_read_func_mode
 {
@@ -31,6 +36,18 @@ enum bcm2_read_func_mode
 	BCM2_READ_FUNC_BOL = 1 << 0,
 	// offset, buffer, length
 	BCM2_READ_FUNC_OBL = 1 << 1,
+};
+
+enum bcm2_func_ret
+{
+	// ignore return value
+	BCM2_RET_VOID = 0,
+	// returns zero on success
+	BCM2_RET_OK_0 = 1 << 0,
+	// returns zero on error
+	BCM2_RET_ERR_0 = 1 << 1,
+	// returns length on success
+	BCM2_RET_OK_LEN = 1 << 2
 };
 
 struct bcm2_partition {
@@ -49,6 +66,8 @@ struct bcm2_func {
 	// mode of this function. interpretation
 	// depends on actual function.
 	uint32_t mode;
+	// return value type
+	enum bcm2_func_ret retv;
 	// patches to be applied before using 
 	// this function.
 	struct {
@@ -86,6 +105,8 @@ struct bcm2_profile {
 	char name[16];
 	// pretty device name
 	char pretty[64];
+	// little endian MIPS (not supported at the moment)
+	bool mipsel;
 	// signature for ProgramStore images
 	uint16_t pssig;
 	// baudrate of the bootloader console
@@ -114,7 +135,9 @@ struct bcm2_profile {
 	} magic;
 	// a key that is appended to the configuration file data
 	// before calculating its checksum. specify as a hex string 
-	char cfg_md5key[32];
+	char cfg_md5key[65];
+	// default encryption keys for backups without a password
+	char cfg_defkeys[8][64];
 	// key derivation function for encrypted configuration files.
 	// key is a 32 byte buffer (256 bit RSA). return false if
 	// key derivation failed.
@@ -130,5 +153,9 @@ struct bcm2_addrspace *bcm2_profile_find_addrspace(
 		struct bcm2_profile *profile, const char *name);
 struct bcm2_partition *bcm2_addrspace_find_partition(
 		struct bcm2_addrspace *addrspace, const char *name);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

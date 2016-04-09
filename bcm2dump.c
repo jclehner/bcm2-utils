@@ -198,12 +198,15 @@ static bool dump_write_exec(int fd, const char *cmd, uint32_t offset, uint32_t l
 				goto out;
 			}
 
-			for (; offset < end; offset += 16)
+			bool first = true;
+			for (; offset < end; offset += 16, first = false)
 			{
 				uint32_t val[4];
 
 				do {
-					int pending = ser_select(fd, 100);
+					// on the first iteration, the dump code reads the flash,
+					// so we'll allow a generous timeout of 15 seconds.
+					int pending = ser_select(fd, first ? 15000 : 100);
 					if (pending <= 0) {
 						if (!pending) {
 							fprintf(stderr, "\nerror: timeout while reading line\n");
@@ -418,6 +421,7 @@ static int parse_options(int argc, char **argv)
 {
 	int c;
 	const char *spaceopt = NULL;
+	opt_verbosity = 0;
 
 	profile = bcm2_profile_find("generic");
 
@@ -443,7 +447,7 @@ static int parse_options(int argc, char **argv)
 					return -1;
 				}
 
-				if (++opt_verbosity >= 3) {
+				if (opt_verbosity >= 3) {
 					ser_debug = true;
 				}
 				break;

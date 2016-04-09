@@ -31,6 +31,9 @@
 #include "nonvol.h"
 #include "common.h"
 
+// md5(16) + magic(74) + version(4) + size(2)
+#define CFG_MIN_SIZE (16 + 74 + 4 + 2)
+
 static struct bcm2_profile *profile = NULL;
 
 static bool parse_hexstr(const char *hexstr, char *buf, size_t *len)
@@ -44,6 +47,7 @@ static bool parse_hexstr(const char *hexstr, char *buf, size_t *len)
 			memcpy(ch, hexstr + (i * 2), 2);
 			ch[2] = '\0';
 			if (sscanf(ch, "%02x", &val) != 1) {
+				fprintf(stderr, "error: bad hex char '%s'\n", ch);
 				return false;
 			}
 
@@ -52,6 +56,8 @@ static bool parse_hexstr(const char *hexstr, char *buf, size_t *len)
 
 		*len = i;
 		return true;
+	} else {
+		fprintf(stderr, "error: bad hex string length %zu\n", l);
 	}
 
 	return false;
@@ -72,7 +78,7 @@ static bool calc_md5(unsigned char *buf, long size, unsigned char *md5)
 	MD5_Update(&c, buf, size);
 
 	if (profile->cfg_md5key[0]) {
-		char key[64];
+		char key[16];
 		size_t len = sizeof(key);
 		if (!parse_hexstr(profile->cfg_md5key, key, &len)) {
 			fprintf(stderr, "error: failed to parse md5key of profile '%s'\n",
@@ -108,7 +114,7 @@ static int read_file(const char *filename, unsigned char **buf, size_t *len)
 
 	rewind(fp);
 
-	*buf = malloc(*len);
+	*buf = malloc(*len + 16);
 	if (!buf) {
 		perror("malloc");
 		goto out;
@@ -118,6 +124,8 @@ static int read_file(const char *filename, unsigned char **buf, size_t *len)
 		perror("fread");
 		goto out;
 	}
+
+	memset(*buf + *len - 16, 0, 16);
 
 	err = 0;
 
@@ -167,7 +175,11 @@ static int do_verify(unsigned char *buf, size_t len, int verbosity)
 	return 0;
 }
 
-static int do_crypt(unsigned char *buf, size_t len, const char *outfile, const char *password, bool decrypt)
+#define CRYPT_ENCRYPT 0
+#define CRYPT_DECRYPT 1
+#define CRYPT_PADBLK 2
+
+static int do_crypt(unsigned char *buf, size_t len, const char *outfile, const char *keystr, const char *password, int flags)
 {
 	if (len < 16) {
 		fprintf(stderr, "error: file too small\n");
@@ -177,25 +189,38 @@ static int do_crypt(unsigned char *buf, size_t len, const char *outfile, const c
 	unsigned char *obuf = NULL, *wbuf = NULL;
 	int err = 1;
 
-	if (password) {
+	if (password || keystr) {
 		unsigned char key[32];
-		if (!profile->cfg_keyfun) {
-			fprintf(stderr, "error: no key derivation function in profile '%s'\n",
-					profile->name);
-			return 1;
-		}
 
-		if (!profile->cfg_keyfun(password, key)) {
-			fprintf(stderr, "error: key derivation function failed\n");
-			return 1;
+		if (password) {
+			if (!profile->cfg_keyfun) {
+				fprintf(stderr, "error: no key derivation function in profile '%s'\n",
+						profile->name);
+				return 1;
+			}
+
+			if (!profile->cfg_keyfun(password, key)) {
+				fprintf(stderr, "error: key derivation function failed\n");
+				return 1;
+			}
+		} else {
+			size_t keylen = strlen(keystr);
+			if (keylen != 64 || !parse_hexstr(keystr, (char*)key, &keylen)) {
+				fprintf(stderr, "error: key must be a 64 character hex string\n");
+				return 1;
+			}
 		}
 
 		AES_KEY aes;
 
-		if (decrypt) {
+		if (flags & CRYPT_DECRYPT) {
 			AES_set_decrypt_key(key, 256, &aes);
 		} else {
 			AES_set_encrypt_key(key, 256, &aes);
+		}
+
+		if (flags & CRYPT_PADBLK && flags & CRYPT_ENCRYPT) {
+			len += 16;
 		}
 
 		obuf = malloc(len - 16);
@@ -209,7 +234,7 @@ static int do_crypt(unsigned char *buf, size_t len, const char *outfile, const c
 		size_t remaining = len - 16;
 
 		while (remaining >= 16) {
-			if (decrypt) {
+			if (flags & CRYPT_DECRYPT) {
 				AES_decrypt(iblock, oblock, &aes);
 			} else {
 				AES_encrypt(iblock, oblock, &aes);
@@ -262,14 +287,14 @@ static int do_fix(unsigned char *buf, size_t len, const char *outfile)
 {
 	bool fixed = false;
 	uint16_t *size = (uint16_t*)(buf + 16 + 74 + 4);
-	if (ntohs(*size) != len) {
+	if (ntohs(*size) != (len - 0x10)) {
 		if (len > 0xffff) {
 			fprintf(stderr, "error: input file exceeds maximum file size\n");
 			return 1;
 		}
 
 		printf("updated size: %u -> %zu\n", ntohs(*size), len);
-		*size = htons(len);
+		*size = htons(len - 0x10);
 		fixed = true;
 	}
 
@@ -277,12 +302,12 @@ static int do_fix(unsigned char *buf, size_t len, const char *outfile)
 
 	if (do_verify(buf, len, 0) != 0) {
 		// this simply updates the md5 sum
-		ret = do_crypt(buf, len, outfile, NULL, false);
+		ret = do_crypt(buf, len, outfile, NULL, NULL, 0);
 		fixed = true;
 	}
 
 	if (!ret && !fixed) {
-		printf("nothing to fix :-)\n");
+		printf("nothing to fix\n");
 	}
 
 	return ret;
@@ -299,7 +324,7 @@ static char *magic_to_str(union bcm2_nv_group_magic *m)
 		unsigned i = 0;
 		for (; i < 4; ++i) {
 			char c = m->s[i];
-			sprintf(str, k ? "%s%c" : "%s%02x", str, isprint(c) ? c : ' ');
+			sprintf(str, k ? "%s%c" : "%s%02x", str, k ? (isprint(c) ? c : ' ') : c);
 		}
 		sprintf(str, "%s ", str);
 	}
@@ -309,10 +334,7 @@ static char *magic_to_str(union bcm2_nv_group_magic *m)
 
 static int do_list(unsigned char *buf, size_t len)
 {
-	// md5(16) + magic(74) + version(4) + size(2)
-	size_t off = (16 + 74 + 4 + 2);
-
-	if (len < off) {
+	if (len < CFG_MIN_SIZE) {
 		fprintf(stderr, "error: file too short to be config file\n");
 		return 1;
 	}
@@ -326,12 +348,18 @@ static int do_list(unsigned char *buf, size_t len)
 	buf += 4;
 
 	uint16_t size = ntohs(*(uint16_t*)buf);
-	printf("   size: %d b %s\n", size, size != len ? "(does not match filesize)" : "");
 	buf += 2;
+
+	printf("   size: %u b ", size);
+	if (size != (len - 0x10)) {
+		printf(" (does not match file size");
+	}
+
+	printf("\n");
 
 	struct bcm2_nv_group *groups, *group;
 	size_t remaining = 0;
-	groups = group = bcm2_nv_parse_groups(buf, len - off, &remaining);
+	groups = group = bcm2_nv_parse_groups(buf, len - CFG_MIN_SIZE, &remaining);
 	if (!groups) {
 		return 1;
 	}
@@ -370,12 +398,14 @@ static void usage(int exitstatus)
 			"Options:\n"
 			"  -h              Show help\n"
 			"  -p <password>   Backup password\n"
+			"  -k <key>        Backup key\n"
 			"  -o <output>     Output file\n"
 			"  -n              Ignore bad checksum\n"
 			"  -L              List profiles\n"
 			"  -P <profile>    Select device profile\n"
 			"  -O <var>=<arg>  Override profile variable\n"
 			"  -v              Verbose operation\n"
+			"  -z              Pad before encrypting\n"
 			"\n"
 			"bcm2cfg " VERSION " Copyright (C) 2016 Joseph C. Lehner\n"
 			"Licensed under the GNU GPLv3; source code is available at\n"
@@ -388,17 +418,18 @@ static void usage(int exitstatus)
 int main(int argc, char **argv)
 {
 	int verify = 0, fix = 0, decrypt = 0, encrypt = 0, list = 0;
-	int noverify = 0, verbosity = 0;
+	int noverify = 0, verbosity = 0, cryptflags = 0;
 	const char *outfile = NULL;
 	const char *infile = NULL;
 	const char *password = NULL;
+	const char *key = NULL;
 
 	int c;
 	opterr = 0;
 
 	profile = bcm2_profile_find("generic");
 
-	while ((c = getopt(argc, argv, "Vfdelp:o:nvP:O:L")) != -1) {
+	while ((c = getopt(argc, argv, "Vfdelzp:k:o:nvP:O:L")) != -1) {
 		switch (c) {
 			case 'V':
 				verify = 1;
@@ -422,6 +453,9 @@ int main(int argc, char **argv)
 			case 'p':
 				password = optarg;
 				break;
+			case 'k':
+				key = optarg;
+				break;
 			case 'o':
 				outfile = optarg;
 				break;
@@ -432,6 +466,9 @@ int main(int argc, char **argv)
 				if (!handle_common_opt(c, optarg, &verbosity, &profile)) {
 					return 1;
 				}
+				break;
+			case 'z':
+				cryptflags |= CRYPT_PADBLK;
 				break;
 			case 'h':
 				usage(0);
@@ -453,12 +490,17 @@ int main(int argc, char **argv)
 	infile = argv[optind];
 
 	if (verify && noverify) {
-		fprintf(stderr, "error: do not use -n with -v\n");
+		fprintf(stderr, "error: -n and -V are mutually exclusive\n");
 		return 1;
 	}
 
-	if (!password && (encrypt || decrypt)) {
-		fprintf(stderr, "error: no password specified\n");
+	if (password && key) {
+		fprintf(stderr, "error: -p and -k are mutually exclusive\n");
+		return 1;
+	}
+
+	if ((!password && !key) && (encrypt || decrypt)) {
+		fprintf(stderr, "error: no password or key specified\n");
 		return 1;
 	}
 
@@ -492,12 +534,13 @@ int main(int argc, char **argv)
 
 	if (!ret) {
 		if (encrypt || decrypt) {
-			ret = do_crypt(buf, len, outfile, password, decrypt);
+			cryptflags |= decrypt ? CRYPT_DECRYPT : CRYPT_ENCRYPT;
+			ret = do_crypt(buf, len, outfile, key, password, cryptflags);
 		} else if (list) {
 			ret = do_list(buf, len);
 		}
 	}
-	
+
 	if (fix) {
 		ret = do_fix(buf, len, outfile ? outfile : infile);
 	}

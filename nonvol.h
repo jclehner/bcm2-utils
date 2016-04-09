@@ -23,6 +23,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum bcm2_nv_type {
 	// invalid type
 	BCM2_INVALID = 0,
@@ -72,4 +76,7 @@ struct bcm2_nv_opt {
 struct bcm2_nv_group *bcm2_nv_parse_groups(unsigned char *buf, size_t len, size_t *remaining);
 void bcm2_nv_free_groups(struct bcm2_nv_group *groups);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

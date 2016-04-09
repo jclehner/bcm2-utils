@@ -256,6 +256,15 @@ struct bcm2_nv_group *bcm2_nv_parse_groups(unsigned char *buf, size_t len, size_
 		memcpy(group->magic.s, buf + 2, 4);
 		memcpy(group->version, buf + 6, 2);
 
+		if (*remaining == 16 && !group->magic.n && !group->size) {
+			char zeroblk[16] = { 0 };
+			if (!memcmp(buf, zeroblk, 16)) {
+				group->name = "(padding)";
+				*remaining -= 16;
+			}
+			break;
+		}
+
 		struct nv_groupdef *def = find_groupdef(&group->magic);
 		if (def) {
 			group->name = def->name;
@@ -273,6 +282,9 @@ struct bcm2_nv_group *bcm2_nv_parse_groups(unsigned char *buf, size_t len, size_
 
 		buf += group->size;
 		*remaining -= group->size;
+	}
+
+	if (*remaining == 16) {
 	}
 
 	return groups;
