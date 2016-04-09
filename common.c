@@ -63,15 +63,15 @@ static void list_profile_and_exit(const char *name, int verbosity)
 
 		printf("PROFILE '%s': %s\n", profile->name, profile->pretty);
 		printf("======================================================\n");
-#define DUMP(o, x, fmt) printf("%-10s  " fmt "\n", #x, o->x)
+#define DUMP(o, x, fmt) printf("%-12s " fmt "\n", #x, o->x)
 		DUMP(profile, baudrate, "%u");
 		DUMP(profile, pssig, "0x%04x");
-		printf("%-10s  %s\n", "endianness", profile->mipsel ? "little" : "big");
+		printf("%-12s %s\n", "endianness", profile->mipsel ? "little" : "big");
 		DUMP(profile, cfg_md5key, "%s");
 
 		unsigned i = 0;
 		for (; profile->cfg_defkeys[i][0]; ++i) {
-			printf("-%10s  %s\n", i ? "" : "cfg_defkeys", profile->cfg_defkeys[i]);
+			printf("%-12s [%u] %s\n", i ? "" : "cfg_defkeys", i, profile->cfg_defkeys[i]);
 		}
 
 		printf("\n");
@@ -82,7 +82,7 @@ static void list_profile_and_exit(const char *name, int verbosity)
 			DUMP(profile, kseg1mask, "0x%08x");
 			DUMP(profile, printf, "0x%08x");
 			DUMP(profile, scanf, "0x%08x");
-			printf("%-10s 0x%08x '%s'\n", "magic", profile->magic.addr, profile->magic.data);
+			printf("%-12s 0x%08x '%s'\n", "magic", profile->magic.addr, profile->magic.data);
 			printf("\n");
 		}
 #undef DUMP
@@ -135,13 +135,13 @@ static void list_profile_and_exit(const char *name, int verbosity)
 							continue;
 						}
 
-						printf("%s: 0x%08x, mode 0x%02x\n",
+						printf("%-12s 0x%08x, mode 0x%02x\n",
 								i ? "write" : "read ", funcs[i]->addr,
 								funcs[i]->mode);
 
 						unsigned k = 0;
 						for (; funcs[i]->patch[k].addr && k < BCM2_PATCH_NUM; ++k) {
-							printf("patch%u: 0x%08x -> %08x\n", k,
+							printf("%-12s [%u] 0x%08x -> %08x\n", !k ? "patch" : "", k,
 									funcs[i]->patch[k].addr, funcs[i]->patch[k].word);
 						}
 					}
