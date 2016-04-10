@@ -1,14 +1,14 @@
 # bcm2-utils
 
-**B**road**c**o**m** **c**able **m**odem utilities.
+**Util**ities for **B**road**c**o**m**-based **c**able **m**odems.
 
 * `bcm2dump`: A utility to dump ram/flash via a serial console
 * `bcm2cfg`: A utility to modify/encrypt/decrypt the configuration
    dump (aka `GatewaySettings.bin`).
 
 These utilities have been tested with a Technicolor TC-7200, but it
-should be easy to add support for other devices. Some pointers for
-this process are detailed [below](#writing-a-device-profile).
+should be easy to add support for other devices. Some pointers can
+be found [below](#writing-a-device-profile).
 
 These utilities are not yet stable - command line options are likely
 to change. Bug reports are always welcome.
@@ -46,12 +46,10 @@ https://github.com/Broadcom/aeolus/tree/master/ProgramStore
 
 This utility handles the `GatewaySettings.bin` file that is used on some
 devices (e.g. Technicolor TC7200, Thomson TWG850, Thomson TWG870). Given
-a device profile, it can be used to encrypt, decrypt, verify the
+a device profile, it can be used to encrypt, decrypt, and verify the
 settings file. Dumping an unencrypted file also works without a device profile.
 
 This utility is currently alpha-ish at best!
-
-Encrypted files must be decrypted before dumping them.
 
 # Usage
 ###### bcm2dump
@@ -78,13 +76,13 @@ bootloader        0x83f80000  0x00020000  (128 K)
 image1/2          0x85f00000  0x006c0000  (6912 K)
 linux             0x87000000  0x00480000  (4608 K)
 
-SPACE 'spi': 0x00000000-0x00100000 (1 M) R
+SPACE 'nvram': 0x00000000-0x00100000 (1 M) R
 name------------------offset--------size--------------
 bootloader        0x00000000  0x00010000  (64 K)
 permnv            0x00010000  0x00010000  (64 K)
 dynnv             0x00020000  0x000e0000  (896 K)
 
-SPACE 'nand': 0x00000000-0x04000000 (64 M) R
+SPACE 'flash': 0x00000000-0x04000000 (64 M) R
 name------------------offset--------size--------------
 linuxapps         0x00000000  0x019c0000  (26368 K)
 image1            0x019c0000  0x006c0000  (6912 K)
@@ -94,11 +92,11 @@ linuxkfs          0x02bc0000  0x01200000  (18 M)
 dhtml             0x03dc0000  0x00240000  (2304 K)
 ```
 
-Dumping `image1` from `nand` to image1.bin:
+Dumping `image1` from `flash` to image1.bin:
 
 ```
-$ bcm2dump dump -P tc7200 -d /dev/ttyUSB0 -a nand -f image1.bin -o image1
-dump: nand 0x019c0000-0x0207ffff
+$ bcm2dump dump -P tc7200 -d /dev/ttyUSB0 -a flash -f image1.bin -o image1
+dump: flash 0x019c0000-0x0207ffff
 dump: writing dump code (412 b) to ram at 0xa4010000
 dump: 100.00% (0xa401019b)   12|  10 bytes/s (ELT      00:00:37)
 dump:   0.67% (0x019cb800) 4656|1782 bytes/s (ETA      01:05:47)

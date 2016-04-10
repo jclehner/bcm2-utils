@@ -102,7 +102,7 @@ static bool dump_write_exec(int fd, const char *cmd, uint32_t offset, uint32_t l
 	if (dump) {
 		codefile = opt_codefile;
 	} else {
-		if (strcmp(space->name, "ram")) {
+		if (!space->mem) {
 			fprintf(stderr, "error: command '%s' undefined for address space '%s'\n",
 					cmd, space->name);
 			return false;
@@ -118,13 +118,13 @@ static bool dump_write_exec(int fd, const char *cmd, uint32_t offset, uint32_t l
 	}
 
 	if (!codefile) {
-		if (!space->ram && !space->read.addr) {
+		if (!space->mem && !space->read.addr) {
 			fprintf(stderr, "error: no read function defined for address space '%s'\n", space->name);
 			return false;
 		}
 
 		if (!profile->loadaddr || !profile->buffer || !profile->printf) {
-			if (space->ram) {
+			if (space->mem) {
 				printf("dump: falling back to slow dump method\n");
 				return dump_opt_slow(fd, offset, length, fp);
 			}
@@ -564,8 +564,6 @@ int main(int argc, char **argv)
 	if (!cmd || !is_valid_command(cmd)) {
 		usage_and_exit(1);
 	}
-
-	printf("cmd=%s\n", cmd);
 
 	if (!opt_ttydev) {
 		fprintf(stderr, "error: no tty specified\n");

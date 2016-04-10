@@ -79,13 +79,16 @@ struct bcm2_func {
 };
 
 struct bcm2_addrspace {
-	// short name to identify the address space. you
-	// should at least specify one address space called
-	// "ram".
+	// short name to identify the address space. if a
+	// device has only one flash chip, name it "flash".
+	// if it has an spi/nand combo, name the spi device
+	// "nvram", and the nand "flash". always define at 
+	// least one address space called "ram".
 	char name[16];
-	// set to true if this is a memory-mapped address space
-	// (automatically set for address spaces named "ram").
-	bool ram;
+	// set to true if this is refers to ram (in case the
+	// bootloader does memory-mapped flash). this is
+	// automatically set for address spaces named "ram"
+	bool mem;
 	// minimum offset of this address space
 	uint32_t min;
 	// size of this address space. can be 0 to disable size

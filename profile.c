@@ -63,7 +63,6 @@ struct bcm2_profile bcm2_profiles[] = {
 		.spaces = {
 			{
 				.name = "ram",
-				.ram = true
 			},
 		},
 		.cfg_defkeys = {
@@ -98,7 +97,7 @@ struct bcm2_profile bcm2_profiles[] = {
 				}
 			},
 			{
-				.name = "spi",
+				.name = "nvram",
 				.size = 0x100000,
 				.parts = {
 					{ "bootloader", 0x00000, 0x10000 },
@@ -111,7 +110,7 @@ struct bcm2_profile bcm2_profiles[] = {
 				},
 			},
 			{
-				.name = "nand",
+				.name = "flash",
 				.size = 64 * 1024 * 1024,
 				.parts = {
 					{ "linuxapps", 0x0000000, 0x19c0000 },
@@ -158,7 +157,7 @@ struct bcm2_addrspace *bcm2_profile_find_addrspace(struct bcm2_profile *profile,
 {
 	struct bcm2_addrspace *s = find_by_name(name, profile->spaces, sizeof(*profile->spaces));
 	if (s && !strcmp(s->name, "ram")) {
-		s->ram = true;
+		s->mem = true;
 	}
 
 	return s;

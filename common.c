@@ -104,11 +104,11 @@ static void list_profile_and_exit(const char *name, int verbosity)
 				if (!strcmp(space->name, "ram")) {
 					printf("RW");
 				} else {
-					printf("%c", space->ram || space->read.addr ? 'R' : ' ');
+					printf("%c", space->mem || space->read.addr ? 'R' : ' ');
 					printf("%c", space->write.addr ? 'W' : ' ');
 				}
 
-				if (strcmp(space->name, "ram") && space->ram) {
+				if (strcmp(space->name, "ram") && space->mem) {
 					printf(" (ram)");
 				}
 
