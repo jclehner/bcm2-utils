@@ -65,6 +65,9 @@ struct bcm2_profile bcm2_profiles[] = {
 				.name = "ram",
 				.ram = true
 			},
+		},
+		.cfg_defkeys = {
+			"0000000000000000000000000000000000000000000000000000000000000000",
 		}
 	},
 	{

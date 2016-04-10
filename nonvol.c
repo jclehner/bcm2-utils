@@ -47,7 +47,7 @@ struct nv_groupdef {
  * version (4 bytes, 2 major, 2 minor)
  */
 
-static struct nv_groupdef groups[] = {
+static struct nv_groupdef groupdefs[] = {
 	{
 		.magic.s = "UPC.",
 		.name = "UPC Settings",
@@ -219,7 +219,7 @@ static struct nv_groupdef groups[] = {
 
 struct nv_groupdef *find_groupdef(union bcm2_nv_group_magic *m)
 {
-	struct nv_groupdef *groupdef = groups;
+	struct nv_groupdef *groupdef = groupdefs;
 
 	for (; *groupdef->name; ++groupdef) {
 		if (groupdef->magic.n == m->n || htonl(groupdef->magic.n) == m->n) {
@@ -284,16 +284,15 @@ struct bcm2_nv_group *bcm2_nv_parse_groups(unsigned char *buf, size_t len, size_
 		*remaining -= group->size;
 	}
 
-	if (*remaining == 16) {
-	}
-
 	return groups;
 }
 
 void bcm2_nv_free_groups(struct bcm2_nv_group *groups)
 {
-	struct bcm2_nv_group *group = groups;
-	for (; group; group = group->next) {
+	struct bcm2_nv_group *group = groups, *next;
+	while (group) {
+		next = group->next;
 		free(group);
+		group = next;
 	}
 }

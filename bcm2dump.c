@@ -65,13 +65,13 @@ static void upload_callback(struct progress *pg, bool full, void *argp)
 
 	if (first) {
 		if (full && !strcmp(arg->cmd, "dump")) {
-			printf("%s: writing dump code (%u b) to ram at 0x%08x\n", 
+			printf("%s: writing dump code (%u b) to ram at 0x%08x\n",
 					arg->cmd, arg->cfg->codesize,
 					arg->cfg->profile->loadaddr);
 		}
 		first = false;
 	}
-	
+
 	if (full) {
 		printf("\r%s: ", arg->cmd);
 		progress_print(pg, stdout);
@@ -125,7 +125,7 @@ static bool dump_write_exec(int fd, const char *cmd, uint32_t offset, uint32_t l
 
 		if (!profile->loadaddr || !profile->buffer || !profile->printf) {
 			if (space->ram) {
-				printf("dump: falling back to opt_slow dump method\n");
+				printf("dump: falling back to slow dump method\n");
 				return dump_opt_slow(fd, offset, length, fp);
 			}
 

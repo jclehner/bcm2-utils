@@ -1,5 +1,5 @@
-CC ?= gcc
-CXX ?= g++
+CC = gcc
+CXX = g++
 CFLAGS ?= -Wall -g -DVERSION=\"$(shell git describe --always)\"
 CXXFLAGS ?= $(CFLAGS) -std=c++11
 
@@ -13,7 +13,7 @@ bcm2dump_OBJ = common.o code.o bootloader.o \
 all: bcm2cfg bcm2dump
 
 bcm2cfg: $(bcm2cfg_OBJ) nonvol.h
-	$(CC) $(CFLAGS) $(bcm2cfg_OBJ) -o bcm2cfg -lssl -lcrypto
+	$(CXX) $(CXXFLAGS) $(bcm2cfg_OBJ) -o bcm2cfg -lssl -lcrypto
 
 bcm2dump: $(bcm2dump_OBJ) bcm2dump.h
 	$(CC) $(CFLAGS) $(bcm2dump_OBJ) -o bcm2dump
