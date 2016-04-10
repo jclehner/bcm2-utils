@@ -31,7 +31,7 @@ static struct bcm2_profile *find_profile(const char *name)
 
 bool bcm2_profile_override(struct bcm2_profile *profile, const char *arg)
 {
-	char *value = strchr(arg, '=');	
+	char *value = strchr(arg, '=');
 	if (value) {
 		*value = '\0';
 		++value;
@@ -95,7 +95,7 @@ static void list_profile_and_exit(const char *name, int verbosity)
 			for (; space->name[0]; ++space) {
 				printf("SPACE '%s': 0x%08x-", space->name, space->min);
 				if (space->size) {
-					printf("0x%08x (%s) ", space->min + space->size, 
+					printf("0x%08x (%s) ", space->min + space->size,
 							pretty_num(space->size));
 				} else {
 					printf("? ");
@@ -114,7 +114,7 @@ static void list_profile_and_exit(const char *name, int verbosity)
 
 				printf("\n");
 				printf("name------------------offset--------size--------------\n");
-				
+
 				struct bcm2_partition *part = space->parts;
 				if (!part->name[0]) {
 					printf("(no partitions defined)\n");
@@ -122,8 +122,8 @@ static void list_profile_and_exit(const char *name, int verbosity)
 				}
 
 				for (; part->name[0]; ++part) {
-					printf("%-16s  0x%08x  0x%08x  (%ss)\n", part->name, part->offset, part->size, 
-							pretty_num(part->size));
+					printf("%-16s  0x%08x  0x%08x  (%s)\n", part->name, part->offset,
+							part->size, pretty_num(part->size));
 				}
 
 				if (verbosity) {
