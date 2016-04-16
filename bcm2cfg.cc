@@ -196,6 +196,8 @@ class settings
 
 		if (m_encrypted) {
 			decrypt();
+		} else {
+			m_dbuf.assign(m_fbuf.substr(16));
 		}
 
 		if (!m_magic_valid) {
@@ -212,7 +214,8 @@ class settings
 		out.open(filename.c_str());
 
 		m_fbuf.clear();
-		m_fbuf.append(string(16, '\0')).append(m_dbuf);
+		m_fbuf.append(string(16, '\0'));
+		m_fbuf.append(m_dbuf);
 
 		if (m_has_padding) {
 			m_fbuf.append(string(16, '\0'));
@@ -336,7 +339,6 @@ class settings
 
 			if (!m_password.empty() && profile->cfg_keyfun) {
 				derive_key(profile);
-				cout << to_hex(m_key) << endl;
 				decrypt_with_current_key();
 				check_header();
 				if (m_magic_valid) {
@@ -374,7 +376,6 @@ class settings
 			if (!m_profile) {
 				m_profile = bcm2_profiles;
 				for (; m_profile->name[0]; ++m_profile) {
-					cout << "trying " << m_profile->name << endl;
 					if (decrypt_with_profile(m_profile)) {
 						break;
 					}
@@ -745,6 +746,8 @@ int main(int argc, char **argv)
 		} else if (cmd == "enc" && gws.is_encrypted()) {
 			cout << "file is already encrypted" << endl;
 		}
+
+		gws.write(outfile);
 	}
 
 	return 0;
