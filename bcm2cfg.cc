@@ -4,6 +4,7 @@
 #include <getopt.h>
 #include <stdexcept>
 #include <streambuf>
+#include <typeinfo>
 #include <iostream>
 #include <iomanip>
 #include <cstdlib>
@@ -351,7 +352,6 @@ class settings
 					set_key(profile->cfg_defkeys[i], true);
 				} catch (const user_error& e) {
 					cerr << "warning: " << profile_id() << ": " << e.what() << endl;
-					//throw user_error(profile_id() + ": " + e.what());
 					continue;
 				}
 				decrypt_with_current_key();
@@ -611,13 +611,12 @@ void dump_settings(const settings& gws)
 	}
 
 }
-
 }
 
-int main(int argc, char **argv)
+int do_main(int argc, char **argv)
 {
 	ios_base::sync_with_stdio();
-	
+
 	string cmd;
 	if (argc != 1 && argv[1][0] != '-') {
 		cmd = argv[1];
@@ -751,5 +750,22 @@ int main(int argc, char **argv)
 	}
 
 	return 0;
+}
+
+int main(int argc, char **argv)
+{
+	try {
+		return do_main(argc, argv);
+	} catch (const user_error& e) {
+		cerr << "error: " << e.what() << endl;
+	} catch (const error& e) {
+		cerr << "error: " << e.what() << endl;
+	} catch (const exception& e) {
+		cerr << "error: " << typeid(e).name() << ": " << e.what() << endl;
+	} catch (...) {
+		cerr << "error: caught unknown exception" << endl;
+	}
+
+	return 1;
 }
 
