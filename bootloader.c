@@ -29,7 +29,7 @@ static bool expect(int fd, const char *str)
 			return true;
 		}
 
-		fprintf(stderr, "Error: Expected '%s', got '%s'\n", str, line);
+		fprintf(stderr, "error: Expected '%s', got '%s'\n", str, line);
 	}
 
 	return false;
@@ -80,12 +80,12 @@ bool bl_readw(int fd, unsigned addr, char *val)
 	uint32_t val2;
 
 	if (sscanf(line, "Value at %x: %" SCNx32 " (hex)", &addr2, &val2) != 2) {
-		fprintf(stderr, "Error: unexpected response '%s'\n", line);
+		fprintf(stderr, "error: unexpected response '%s'\n", line);
 		return false;
 	}
 
 	if (addr2 != addr) {
-		fprintf(stderr, "Error: expected addr 0x%08x, got 0x%08x\n", addr, addr2);
+		fprintf(stderr, "error: expected addr 0x%08x, got 0x%08x\n", addr, addr2);
 		return false;
 	}
 
@@ -189,7 +189,7 @@ bool bl_menu_wait(int fd, bool write)
 	if (ready < 0 || !ser_iflush(fd)) {
 		return false;
 	} else if (!ok) {
-		fprintf(stderr, "Error: not in main menu.\n");
+		fprintf(stderr, "error: not in main menu.\n");
 		return false;
 	}
 
