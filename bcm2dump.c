@@ -4,6 +4,8 @@
 #include "mipsasm.h"
 #include "common.h"
 
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
 static struct bcm2_profile *profile = NULL;
 static struct bcm2_addrspace *space = NULL;
 static const char *opt_off = NULL;
@@ -17,7 +19,34 @@ static const char *opt_codefile = NULL;
 static const char *opt_filename = NULL;
 static const char *opt_ttydev = NULL;
 
-static bool dump_opt_slow(int fd, unsigned offset, unsigned length, FILE *fp)
+static bool detect_profile(int fd)
+{
+	char buffer[128];
+
+	profile = bcm2_profiles;
+	for (; profile.name[0]; ++profile) {
+		if (!profile.magic.addr) {
+			continue;
+		}
+
+		if (!bl_read(fd, profile.magic.addr, buffer, sizeof(buffer))) {
+			return false;
+		}
+
+		size_t len = strlen(profile.magic.data);
+		if (!memcmp(profile.magic.data, buffer, MIN(len, sizeof(buffer)))) {
+			break;
+		}
+	}
+
+	if (!profile.name[0]) {
+		profile = NULL;
+	}
+
+	return true;
+}
+
+static bool dump_slow(int fd, unsigned offset, unsigned length, FILE *fp)
 {
 	bool ret = false;
 
@@ -126,7 +155,7 @@ static bool dump_write_exec(int fd, const char *cmd, uint32_t offset, uint32_t l
 		if (!profile->loadaddr || !profile->buffer || !profile->printf) {
 			if (space->mem) {
 				printf("dump: falling back to slow dump method\n");
-				return dump_opt_slow(fd, offset, length, fp);
+				return dump_slow(fd, offset, length, fp);
 			}
 
 			fprintf(stderr, "error: profile is incomplete; cannot dump non-ram address space '%s'\n",
@@ -379,16 +408,16 @@ static void usage_and_exit(int status)
 			"  -A              Append to output file\n"
 			"  -C <binary>     Upload custom dump code file\n"
 			"  -d <dev>        Serial tty to use\n"
-			"  -f <filename>   Input/output file (depending on command)\n" 
+			"  -f <filename>   Input/output file (depending on command)\n"
 			"  -F              Force operation\n"
 			"  -h              Show this screen\n"
 			"  -L              List all available profiles\n"
 			"  -L <profile>    Show info about profile\n"
-			"  -n <bytes>      Number of bytes to dump. When using -o <part>,\n"
-			"  -o <off|part>   Offset for dumping/writing. Either a number or \n"
+			"  -n <bytes>      Number of bytes to dump; when using -o <part>\n"
+			"                  this defaults to the partition size\n"
+			"  -o <off|part>   Offset for dumping/writing. Either a number or\n"
 			"                  a partition name.\n"
 			"  -O <opt>=<val>  Override profile option\n"
-			"                  this defaults to the partition size\n"
 			"  -P <profile>    Device profile to use\n"
 			"  -S              Force slow ram dump mode\n"
 			"  -v              Verbose operation\n"
@@ -488,7 +517,7 @@ static int parse_options(int argc, char **argv)
 	}
 
 	if (opt_slow && space && strcmp(space->name, "ram")) {
-		fprintf(stderr, "error: opt_slow dump mode is only available for ram\n");
+		fprintf(stderr, "error: slow dump mode is only available for ram\n");
 		return false;
 	}
 
@@ -516,7 +545,7 @@ static bool do_dump(int fd, uint32_t off, uint32_t len)
 		goto out;
 	} else if (fsize) {
 		if (!opt_append && !opt_force) {
-			fprintf(stderr, "error: file '%s' exists; use -F to overwrite, or -A to opt_append\n", opt_filename);
+			fprintf(stderr, "error: file '%s' exists; use -F to overwrite, or -A to append\n", opt_filename);
 			goto out;
 		} else if (opt_append) {
 			fsize = fsize > 1024 ? (fsize - 1024) : 0;
@@ -533,7 +562,7 @@ static bool do_dump(int fd, uint32_t off, uint32_t len)
 	if (!opt_slow) {
 		ret = dump_write_exec(fd, "dump", off, len, fp);
 	} else {
-		ret = dump_opt_slow(fd, off, len, fp);
+		ret = dump_slow(fd, off, len, fp);
 	}
 
 out:
