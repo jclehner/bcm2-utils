@@ -8,12 +8,14 @@
 
 static struct bcm2_profile *profile = NULL;
 static struct bcm2_addrspace *space = NULL;
+const char *opt_space = NULL;
 static const char *opt_off = NULL;
 static const char *opt_len = NULL;
 static bool opt_force = false;
 static bool opt_append = false;
 static bool opt_slow = false;
 static int opt_verbosity = 0;
+static bool auto_detect_profile = true;
 
 static const char *opt_codefile = NULL;
 static const char *opt_filename = NULL;
@@ -24,22 +26,22 @@ static bool detect_profile(int fd)
 	char buffer[128];
 
 	profile = bcm2_profiles;
-	for (; profile.name[0]; ++profile) {
-		if (!profile.magic.addr) {
+	for (; profile->name[0]; ++profile) {
+		if (!profile->magic.addr) {
 			continue;
 		}
 
-		if (!bl_read(fd, profile.magic.addr, buffer, sizeof(buffer))) {
+		if (!bl_read(fd, profile->magic.addr, buffer, sizeof(buffer))) {
 			return false;
 		}
 
-		size_t len = strlen(profile.magic.data);
-		if (!memcmp(profile.magic.data, buffer, MIN(len, sizeof(buffer)))) {
+		size_t len = strlen(profile->magic.data);
+		if (!memcmp(profile->magic.data, buffer, MIN(len, sizeof(buffer)))) {
 			break;
 		}
 	}
 
-	if (!profile.name[0]) {
+	if (!profile->name[0]) {
 		profile = NULL;
 	}
 
@@ -392,6 +394,37 @@ static bool resolve_offset_and_length(unsigned *off, unsigned *len, bool need_le
 	return true;
 }
 
+static bool resolve_profile_and_space(int fd, const char *cmd)
+{
+	if (auto_detect_profile) {
+		printf("%s: auto-detecting profile ... ", cmd);
+		fflush(stdout);
+		if (!detect_profile(fd)) {
+			return false;
+		}
+
+		if (profile) {
+			printf("%s\n", profile->name);
+		} else {
+			printf("failed; falling back to 'generic'\n");
+			profile = bcm2_profile_find("generic");
+		}
+	}
+
+	if (opt_space) {
+		space = bcm2_profile_find_addrspace(profile, opt_space);
+		if (!space) {
+			fprintf(stderr, "error: address space '%s' is not defined by profile '%s'\n",
+					opt_space, profile->name);
+			return false;
+		}
+	} else {
+		space = bcm2_profile_find_addrspace(profile, "ram");
+	}
+
+	return true;
+}
+
 static void usage_and_exit(int status)
 {
 	fprintf(status == 0 ? stdout : stderr,
@@ -449,7 +482,6 @@ static bool is_valid_command(const char *cmd)
 static int parse_options(int argc, char **argv)
 {
 	int c;
-	const char *spaceopt = NULL;
 	opt_verbosity = 0;
 
 	profile = bcm2_profile_find("generic");
@@ -476,12 +508,16 @@ static int parse_options(int argc, char **argv)
 					return -1;
 				}
 
+				if (c == 'P' || c == 'O') {
+					auto_detect_profile = false;
+				}
+
 				if (opt_verbosity >= 3) {
 					ser_debug = true;
 				}
 				break;
 			case 'a':
-				spaceopt = optarg;
+				opt_space = optarg;
 				break;
 			case 'o':
 				opt_off = optarg;
@@ -502,23 +538,6 @@ static int parse_options(int argc, char **argv)
 				usage_and_exit(1);
 				break;
 		}
-	}
-
-
-	if (spaceopt) {
-		space = bcm2_profile_find_addrspace(profile, spaceopt);
-		if (!space) {
-			fprintf(stderr, "error: address space '%s' is not defined by profile '%s'\n",
-					spaceopt, profile->name);
-			return false;
-		}
-	} else {
-		space = bcm2_profile_find_addrspace(profile, "ram");
-	}
-
-	if (opt_slow && space && strcmp(space->name, "ram")) {
-		fprintf(stderr, "error: slow dump mode is only available for ram\n");
-		return false;
 	}
 
 	return optind;
@@ -562,7 +581,11 @@ static bool do_dump(int fd, uint32_t off, uint32_t len)
 	if (!opt_slow) {
 		ret = dump_write_exec(fd, "dump", off, len, fp);
 	} else {
-		ret = dump_slow(fd, off, len, fp);
+		if (space->mem) {
+			ret = dump_slow(fd, off, len, fp);
+		} else {
+			fprintf(stderr, "error: slow dump method is only available for ram\n");
+		}
 	}
 
 out:
@@ -599,13 +622,6 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	bool need_len = !strcmp(cmd, "dump");
-
-	uint32_t off, len;
-	if (!resolve_offset_and_length(&off, &len, need_len)) {
-		return 1;
-	}
-
 	int fd = ser_open(opt_ttydev, profile->baudrate);
 	if (fd < 0) {
 		perror(opt_ttydev);
@@ -613,6 +629,16 @@ int main(int argc, char **argv)
 	}
 
 	bool success = false;
+
+	if (!resolve_profile_and_space(fd, cmd)) {
+		goto out;
+	}
+
+	bool need_len = !strcmp(cmd, "dump");
+	uint32_t off, len;
+	if (!resolve_offset_and_length(&off, &len, need_len)) {
+		goto out;
+	}
 
 	if (!strcmp(cmd, "dump")) {
 		success = do_dump(fd, off, len);
@@ -624,6 +650,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "error: invalid command '%s'\n", cmd);
 	}
 
+out:
 	close(fd);
 	return success ? 0 : 1;
 }
