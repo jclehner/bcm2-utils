@@ -152,7 +152,7 @@ very small, around 64k. To be safe, we'll dump 128k before and after
 `0x83f80000`:
 
 ```
-$ bcm2dump dump -d /dev/ttyUSB0 -o 0x83f80000-128k -n 256k -f bootloader.bin
+$ bcm2dump dump -O baudrate=115200 -d /dev/ttyUSB0 -o 0x83f80000-128k -n 256k -f bootloader.bin
 dump: falling back to slow dump method
 dump:   4.50% (0x83f62e18)  528| 525 bytes/s (ETA      00:07:57)
 ...
