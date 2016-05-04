@@ -6,8 +6,12 @@
 * `bcm2cfg`: A utility to modify/encrypt/decrypt the configuration
    dump (aka `GatewaySettings.bin`).
 
-These utilities have been tested with a Technicolor TC-7200, but it
-should be easy to add support for other devices. Some pointers can
+Fully supported devices:
+
+* Technicolor TC7200 (bootloader, shell)
+* Thomson TWG850-4U (shell)
+
+It should be easy to add support for other devices. Some pointers can
 be found [below](#writing-a-device-profile).
 
 These utilities are not yet stable - command line options are likely
@@ -15,32 +19,49 @@ to change. Bug reports are always welcome.
 
 ## bcm2dump
 
-Before using this utility, make sure that you're in the bootloader's
-main menu. The bootloader should have the following options:
-
-```
-Main Menu:
-==========
-...
-  r) Read memory
-  w) Write memory
-  j) Jump to arbitrary address
-...
-
-```
-
-Dumping flash requires the "write memory" and "jump to arbitrary address" options,
-plus an appropriate device profile. Speed is around 4.4 kilobytes/s when using
-115200 baud.
-
-Without a device profile, or if only "read memory" is available, `bcm2dump`
-can only be used to dump ram. Speed in that case is slower, around
-500 byte/s on a 115200 baud line.
+This utility can be used to dump firmware or other flash contents.
+`bcm2dump` requires either an unlocked bootloader, or a working 
+firmware shell (`CM>` prompt).
 
 Firmware images are usually in Broadcom's ProgramStore format. Utilities for
 extraction and compression are available from Broadcom (and GPLv3'd!):
 
 https://github.com/Broadcom/aeolus/tree/master/ProgramStore
+
+###### Option 1: bootloader
+
+Make sure that you're in the bootloader's main menu. The bootloader
+should have the following options:
+
+```
+Main Menu:
+==========
+...
+  j) Jump to arbitrary address
+  r) Read memory
+  w) Write memory
+ ...
+
+```
+
+Dumping flash requires the "write memory" and "jump to arbitrary address" options,
+plus an appropriate device profile. Speed is ~4.4 kilobyte/s when using
+115200 baud.
+
+Without a device profile, or if only "read memory" is available, `bcm2dump`
+can only be used to dump ram. Speed in that case is slower,
+~500 byte/s on a 115200 baud line.
+
+###### Option 2: firmware shell
+
+If you have access to the firmware shell (`CM>`), and your firmware supports
+the `read_memory` command, you can dump RAM and memory-mapped flash. Speed is
+~1.7 kilobyte/s. Make sure you're in the main menu (`cd /`) before running
+`bcm2dump`.
+
+If available, dumping firmware via TFTP using `/docsis_ctl/dump_flash` is usually
+a much better (and *much* faster) option, if it doesn't refuse to work via the LAN
+interface.
 
 ## bcm2cfg
 
@@ -58,10 +79,11 @@ Listing available profiles:
 ```
 $ bcm2dump -L
 generic           Generic Profile
-tc7200            Technicolor TC-7200/TC-7200.U
+tc7200            Technicolor TC7200/TC7200.U
+twg850            Thomson TWG850-4U
 ```
 
-Show device profile (and list partitions:
+Show device profile (and list partitions):
 ```
 $ bcm2dump -P tc7200 -L
 PROFILE 'tc7200': Technicolor TC-7200/TC-7200.U
@@ -103,15 +125,22 @@ dump:   0.67% (0x019cb800) 4656|1782 bytes/s (ETA      01:05:47)
 ...
 ```
 
-Dumping 128 kilobytes from ram at `0x80004000`:
+Dumping 128 kilobytes of RAM at `0x80004000`:
 ```
 $ bcm2dump dump -P tc7200 -d /dev/ttyUSB0 -a ram -f foobar.bin -o 0x80004000 -n 128k
+```
+
+Dumping 128 kilobytes of RAM at `0x80000000`, using the firmware console (`CM>`).
+```
+$ bcm2dump dump -d /dev/ttyUSB0 -a ram -f foobar.bin -o 0x80004000 -n 128k -K
 ```
 
 # Writing a device profile
 
 A device profile is neccessary for most functions to work as advertised.
 All current definitions can be found in [profile.c](profile.c).
+
+###### Unlocked bootloader
 
 To add a new device profile, you'll first have to get hold of the bootloader code.
 An easy way to locate the bootloader is to jump to an arbitrary location in RAM,
