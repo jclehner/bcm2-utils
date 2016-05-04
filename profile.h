@@ -68,8 +68,8 @@ struct bcm2_func {
 	uint32_t mode;
 	// return value type
 	enum bcm2_func_ret retv;
-	// patches to be applied before using 
-	// this function.
+	// patches to be applied to the bootloader
+	// before using this function.
 	struct {
 		// patch this address...
 		uint32_t addr;
@@ -112,6 +112,8 @@ struct bcm2_profile {
 	bool mipsel;
 	// signature for ProgramStore images
 	uint16_t pssig;
+	// signature for compressed bootloader images
+	uint16_t blsig;
 	// baudrate of the bootloader console
 	uint32_t baudrate;
 	// location in memory where we can store read images

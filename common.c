@@ -117,7 +117,7 @@ static void list_profile_and_exit(const char *name, int verbosity)
 
 				struct bcm2_partition *part = space->parts;
 				if (!part->name[0]) {
-					printf("(no partitions defined)\n");
+					printf("(no partitions defined)\n\n");
 					continue;
 				}
 

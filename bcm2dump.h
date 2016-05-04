@@ -55,7 +55,10 @@ bool bl_read(int fd, unsigned addr, void *buf, size_t len);
 bool bl_writew(int fd, unsigned addr, const char *word);
 bool bl_write(int fd, unsigned addr, const void *buf, size_t len);
 bool bl_jump(int fd, unsigned addr);
-bool bl_menu_wait(int fd, bool write);
+bool bl_menu_wait(int fd, bool write, bool quiet);
+
+bool cm_read(int fd, unsigned addr, void *buf, size_t len);
+bool cm_parse_values(const char *line, char *buf16);
 
 struct progress {
 	unsigned min;
@@ -70,8 +73,6 @@ struct progress {
 	struct tm eta;
 	unsigned eta_days;
 };
-
-bool nand_dump(int fd, unsigned off, unsigned len);
 
 void progress_init(struct progress *p, unsigned min, unsigned len);
 void progress_add(struct progress *p, unsigned n);

@@ -14,6 +14,7 @@ static const char *opt_len = NULL;
 static bool opt_force = false;
 static bool opt_append = false;
 static bool opt_slow = false;
+static bool opt_cmconsole = false;
 static int opt_verbosity = 0;
 static bool auto_detect_profile = true;
 
@@ -24,6 +25,21 @@ static const char *opt_ttydev = NULL;
 static bool detect_profile(int fd)
 {
 	char buffer[128];
+	bool is_cmconsole = opt_cmconsole;
+
+	if (!is_cmconsole && !bl_menu_wait(fd, true, true)) {
+		// not in bootloader; try CM console
+		if (!ser_iflush(fd) || !ser_write(fd, "\r\n") || !ser_read(fd, buffer, sizeof(buffer))) {
+			return false;
+		}
+
+		if (strncmp(buffer, "CM>", 3)) {
+			fprintf(stderr, "error: neither in bootloader nor in CM console\n");
+			return false;
+		}
+
+		is_cmconsole = true;
+	}
 
 	profile = bcm2_profiles;
 	for (; profile->name[0]; ++profile) {
@@ -31,7 +47,15 @@ static bool detect_profile(int fd)
 			continue;
 		}
 
-		if (!bl_read(fd, profile->magic.addr, buffer, sizeof(buffer))) {
+		bool ok;
+
+		if (!is_cmconsole) {
+			ok = bl_read(fd, profile->magic.addr, buffer, sizeof(buffer));
+		} else {
+			ok = cm_read(fd, profile->magic.addr, buffer, sizeof(buffer));
+		}
+
+		if (!ok) {
 			return false;
 		}
 
@@ -43,9 +67,59 @@ static bool detect_profile(int fd)
 
 	if (!profile->name[0]) {
 		profile = NULL;
+	} else {
+		opt_cmconsole = is_cmconsole;
 	}
 
 	return true;
+}
+
+static bool dump_cmconsole(int fd, unsigned offset, unsigned length, FILE *fp)
+{
+	char line[256];
+
+	if (length % 16) {
+		fprintf(stderr, "error: length must be a multiple of 16\n");
+		return false;
+	}
+
+	if (!ser_iflush(fd) || !ser_write(fd, "\r\n") || !ser_read(fd, line, sizeof(line))) {
+		return false;
+	}
+
+	if (!auto_detect_profile && strncmp(line, "CM>", 3)) {
+		fprintf(stderr, "error: not in CM console root directory\n");
+		return false;
+	}
+
+	char chunk[1024];
+	unsigned end = offset + length;
+
+	struct progress pg;
+	progress_init(&pg, offset, length);
+
+	bool ok = false;
+
+	for (; offset < end; offset += sizeof(chunk)) {
+		if (!cm_read(fd, offset, chunk, MIN(sizeof(chunk), end - offset))) {
+			goto out;
+		}
+
+		printf("\rdump: ");
+		progress_add(&pg, sizeof(chunk));
+		progress_print(&pg, stdout);
+
+		if (fwrite(chunk, sizeof(chunk), 1, fp) != 1) {
+			perror("error: fwrite");
+			goto out;
+		}
+	}
+
+	ok = true;
+out:
+	printf("\n");
+	fflush(fp);
+	return ok;
 }
 
 static bool dump_slow(int fd, unsigned offset, unsigned length, FILE *fp)
@@ -399,12 +473,14 @@ static bool resolve_profile_and_space(int fd, const char *cmd)
 	if (auto_detect_profile) {
 		printf("%s: auto-detecting profile ... ", cmd);
 		fflush(stdout);
+
 		if (!detect_profile(fd)) {
 			return false;
 		}
 
 		if (profile) {
-			printf("%s\n", profile->name);
+			printf("%s (%s)\n", profile->name, opt_cmconsole ?
+					"console" : "bootloader");
 		} else {
 			printf("failed; falling back to 'generic'\n");
 			profile = bcm2_profile_find("generic");
@@ -453,6 +529,7 @@ static void usage_and_exit(int status)
 			"  -O <opt>=<val>  Override profile option\n"
 			"  -P <profile>    Device profile to use\n"
 			"  -S              Force slow ram dump mode\n"
+			"  -K              Use CM console dump mode\n"
 			"  -v              Verbose operation\n"
 			"  -vv             Very verbose operation\n"
 			"  -vvv            For debugging\n"
@@ -496,6 +573,10 @@ static int parse_options(int argc, char **argv)
 				break;
 			case 'S':
 				opt_slow = true;
+				break;
+			case 'K':
+				opt_cmconsole = true;
+				auto_detect_profile = false;
 				break;
 			case 'h':
 				usage_and_exit(0);
@@ -578,13 +659,17 @@ static bool do_dump(int fd, uint32_t off, uint32_t len)
 		}
 	}
 
-	if (!opt_slow) {
+	if (!opt_slow && !opt_cmconsole) {
 		ret = dump_write_exec(fd, "dump", off, len, fp);
 	} else {
 		if (space->mem) {
-			ret = dump_slow(fd, off, len, fp);
+			if (opt_slow) {
+				ret = dump_slow(fd, off, len, fp);
+			} else {
+				ret = dump_cmconsole(fd, off, len, fp);
+			}
 		} else {
-			fprintf(stderr, "error: slow dump method is only available for ram\n");
+			fprintf(stderr, "error: slow dump/console dump is only available for ram\n");
 		}
 	}
 

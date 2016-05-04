@@ -70,10 +70,45 @@ struct bcm2_profile bcm2_profiles[] = {
 		}
 	},
 	{
+		.name = "TWG850",
+		.pretty = "Thomson TWG850-4U",
+		.baudrate = 115200,
+		.pssig = 0xa815,
+		.blsig = 0x3345,
+		.kseg1mask = 0x20000000,
+		.cfg_md5key = "544d4d5f5457473835302d3400000000",
+		.magic = { 0x80f89da0, "Oct 16 2007" },
+		.spaces = {
+			{
+				.name = "ram",
+				.min = 0x80000000,
+				.size = 32 * 1024 * 1024,
+				.parts = {
+					{ "bootloader", 0x80f80000, 0x010000 }
+				}
+			},
+			{
+				.name = "flash",
+				.min = 0xbf000000,
+				.mem = true,
+				.size = 8 * 1024 * 1024,
+				.parts = {
+					{ "image2",     0xbf000000, 0x3e0000 },
+					{ "dynnv",      0xbf3e0000, 0x020000 },
+					{ "bootloader", 0xbf400000, 0x010000 },
+					{ "image1",     0xbf410000, 0x3e0000 },
+					{ "permnv",     0xbf7f0000, 0x010000 }
+				}
+			},
+
+		}
+	},
+	{
 		.name = "TC7200",
 		.pretty = "Technicolor TC-7200/TC-7200.U",
 		.baudrate = 115200,
 		.pssig = 0xa825,
+		.blsig = 0x3386,
 		.loadaddr = 0x84010000,
 		.buffer = 0x85f00000,
 		.kseg1mask = 0x20000000,

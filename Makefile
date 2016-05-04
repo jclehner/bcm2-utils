@@ -6,7 +6,7 @@ CXXFLAGS ?= $(CFLAGS) -std=c++11
 bcm2cfg_OBJ = common.o nonvol.o profile.o bcm2cfg.o
 bcm2dump_OBJ = common.o code.o bootloader.o \
 			   mipsasm.o progress.o profile.o \
-			   serial.o bcm2dump.o
+			   serial.o bcm2dump.o cm.o
 
 .PHONY: all clean
 

@@ -37,7 +37,7 @@ static bool expect(int fd, const char *str)
 
 static bool menu_select(int fd, const char *opt)
 {
-	return bl_menu_wait(fd, true) && ser_write(fd, opt);
+	return bl_menu_wait(fd, true, false) && ser_write(fd, opt);
 }
 
 bool bl_readw_begin(int fd)
@@ -133,7 +133,7 @@ bool bl_writew(int fd, unsigned addr, const char *word)
 		return false;
 	}
 
-	return bl_menu_wait(fd, false);
+	return bl_menu_wait(fd, false, false);
 }
 
 bool bl_write(int fd, unsigned addr, const void *buf, size_t len)
@@ -164,7 +164,7 @@ bool bl_jump(int fd, unsigned addr)
 	return true;
 }
 
-bool bl_menu_wait(int fd, bool write)
+bool bl_menu_wait(int fd, bool write, bool quiet)
 {
 	if (write) {
 		if (!ser_iflush(fd) || !ser_write(fd, "\r\n")) {
@@ -189,7 +189,9 @@ bool bl_menu_wait(int fd, bool write)
 	if (ready < 0 || !ser_iflush(fd)) {
 		return false;
 	} else if (!ok) {
-		fprintf(stderr, "error: not in main menu.\n");
+		if (!quiet) {
+			fprintf(stderr, "error: not in main menu.\n");
+		}
 		return false;
 	}
 
