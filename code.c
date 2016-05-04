@@ -45,8 +45,8 @@ static uint32_t dumpcode[] = {
 		_WORD(0), // offset
 		_WORD(0), // length
 		_WORD(0), // chunk size
-		_WORD(0), // PrintFormatted(const char *format, ...)
-		_WORD(0), // XXXFlashRead
+		_WORD(0), // printf
+		_WORD(0), // <flash read function>
 		_WORD(0), // <patch offset 1>
 		_WORD(0), // <patch word 1>
 		_WORD(0), // <patch offset 2>
@@ -144,6 +144,7 @@ _DEF_LABEL(L_LOOP_BZERO),
 		MOVN(A1, S0, T1),
 		// read from flash
 		JALR(S4),
+		// leave this here!
 		NOP,
 
 _DEF_LABEL(L_START_DUMP),
@@ -173,11 +174,9 @@ _DEF_LABEL(L_LOOP_LINE),
 		MOVE(A0, S7),
 
 _DEF_LABEL(L_LOOP_WORDS),
-		// "%x "
+		// printf(":%x", *s0)
 		ADDIU(A0, A0, 4),
-		// print word
 		JALR(S4),
-		// delay slot: load word at S0
 		LW(A1, 0, S0),
 		// increment offset and buffer
 		ADDIU(S0, S0, 4),
@@ -186,11 +185,9 @@ _DEF_LABEL(L_LOOP_WORDS),
 		ADDI(S2, S2, -4),
 		ADDI(S3, S3, -1),
 		BGTZ(S3, L_LOOP_WORDS),
-		// delay slot: load code offset
+		// printf("\r\n")
 		MOVE(A0, S7),
-		// call PrintFormatted
 		JALR(S4),
-		// delay slot: ... "\r\n"
 		ADDIU(A0, A0, 0x8),
 		// branch to loop_line if length > 0
 		BGTZ(S2, L_LOOP_LINE),
