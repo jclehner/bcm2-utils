@@ -214,19 +214,19 @@ class settings
 		out.exceptions(ios::failbit | ios::badbit);
 		out.open(filename.c_str());
 
-		m_fbuf.clear();
-		m_fbuf.append(string(16, '\0'));
-		m_fbuf.append(m_dbuf);
-
 		if (m_has_padding) {
 			m_fbuf.append(string(16, '\0'));
 		}
 
-		if (m_fbuf.size() > 0xffff) {
+		if (m_dbuf.size() > 0xffff) {
 			throw user_error("cannot write file - size would exceed 64k");
 		}
 
-		write16(74 + 4, m_fbuf.size());
+		write16(74 + 4, m_dbuf.size());
+
+		m_fbuf.clear();
+		m_fbuf.append(string(16, '\0'));
+		m_fbuf.append(m_dbuf);
 
 		file_buf_md5(&m_fbuf[0]);
 		out.write(m_fbuf.c_str(), m_fbuf.size());
