@@ -288,7 +288,7 @@ static bool dump_write_exec(int fd, const char *cmd, uint32_t offset, uint32_t l
 
 	printf("\n");
 
-	bool verbose = false, error = true;
+	bool verbose = false, success = false;
 	char line[256];
 
 	if (dump) {
@@ -368,7 +368,7 @@ static bool dump_write_exec(int fd, const char *cmd, uint32_t offset, uint32_t l
 		}
 	}
 
-	error = false;
+	success = true;
 
 out:
 	fflush(fp);
@@ -377,7 +377,7 @@ out:
 		free(cfg.code);
 	}
 
-	if (!error && verbose) {
+	if (!success || verbose) {
 		int pending = ser_select(fd, 100);
 		if (pending > 0) {
 			do {
@@ -390,7 +390,7 @@ out:
 		return dump ? false : true;
 	}
 
-	return error;
+	return success;
 }
 
 static bool resolve_offset_and_length(unsigned *off, unsigned *len, bool need_len)
