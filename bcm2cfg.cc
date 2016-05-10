@@ -205,7 +205,7 @@ class settings
 			check_header();
 		}
 
-		//parse_data();
+		parse_data();
 	}
 
 	void write(const string& filename)
@@ -745,8 +745,6 @@ int do_main(int argc, char **argv)
 		} else if (cmd == "enc" && gws.is_encrypted()) {
 			cout << "file is already encrypted" << endl;
 		}
-
-		gws.write(outfile);
 	}
 
 	return 0;
