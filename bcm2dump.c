@@ -307,12 +307,17 @@ static bool dump_write_exec(int fd, const char *cmd, uint32_t offset, uint32_t l
 			bool first = true;
 			for (; offset < end; offset += 16, first = false)
 			{
+				if (first) {
+					printf("\rdump: patience...");
+					fflush(stdout);
+				}
+
 				uint32_t val[4];
 
 				do {
 					// on the first iteration, the dump code reads the flash,
-					// so we'll allow a generous timeout of 15 seconds.
-					int pending = ser_select(fd, first ? 15000 : 100);
+					// so we'll allow a generous timeout of 60 seconds.
+					int pending = ser_select(fd, first ? 60000 : 100);
 					if (pending <= 0) {
 						if (!pending) {
 							fprintf(stderr, "\nerror: timeout while reading line\n");
