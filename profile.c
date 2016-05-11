@@ -71,7 +71,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	},
 	{
 		.name = "TWG850",
-		.pretty = "Thomson TWG850-4U",
+		.pretty = "Thomson TWG850-4",
 		.baudrate = 115200,
 		.pssig = 0xa815,
 		.blsig = 0x3345,
@@ -105,7 +105,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	},
 	{
 		.name = "TC7200",
-		.pretty = "Technicolor TC-7200/TC-7200.U",
+		.pretty = "Technicolor TC-7200",
 		.baudrate = 115200,
 		.pssig = 0xa825,
 		.blsig = 0x3386,
