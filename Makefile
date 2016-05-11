@@ -2,6 +2,7 @@ CC = gcc
 CXX = g++
 CFLAGS ?= -Wall -g -DVERSION=\"$(shell git describe --always)\"
 CXXFLAGS ?= $(CFLAGS) -std=c++11
+PREFIX ?= /usr/local
 
 bcm2cfg_OBJ = common.o nonvol.o profile.o bcm2cfg.o
 bcm2dump_OBJ = common.o code.o bootloader.o \
@@ -26,3 +27,7 @@ bcm2dump: $(bcm2dump_OBJ) bcm2dump.h
 
 clean:
 	rm -f bcm2cfg bcm2dump *.o
+
+install: all
+	install -m 755 bcm2cfg $(PREFIX)/bin
+	install -m 755 bcm2dump $(PREFIX)/bin
