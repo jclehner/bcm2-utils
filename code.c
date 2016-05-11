@@ -267,8 +267,6 @@ bool code_init_and_upload(int fd, struct code_cfg *cfg, code_upload_callback cal
 				addr |= cfg->profile->kseg1mask;
 			}
 
-			printf("patch[%d]: 0x%08x := %08x\n", i, addr, word);
-
 			patch_32(dumpcode, offset, addr);
 			patch_32(dumpcode, offset + 4, word);
 		}
