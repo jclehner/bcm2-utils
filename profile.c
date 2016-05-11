@@ -159,7 +159,7 @@ struct bcm2_profile bcm2_profiles[] = {
 					.addr = 0x83f831b4, 
 					.mode = BCM2_READ_FUNC_BOL,
 					.patch = {
-						{ 0x83f83380, 0x11000017 },
+						{ 0x83f83380, 0x10000017 },
 					}
 				},
 			}
