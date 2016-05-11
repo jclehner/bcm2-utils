@@ -377,7 +377,7 @@ out:
 		free(cfg.code);
 	}
 
-	if (!success || verbose) {
+	if (verbose) {
 		int pending = ser_select(fd, 100);
 		if (pending > 0) {
 			do {
