@@ -293,8 +293,8 @@ static bool dump_write_exec(int fd, const char *cmd, uint32_t offset, uint32_t l
 	char line[256];
 
 	if (dump) {
+		bool first = true;
 		struct progress pg;
-		progress_init(&pg, offset, length);
 
 		while (offset < max) {
 			unsigned chunk = length < cfg.chunklen ? length : cfg.chunklen;
@@ -304,7 +304,6 @@ static bool dump_write_exec(int fd, const char *cmd, uint32_t offset, uint32_t l
 				goto out;
 			}
 
-			bool first = true;
 			for (; offset < end; offset += 16, first = false)
 			{
 				if (first) {
@@ -316,8 +315,8 @@ static bool dump_write_exec(int fd, const char *cmd, uint32_t offset, uint32_t l
 
 				do {
 					// on the first iteration, the dump code reads the flash,
-					// so we'll allow a generous timeout of 60 seconds.
-					int pending = ser_select(fd, first ? 60000 : 100);
+					// so we'll allow a generous timeout of 120 seconds.
+					int pending = ser_select(fd, first ? 120000 : 100);
 					if (pending <= 0) {
 						if (!pending) {
 							fprintf(stderr, "\nerror: timeout while reading line\n");
@@ -346,6 +345,10 @@ static bool dump_write_exec(int fd, const char *cmd, uint32_t offset, uint32_t l
 							fprintf(stderr, "\nerror: invalid line '%s'\n", line);
 							goto out;
 						}
+					}
+
+					if (first) {
+						progress_init(&pg, offset, length);
 					}
 
 					break;
