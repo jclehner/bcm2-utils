@@ -55,7 +55,7 @@ can only be used to dump ram. Speed in that case is slower,
 ###### Option 2: firmware shell
 
 If you have access to the firmware shell (`CM>`), and your firmware supports
-the `read_memory` command, you can dump RAM and memory-mapped flash. Speed is
+the `read_memory` command, you can dump RAM (and thus memory-mapped flash). Speed is
 ~1.7 kilobyte/s. Make sure you're in the main menu (`cd /`) before running
 `bcm2dump`.
 
