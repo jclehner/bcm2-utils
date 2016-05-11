@@ -9,7 +9,7 @@
 Fully supported devices:
 
 * Technicolor TC7200 (bootloader, shell)
-* Thomson TWG850-4U (shell)
+* Thomson TWG850-4 (shell)
 
 It should be easy to add support for other devices. Some pointers can
 be found [below](#writing-a-device-profile).
@@ -55,7 +55,7 @@ can only be used to dump ram. Speed in that case is slower,
 ###### Option 2: firmware shell
 
 If you have access to the firmware shell (`CM>`), and your firmware supports
-the `read_memory` command, you can dump RAM and memory-mapped flash. Speed is
+the `read_memory` command, you can dump RAM (and thus memory-mapped flash). Speed is
 ~1.7 kilobyte/s. Make sure you're in the main menu (`cd /`) before running
 `bcm2dump`.
 
@@ -79,14 +79,14 @@ Listing available profiles:
 ```
 $ bcm2dump -L
 generic           Generic Profile
-tc7200            Technicolor TC7200/TC7200.U
-twg850            Thomson TWG850-4U
+tc7200            Technicolor TC7200
+twg850            Thomson TWG850-4
 ```
 
 Show device profile (and list partitions):
 ```
 $ bcm2dump -P tc7200 -L
-PROFILE 'tc7200': Technicolor TC-7200/TC-7200.U
+PROFILE 'tc7200': Technicolor TC7200
 ======================================================
 baudrate   115200
 pssig      0xa825
@@ -117,7 +117,8 @@ dhtml             0x03dc0000  0x00240000  (2304 K)
 Dumping `image1` from `flash` to image1.bin:
 
 ```
-$ bcm2dump dump -P tc7200 -d /dev/ttyUSB0 -a flash -f image1.bin -o image1
+$ bcm2dump dump -d /dev/ttyUSB0 -a flash -f image1.bin -o image1
+dump: auto-detecting profile ... TC7200 (bootloader)
 dump: flash 0x019c0000-0x0207ffff
 dump: writing dump code (412 b) to ram at 0xa4010000
 dump: 100.00% (0xa401019b)   12|  10 bytes/s (ELT      00:00:37)
@@ -214,7 +215,7 @@ BCM2_RET_OK_LEN: function returns length on success
 ```
 
 Use a string from the bootloader code as the profile's magic to support
-profile auto-detection (coming soon).
+profile auto-detection.
 
 `cfg_md5key` and `cfg_keyfun` aside, the profile can be completed by
 studying the bootloader code. The `cfg_` stuff is used by `bcm2cfg`,
