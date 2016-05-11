@@ -237,14 +237,14 @@ static inline void patch_16(uint32_t *code, unsigned off, uint16_t val)
 
 bool code_init_and_upload(int fd, struct code_cfg *cfg, code_upload_callback callback, void *arg)
 {
-	uint32_t codeaddr = cfg->profile->loadaddr | cfg->profile->kseg1mask;
+	uint32_t kseg1mask = cfg->profile->kseg1mask;
+	uint32_t codeaddr = kseg1mask | cfg->profile->loadaddr;
 
 	if (!cfg->code) {
-		cfg->profile->buffer |= cfg->profile->kseg1mask;
-		cfg->profile->loadaddr |= cfg->profile->kseg1mask;
+		cfg->profile->loadaddr |= kseg1mask;
 
 		patch_32(dumpcode, 0x10, 0);
-		patch_32(dumpcode, 0x14, cfg->profile->buffer);
+		patch_32(dumpcode, 0x14, kseg1mask | cfg->profile->buffer);
 		patch_32(dumpcode, 0x18, cfg->offset);
 		patch_32(dumpcode, 0x1c, cfg->length);
 		patch_32(dumpcode, 0x20, cfg->chunklen);
@@ -252,7 +252,10 @@ bool code_init_and_upload(int fd, struct code_cfg *cfg, code_upload_callback cal
 
 		struct bcm2_func *read = &cfg->addrspace->read;
 		patch_32(dumpcode, 0x0c, read->mode);
-		patch_32(dumpcode, 0x28, read->addr);
+
+		if (read->addr) {
+			patch_32(dumpcode, 0x28, kseg1mask | read->addr);
+		}
 
 		unsigned i = 0;
 		for (; i < BCM2_PATCH_NUM; ++i) {
@@ -263,6 +266,8 @@ bool code_init_and_upload(int fd, struct code_cfg *cfg, code_upload_callback cal
 			if (addr) {
 				addr |= cfg->profile->kseg1mask;
 			}
+
+			printf("patch[%d]: 0x%08x := %08x\n", i, addr, word);
 
 			patch_32(dumpcode, offset, addr);
 			patch_32(dumpcode, offset + 4, word);
