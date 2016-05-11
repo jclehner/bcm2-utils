@@ -198,7 +198,8 @@ static bool dump_write_exec(int fd, const char *cmd, uint32_t offset, uint32_t l
 		.chunklen = 0x4000,
 		.profile = profile,
 		.addrspace = space,
-		.code = NULL
+		.code = NULL,
+		.nopatch = false,
 	};
 
 	bool dump = !strcmp(cmd, "dump");

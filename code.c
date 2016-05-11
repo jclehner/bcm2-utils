@@ -257,8 +257,15 @@ bool code_init_and_upload(int fd, struct code_cfg *cfg, code_upload_callback cal
 		unsigned i = 0;
 		for (; i < BCM2_PATCH_NUM; ++i) {
 			uint32_t offset = 0x2c + (8 * i);
-			patch_32(dumpcode, offset, read->patch[i].addr);
-			patch_32(dumpcode, offset + 4, read->patch[i].word);
+			uint32_t addr = cfg->nopatch ? 0 : read->patch[i].addr;
+			uint32_t word = cfg->nopatch ? 0 : read->patch[i].word;
+
+			if (addr) {
+				addr |= cfg->profile->kseg1mask;
+			}
+
+			patch_32(dumpcode, offset, addr);
+			patch_32(dumpcode, offset + 4, word);
 		}
 
 		cfg->codesize = sizeof(dumpcode);

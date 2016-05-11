@@ -88,6 +88,7 @@ struct code_cfg {
 	uint32_t entry;
 	uint32_t *code;
 	uint32_t codesize;
+	bool nopatch;
 };
 
 typedef void (*code_upload_callback)(struct progress*, bool, void*);
