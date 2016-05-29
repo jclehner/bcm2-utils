@@ -203,6 +203,7 @@ static bool dump_write_exec(int fd, const char *cmd, uint32_t offset, uint32_t l
 	};
 
 	bool dump = !strcmp(cmd, "dump");
+	bool verbose = false, success = false;
 
 	const char *codefile;
 	if (dump) {
@@ -253,17 +254,19 @@ static bool dump_write_exec(int fd, const char *cmd, uint32_t offset, uint32_t l
 		}
 
 		fseek(cf, 0, SEEK_END);
-		cfg.codesize = ftell(cf);
-		if (cfg.codesize < 0) {
+		long s = ftell(cf);
+		if (s < 0) {
 			perror("error: ftell");
 		}
 
-		if (!cfg.codesize) {
+		if (!s) {
 			fprintf(stderr, "error: file '%s' is empty\n", codefile);
 			return false;
 		}
 
+		cfg.codesize = s;
 		cfg.code = malloc(cfg.codesize);
+
 		if (!cfg.code) {
 			perror("error: malloc");
 			return false;
@@ -289,7 +292,6 @@ static bool dump_write_exec(int fd, const char *cmd, uint32_t offset, uint32_t l
 
 	printf("\n");
 
-	bool verbose = false, success = false;
 	char line[256];
 
 	if (dump) {
