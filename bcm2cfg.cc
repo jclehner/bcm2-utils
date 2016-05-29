@@ -694,9 +694,11 @@ int do_main(int argc, char **argv)
 		return 1;
 	}
 
+#if 0
 	if ((cmd == "enc" || cmd == "dec") && (!gws.has_pw_or_key())) {
 		cerr << "error: no key or password specified" << endl;
 	}
+#endif
 
 	gws.set_profile(profile);
 	gws.read(infile);
@@ -739,12 +741,13 @@ int do_main(int argc, char **argv)
 
 		cout << "writing fixed file to " << outfile << endl;
 		gws.write(outfile);
-	} else {
+	} else if (cmd == "dec" || cmd == "enc") {
 		if (cmd == "dec" && !gws.is_encrypted()) {
 			cout << "file is not encrypted; nothing to do" << endl;
 		} else if (cmd == "enc" && gws.is_encrypted()) {
 			cout << "file is already encrypted" << endl;
 		}
+		gws.write(outfile);
 	}
 
 	return 0;
