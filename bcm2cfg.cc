@@ -213,15 +213,11 @@ class settings
 		parse_data();
 	}
 
-	void write(const string& filename)
+	void write(const string& filename, bool encrypt = false)
 	{
 		ofstream out;
 		out.exceptions(ios::failbit | ios::badbit);
 		out.open(filename.c_str());
-
-		if (m_has_padding) {
-			m_fbuf.append(string(16, '\0'));
-		}
 
 		if (m_dbuf.size() > 0xffff) {
 			throw user_error("cannot write file - size would exceed 64k");
@@ -231,7 +227,16 @@ class settings
 
 		m_fbuf.clear();
 		m_fbuf.append(string(16, '\0'));
-		m_fbuf.append(m_dbuf);
+
+		if (!encrypt) {
+			m_fbuf.append(m_dbuf);
+		} else {
+			if (!has_key()) {
+				throw user_error("no encryption key specified");
+			}
+
+			m_fbuf.append(crypt(m_dbuf, true));
+		}
 
 		file_buf_md5(&m_fbuf[0]);
 		out.write(m_fbuf.c_str(), m_fbuf.size());
@@ -700,12 +705,6 @@ int do_main(int argc, char **argv)
 		return 1;
 	}
 
-#if 0
-	if ((cmd == "enc" || cmd == "dec") && (!gws.has_pw_or_key())) {
-		cerr << "error: no key or password specified" << endl;
-	}
-#endif
-
 	gws.set_profile(profile);
 	gws.read(infile);
 
@@ -748,12 +747,20 @@ int do_main(int argc, char **argv)
 		cout << "writing fixed file to " << outfile << endl;
 		gws.write(outfile);
 	} else if (cmd == "dec" || cmd == "enc") {
+		if (!gws.has_pw_or_key()) {
+			cerr << "error: no key or password specified" << endl;
+			return 1;
+		}
+
 		if (cmd == "dec" && !gws.is_encrypted()) {
 			cout << "file is not encrypted; nothing to do" << endl;
+			return 0;
 		} else if (cmd == "enc" && gws.is_encrypted()) {
 			cout << "file is already encrypted" << endl;
+			return 0;
 		}
-		gws.write(outfile);
+
+		gws.write(outfile, cmd == "enc");
 	}
 
 	return 0;
