@@ -178,6 +178,11 @@ class settings
 		return m_fbuf.size();
 	}
 
+	uint16_t get_data_offset() const
+	{
+		return c_data_offset;
+	}
+
 	void read(const string& filename)
 	{
 		ifstream in;
@@ -185,7 +190,7 @@ class settings
 
 		in.open(filename.c_str());
 		in.seekg(0, ios::end);
-		if (in.tellg() < 16 + 74 + 4 + 2) {
+		if (in.tellg() < c_data_offset) {
 			throw user_error("file too small to be a config file");
 		}
 
@@ -498,6 +503,7 @@ class settings
 	static constexpr const char* c_header_magic =
 		"6u9E9eWF0bt9Y8Rw690Le4669JYe4d-056T9p"
 		"4ijm4EA6u9ee659jn9E-54e4j6rPj069K-670";
+	static constexpr uint16_t c_data_offset = 16 + 74 + 4 + 2;
 };
 
 [[noreturn]] void usage_and_exit(int exitstatus)
@@ -600,7 +606,7 @@ void dump_settings(const settings& gws)
 
 		const bcm2_nv_group *group = gws.get_groups();
 		for (; group; group = group->next) {
-			printf(" %5zu  %s   %-40s %-5s     %5u b", group->offset,
+			printf(" %5zu  %s   %-40s %-5s     %5u b", gws.get_data_offset() + group->offset,
 					magic_to_str(&group->magic), group->name, 
 					version_to_str(group->version).c_str(), group->size);
 			if (group->invalid) {
