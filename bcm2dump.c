@@ -574,7 +574,7 @@ static int parse_options(int argc, char **argv)
 
 	profile = bcm2_profile_find("generic");
 
-	while ((c = getopt(argc, argv, "P:a:o:n:C:f:d:O:LhSAFLv")) != -1) {
+	while ((c = getopt(argc, argv, "P:a:o:n:C:f:d:O:LhSAFKLv")) != -1) {
 		switch (c) {
 			case 'A':
 				opt_append = true;
