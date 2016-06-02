@@ -104,6 +104,13 @@ struct bcm2_profile bcm2_profiles[] = {
 		}
 	},
 	{
+		.name = "TWG870",
+		.pretty = "Thomson TWG870",
+		.baudrate = 115200,
+		.cfg_md5key = "544d4d5f545747383730000000000000",
+		.cfg_keyfun = &keyfun_dumb,
+	},
+	{
 		.name = "TC7200",
 		.pretty = "Technicolor TC7200",
 		.baudrate = 115200,
