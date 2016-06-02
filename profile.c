@@ -107,8 +107,31 @@ struct bcm2_profile bcm2_profiles[] = {
 		.name = "TWG870",
 		.pretty = "Thomson TWG870",
 		.baudrate = 115200,
+		.pssig = 0xa81b,
 		.cfg_md5key = "544d4d5f545747383730000000000000",
 		.cfg_keyfun = &keyfun_dumb,
+		.spaces = {
+			{
+				.name = "ram",
+				.min = 0x80000000,
+				.size = 64 * 1024 * 1024,
+				.parts = {
+					{ "image1/2", 0x82f00000, 0x3e0000 },
+				}
+			},
+			{
+				.name = "flash",
+				.size = 8 * 1024 * 1024,
+				.parts = {
+					{ "bootloader", 0x000000, 0x010000 },
+					{ "permnv",     0x010000, 0x010000 },
+					{ "image1",     0x020000, 0x3e0000 },
+					{ "image2",     0x400000, 0x3e0000 },
+					{ "dynnv",      0x7e0000, 0x010000 }
+				}
+			},
+
+		}
 	},
 	{
 		.name = "TC7200",
@@ -146,8 +169,8 @@ struct bcm2_profile bcm2_profiles[] = {
 					{ "permnv",     0x10000, 0x10000 },
 					{ "dynnv",      0x20000, 0xe0000 }
 				},
-				.read = { 
-					.addr = 0x83f81298, 
+				.read = {
+					.addr = 0x83f81298,
 					.mode = BCM2_READ_FUNC_OBL,
 				},
 			},
@@ -162,8 +185,8 @@ struct bcm2_profile bcm2_profiles[] = {
 					{ "linuxkfs",  0x2bc0000, 0x1200000 },
 					{ "dhtml",     0x3dc0000, 0x0240000 },
 				},
-				.read = { 
-					.addr = 0x83f831b4, 
+				.read = {
+					.addr = 0x83f831b4,
 					.mode = BCM2_READ_FUNC_BOL,
 					.patch = {
 						{ 0x83f83380, 0x10000017 },
