@@ -231,7 +231,11 @@ class settings
 		if (!encrypt) {
 			m_fbuf.append(m_dbuf);
 		} else {
-			if (!has_key()) {
+			if (!m_password.empty()) {
+				derive_key(m_profile);
+			}
+
+			if (m_key.empty()) {
 				throw user_error("no encryption key specified");
 			}
 
@@ -308,6 +312,8 @@ class settings
 		if (!m_profile->cfg_keyfun(m_password.c_str(), key)) {
 			throw error(string("profile ") + m_profile->name + ": cfg_keyfun failed\n");
 		}
+
+		cout << "key: " << get_key() << endl;
 	}
 
 	void check_header()
@@ -594,7 +600,7 @@ void dump_settings(const settings& gws)
 		cout << "(none)" << endl;
 	} else {
 		if (gws.is_magic_valid()) {
-			cout << gws.get_key() << endl;	
+			cout << gws.get_key() << endl;
 		} else {
 			cout << "(decryption failed)" << endl;
 		}
@@ -607,12 +613,12 @@ void dump_settings(const settings& gws)
 		cout << "padded      " << (gws.has_padding() ? "yes" : "no") << endl;
 		cout << endl;
 
-		cout << "offset--id---------------type-------------------------------------version------size" << endl;
+		cout << "offset--id-------------type-------------------------------------version-----size" << endl;
 
 		const bcm2_nv_group *group = gws.get_groups();
 		for (; group; group = group->next) {
-			printf(" %5zu  %s   %-40s %-5s     %5u b", gws.get_data_offset() + group->offset,
-					magic_to_str(&group->magic), group->name, 
+			printf(" %5zu  %s %-40s %-5s    %5u b", gws.get_data_offset() + group->offset,
+					magic_to_str(&group->magic), group->name,
 					version_to_str(group->version).c_str(), group->size);
 			if (group->invalid) {
 				printf(" (invalid)");
@@ -747,10 +753,12 @@ int do_main(int argc, char **argv)
 		cout << "writing fixed file to " << outfile << endl;
 		gws.write(outfile);
 	} else if (cmd == "dec" || cmd == "enc") {
+#if 0
 		if (!gws.has_pw_or_key()) {
 			cerr << "error: no key or password specified" << endl;
 			return 1;
 		}
+#endif
 
 		if (cmd == "dec" && !gws.is_encrypted()) {
 			cout << "file is not encrypted; nothing to do" << endl;
