@@ -22,6 +22,10 @@ bool cm_flash_open(int fd, const char *part)
 {
 	char line[256];
 
+	if (!cm_flash_close(fd)) {
+		return false;
+	}
+
 	sprintf(line, "/flash/open %s\r\n", part);
 	return ser_iflush(fd) && ser_write(fd, line) && consume_lines(fd);
 }
@@ -47,7 +51,7 @@ bool cm_flash_read(int fd, unsigned addr, void *buf, size_t len)
 
 	bool data = false;
 
-	while (len && ser_read(fd, line, sizeof(line))) {
+	while (len && ser_select(fd, 1000) > 0 && ser_read(fd, line, sizeof(line))) {
 		if (!line[0] || line[0] == ' ') {
 			continue;
 		}
@@ -62,11 +66,15 @@ bool cm_flash_read(int fd, unsigned addr, void *buf, size_t len)
 		}
 	}
 
+	if (!data) {
+		fprintf(stderr, "error: no data\n");
+	}
+
 	if (!ser_iflush(fd)) {
 		return false;
 	}
 
-	return data;
+	return !len;
 }
 
 bool cm_flash_parse_values(const char *line, char *buf16, bool quiet)
