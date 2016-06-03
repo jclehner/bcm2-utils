@@ -125,7 +125,8 @@ struct bcm2_profile bcm2_profiles[] = {
 				.name = "flash",
 				.size = 8 * 1024 * 1024,
 				.parts = {
-					{ "bootloader", 0x000000, 0x010000 },
+					{ "bootloader", 0x000000, 0x008000 },
+					{ "unknown",    0x008000, 0x008000 },
 					{ "permnv",     0x010000, 0x010000 },
 					{ "image1",     0x020000, 0x3e0000 },
 					{ "image2",     0x400000, 0x3e0000 },
