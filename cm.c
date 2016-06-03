@@ -26,6 +26,12 @@ bool cm_flash_open(int fd, const char *part)
 		return false;
 	}
 
+	if (!strcmp(part, "dynnv")) {
+		part = "dyn";
+	} else if (!strcmp(part, "permnv")) {
+		part = "perm";
+	}
+
 	sprintf(line, "/flash/open %s\r\n", part);
 	return ser_iflush(fd) && ser_write(fd, line) && consume_lines(fd);
 }
