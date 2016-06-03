@@ -113,6 +113,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		.cfg_defkeys = {
 			"0001020304050607080910111213141516171819202122232425262728293031",
 		},
+		.magic = { 0x82f00014, "TWG870" },
 		.spaces = {
 			{
 				.name = "ram",
