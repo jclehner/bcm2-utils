@@ -109,6 +109,9 @@ struct bcm2_profile bcm2_profiles[] = {
 		.baudrate = 115200,
 		.pssig = 0xa81b,
 		.cfg_md5key = "544d4d5f545747383730000000000000",
+		.cfg_defkeys = {
+			"0001020304050607080910111213141516171819202122232425262728293031",
+		},
 		.spaces = {
 			{
 				.name = "ram",
