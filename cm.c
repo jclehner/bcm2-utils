@@ -33,8 +33,6 @@ bool cm_flash_close(int fd)
 
 bool cm_flash_read(int fd, unsigned addr, void *buf, size_t len)
 {
-	printf("%s (addr=%d, len=%zu)\n", __func__, addr, len);
-
 	if (len % 16) {
 		fprintf(stderr, "error: length must be multiple of 16\n");
 		return false;
