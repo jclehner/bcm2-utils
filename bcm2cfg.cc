@@ -768,8 +768,8 @@ int do_main(int argc, char **argv)
 			outfile = infile;
 		}
 
-		cout << "writing fixed file to " << outfile << endl;
 		gws.write(outfile);
+		cout << "writing fixed file to " << outfile << endl;
 	} else if (cmd == "dec" || cmd == "enc") {
 #if 0
 		if (!gws.has_pw_or_key()) {
@@ -786,9 +786,21 @@ int do_main(int argc, char **argv)
 			return 0;
 		}
 
+		if (cmd == "enc" && !gws.has_pw_or_key()) {
+			if (!gws.get_profile()) {
+				cerr << "error: must specify profile" << endl;
+				return 1;
+			}
+
+			const char *defkey = gws.get_profile()->cfg_defkeys[0];
+			if (defkey && defkey[0]) {
+				gws.set_key(defkey, true);
+			}
+		}
+
+		gws.write(outfile, cmd == "enc");
 		// yes, this is ugly.
 		cout << "writing " << cmd << "rypted file to " << outfile << endl;
-		gws.write(outfile, cmd == "enc");
 	}
 
 	return 0;
