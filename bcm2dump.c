@@ -702,7 +702,7 @@ static bool do_dump(int fd, uint32_t off, uint32_t len)
 		} else {
 			if (opt_shell) {
 				if (opt_partition) {
-					ret = dump_shell(fd, true, off, len, fp);
+					ret = dump_shell(fd, true, 0, len, fp);
 				} else {
 					fprintf(stderr, "error: shell dump from flash requires a partition name\n");
 				}
