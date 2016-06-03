@@ -1,35 +1,100 @@
 #include "bcm2dump.h"
 
-bool cm_flash_read(int fd, const char *part, unsigned addr, void *buf, size_t len)
+static bool consume_lines(int fd)
 {
+	int pending;
+	char line[256];
+
+	while ((pending = ser_select(fd, 100)) > 0) {
+		if (!ser_read(fd, line, sizeof(line))) {
+			return false;
+		}
+	}
+
+	if (pending < 0) {
+		return false;
+	}
+
+	return ser_iflush(fd);
+}
+
+bool cm_flash_open(int fd, const char *part)
+{
+	char line[256];
+
+	sprintf(line, "/flash/open %s\r\n", part);
+	return ser_iflush(fd) && ser_write(fd, line) && consume_lines(fd);
+}
+
+bool cm_flash_close(int fd)
+{
+	return ser_write(fd, "/flash/close\r\n") && consume_lines(fd);
+}
+
+bool cm_flash_read(int fd, unsigned addr, void *buf, size_t len)
+{
+	printf("%s (addr=%d, len=%zu)\n", __func__, addr, len);
+
 	if (len % 16) {
 		fprintf(stderr, "error: length must be multiple of 16\n");
 		return false;
 	}
 
-	bool ok = false;
 	char line[256];
 
-	sprintf(line, "/flash/open %s\r\n", part);
+	sprintf(line, "/flash/readDirect %zu %u\r\n", len, addr);
 	if (!ser_iflush(fd) || !ser_write(fd, line)) {
-		goto out;
+		return false;
 	}
 
-	sprintf(line, "/flash/read 4 %zu %u\r\n", len, addr);
-	if (!ser_iflush(fd) || !ser_write(fd, line)) {
-		goto out;
+	bool data = false;
+
+	while (len && ser_read(fd, line, sizeof(line))) {
+		if (!line[0] || line[0] == ' ') {
+			continue;
+		}
+
+		if (cm_flash_parse_values(line, buf, !data)) {
+			data = true;
+			buf = ((char*)buf) + 16;
+			len -= 16;
+		} else if (data) {
+			// a line after the first hexdump line failed to parse
+			return false;
+		}
 	}
 
-out:
-	sprintf(line, "/flash/close\r\n");
-	if (!ser_write(fd, line) || !ser_iflush(fd)) {
-		ok = false;
+	if (!ser_iflush(fd)) {
+		return false;
 	}
 
-	return ok;
+	return data;
 }
 
-bool cm_read(int fd, unsigned addr, void *buf, size_t len)
+bool cm_flash_parse_values(const char *line, char *buf16, bool quiet)
+{
+	unsigned i, data[16];
+
+	int s = sscanf(line, "%x %x %x %x   %x %x %x %x   %x %x %x %x   %x %x %x %x",
+			data + 0, data + 1, data + 2, data + 3, data + 4, data + 5,
+			data + 6, data + 7, data + 8, data + 9, data + 10, data + 11,
+			data + 12, data + 13, data + 14, data + 15);
+
+	if (s != 16) {
+		if (!quiet) {
+			fprintf(stderr, "\nerror: invalid line '%s'\n", line);
+		}
+		return false;
+	}
+
+	for (i = 0; i < 16; ++i) {
+		buf16[i] = data[i] & 0xff;
+	}
+
+	return true;
+}
+
+bool cm_mem_read(int fd, unsigned addr, void *buf, size_t len)
 {
 	if (len % 16) {
 		fprintf(stderr, "error: length must be multiple of 16\n");
@@ -58,7 +123,7 @@ bool cm_read(int fd, unsigned addr, void *buf, size_t len)
 			continue;
 		}
 
-		if (!cm_parse_values(line, buf)) {
+		if (!cm_mem_parse_values(line, buf)) {
 			return false;
 		}
 
@@ -69,7 +134,7 @@ bool cm_read(int fd, unsigned addr, void *buf, size_t len)
 	return ser_iflush(fd);
 }
 
-bool cm_parse_values(const char *line, char *buf16)
+bool cm_mem_parse_values(const char *line, char *buf16)
 {
 	unsigned i, off, data[16];
 
@@ -79,7 +144,6 @@ bool cm_parse_values(const char *line, char *buf16)
 			data + 12, data + 13, data + 14, data + 15);
 
 	if (s != 17) {
-		fprintf(stderr, "\n****");
 		fprintf(stderr, "\nerror: invalid line '%s'\n", line);
 		return false;
 	}

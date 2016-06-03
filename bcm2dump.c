@@ -18,6 +18,8 @@ static bool opt_shell = false;
 static int opt_verbosity = 0;
 static bool auto_detect_profile = true;
 
+static const char *opt_partition = NULL;
+
 static const char *opt_codefile = NULL;
 static const char *opt_filename = NULL;
 static const char *opt_ttydev = NULL;
@@ -52,7 +54,7 @@ static bool detect_profile(int fd)
 		if (!is_shell) {
 			ok = bl_read(fd, profile->magic.addr, buffer, sizeof(buffer));
 		} else {
-			ok = cm_read(fd, profile->magic.addr, buffer, sizeof(buffer));
+			ok = cm_mem_read(fd, profile->magic.addr, buffer, sizeof(buffer));
 		}
 
 		if (!ok) {
@@ -74,7 +76,7 @@ static bool detect_profile(int fd)
 	return true;
 }
 
-static bool dump_shell(int fd, unsigned offset, unsigned length, FILE *fp)
+static bool dump_shell(int fd, bool flash, unsigned offset, unsigned length, FILE *fp)
 {
 	char line[256];
 
@@ -99,9 +101,20 @@ static bool dump_shell(int fd, unsigned offset, unsigned length, FILE *fp)
 	progress_init(&pg, offset, length);
 
 	bool ok = false;
+	bool (*readfunc)(int, unsigned, void*, size_t) = NULL;
+
+	if (flash) {
+		readfunc = &cm_flash_read;
+
+		if (!cm_flash_open(fd, opt_partition)) {
+			return false;
+		}
+	} else {
+		readfunc = &cm_mem_read;
+	}
 
 	for (; offset < end; offset += sizeof(chunk)) {
-		if (!cm_read(fd, offset, chunk, MIN(sizeof(chunk), end - offset))) {
+		if (!readfunc(fd, offset, chunk, MIN(sizeof(chunk), end - offset))) {
 			goto out;
 		}
 
@@ -117,8 +130,13 @@ static bool dump_shell(int fd, unsigned offset, unsigned length, FILE *fp)
 
 	ok = true;
 out:
+	if (flash) {
+		cm_flash_close(fd);
+	}
+
 	printf("\n");
 	fflush(fp);
+
 	return ok;
 }
 
@@ -434,6 +452,7 @@ static bool resolve_offset_and_length(unsigned *off, unsigned *len, bool need_le
 			return false;
 		}
 		*off = part->offset;
+		opt_partition = part->name;
 	}
 
 	if (opt_len || !part) {
@@ -678,10 +697,18 @@ static bool do_dump(int fd, uint32_t off, uint32_t len)
 			if (opt_slow) {
 				ret = dump_slow(fd, off, len, fp);
 			} else {
-				ret = dump_shell(fd, off, len, fp);
+				ret = dump_shell(fd, false, off, len, fp);
 			}
 		} else {
-			fprintf(stderr, "error: slow dump/shell dump is only available for ram\n");
+			if (opt_shell) {
+				if (opt_partition) {
+					ret = dump_shell(fd, true, off, len, fp);
+				} else {
+					fprintf(stderr, "error: shell dump from flash requires a partition name\n");
+				}
+			} else {
+				fprintf(stderr, "error: slow dump is only available for ram\n");
+			}
 		}
 	}
 
