@@ -188,7 +188,12 @@ class settings
 		ifstream in;
 		in.exceptions(ios::failbit | ios::badbit);
 
-		in.open(filename.c_str());
+		try {
+			in.open(filename.c_str());
+		} catch (const exception& e) {
+			throw user_error("failed to open input file");
+		}
+
 		in.seekg(0, ios::end);
 		if (in.tellg() < c_data_offset) {
 			throw user_error("file too small to be a config file");
