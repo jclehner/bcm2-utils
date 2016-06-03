@@ -108,6 +108,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		.pretty = "Thomson TWG870",
 		.baudrate = 115200,
 		.pssig = 0xa81b,
+		.blsig = 0x3380,
 		.cfg_md5key = "544d4d5f545747383730000000000000",
 		.cfg_defkeys = {
 			"0001020304050607080910111213141516171819202122232425262728293031",
@@ -118,7 +119,8 @@ struct bcm2_profile bcm2_profiles[] = {
 				.min = 0x80000000,
 				.size = 64 * 1024 * 1024,
 				.parts = {
-					{ "image1/2", 0x82f00000, 0x3e0000 },
+					{ "image1/2",   0x82f00000, 0x3e0000 },
+					{ "bootloader", 0x83f80000, 0x010000 },
 				}
 			},
 			{
