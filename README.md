@@ -10,6 +10,7 @@ Fully supported devices:
 
 * Technicolor TC7200 (bootloader, shell)
 * Thomson TWG850-4 (shell)
+* Thomson TWG870 (shell)
 
 It should be easy to add support for other devices. Some pointers can
 be found [below](#writing-a-device-profile).
@@ -81,6 +82,7 @@ $ bcm2dump -L
 generic           Generic Profile
 tc7200            Technicolor TC7200
 twg850            Thomson TWG850-4
+twg870            Thomson TWG870
 ```
 
 Show device profile (and list partitions):
