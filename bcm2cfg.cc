@@ -572,7 +572,7 @@ string version_to_str(const uint8_t *version)
 	return to_string(version[0]) + "." + to_string(version[1]);
 }
 
-void dump_settings(const settings& gws)
+void dump_header(const settings& gws)
 {
 	cout << "size        " << gws.get_file_size() << " bytes" << endl;
 	cout << "profile     ";
@@ -612,6 +612,15 @@ void dump_settings(const settings& gws)
 
 		cout << "padded      " << (gws.has_padding() ? "yes" : "no") << endl;
 		cout << endl;
+	}
+
+}
+
+void dump_settings(const settings& gws)
+{
+	dump_header(gws);
+
+	if (gws.is_magic_valid()) {
 
 		cout << "offset--id-------------type-------------------------------------version-----size" << endl;
 
@@ -719,7 +728,11 @@ int do_main(int argc, char **argv)
 
 	if (cmd == "show") {
 		dump_settings(gws);
-	} else if (cmd == "ver") {
+	} else {
+		dump_header(gws);
+	}
+
+	if (cmd == "ver") {
 		bool bad = false;
 
 		if (!gws.is_checksum_valid()) {
@@ -768,6 +781,8 @@ int do_main(int argc, char **argv)
 			return 0;
 		}
 
+		// yes, this is ugly.
+		cout << "writing " << cmd << "rypted file to " << outfile << endl;
 		gws.write(outfile, cmd == "enc");
 	}
 
