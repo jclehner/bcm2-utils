@@ -650,6 +650,8 @@ int do_main(int argc, char **argv)
 	string cmd;
 	if (argc != 1 && argv[1][0] != '-') {
 		cmd = argv[1];
+		argv += 1;
+		argc -= 1;
 	}
 
 	settings gws;
@@ -729,7 +731,7 @@ int do_main(int argc, char **argv)
 
 	if (cmd == "info") {
 		if (gws.has_auto_profile()) {
-			//cout << infile << " ";
+			cout << infile << " ";
 			cout << gws.get_profile_name() << " ";
 
 			cout << (gws.is_checksum_valid() ? '+' : '-') << "chk ";
