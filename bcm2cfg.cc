@@ -362,6 +362,7 @@ class settings
 				decrypt_with_current_key();
 				check_header();
 				if (m_magic_valid) {
+					m_auto_profile = true;
 					return true;
 				}
 			}
@@ -377,6 +378,7 @@ class settings
 				check_header();
 
 				if (m_magic_valid) {
+					m_auto_profile = true;
 					return true;
 				}
 			}
@@ -730,17 +732,21 @@ int do_main(int argc, char **argv)
 	gws.read(infile);
 
 	if (cmd == "info") {
+
+		cout << infile << " ";
+
 		if (gws.has_auto_profile()) {
-			cout << infile << " ";
 			cout << gws.get_profile_name() << " ";
-
-			cout << (gws.is_checksum_valid() ? '+' : '-') << "chk ";
-			cout << (gws.is_magic_valid() ? '+' : '-') << "magic ";
-			cout << (gws.is_size_valid() ? '+' : '-') << "size ";
-			cout << (gws.is_encrypted() ? '+' : '-') << "enc ";
-
-			cout << endl;
+		} else if (!gws.get_profile()) {
+			cout << "unknown ";
 		}
+
+		cout << (gws.is_encrypted() ? '+' : '-') << "enc ";
+		cout << (gws.is_magic_valid() ? '+' : '-') << "magic ";
+		cout << (gws.is_checksum_valid() ? '+' : '-') << "chk ";
+		cout << (gws.is_size_valid() ? '+' : '-') << "size ";
+
+		cout << endl;
 
 		return 0;
 	}
