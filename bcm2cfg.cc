@@ -317,8 +317,6 @@ class settings
 		if (!m_profile->cfg_keyfun(m_password.c_str(), key)) {
 			throw error(string("profile ") + m_profile->name + ": cfg_keyfun failed\n");
 		}
-
-		cout << "key: " << get_key() << endl;
 	}
 
 	void check_header()
@@ -533,6 +531,7 @@ class settings
 			"  dec             Decrypt input file\n"
 			"  enc             Encrypt input file\n"
 			"  show            Dump contents\n"
+			"  info            Show terse info\n"
 			"\n"
 			"Options:\n"
 			"  -h              Show help\n"
@@ -727,6 +726,22 @@ int do_main(int argc, char **argv)
 
 	gws.set_profile(profile);
 	gws.read(infile);
+
+	if (cmd == "info") {
+		if (gws.has_auto_profile()) {
+			//cout << infile << " ";
+			cout << gws.get_profile_name() << " ";
+
+			cout << (gws.is_checksum_valid() ? '+' : '-') << "chk ";
+			cout << (gws.is_magic_valid() ? '+' : '-') << "magic ";
+			cout << (gws.is_size_valid() ? '+' : '-') << "size ";
+			cout << (gws.is_encrypted() ? '+' : '-') << "enc ";
+
+			cout << endl;
+		}
+
+		return 0;
+	}
 
 	cout << "FILE: " << infile << endl;
 	cout << "============================================" << endl;
