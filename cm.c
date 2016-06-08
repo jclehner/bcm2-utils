@@ -56,6 +56,7 @@ bool cm_flash_read(int fd, unsigned addr, void *buf, size_t len)
 	}
 
 	bool data = false;
+	unsigned errors = 0;
 
 	while (len && ser_select(fd, 1000) > 0 && ser_read(fd, line, sizeof(line))) {
 		if (!line[0] || line[0] == ' ') {
@@ -63,12 +64,15 @@ bool cm_flash_read(int fd, unsigned addr, void *buf, size_t len)
 		}
 
 		if (cm_flash_parse_values(line, buf, !data)) {
+			errors = 0;
 			data = true;
 			buf = ((char*)buf) + 16;
 			len -= 16;
 		} else if (data) {
-			// a line after the first hexdump line failed to parse
-			return false;
+			if (++errors >= 5) {
+				// a line after the first hexdump line failed to parse
+				return false;
+			}
 		}
 	}
 
@@ -126,6 +130,8 @@ bool cm_mem_read(int fd, unsigned addr, void *buf, size_t len)
 	}
 
 	unsigned end = addr + len;
+	unsigned errors = 0;
+
 	while (addr < end) {
 		if (!ser_read(fd, line, sizeof(line))) {
 			return false;
@@ -136,9 +142,14 @@ bool cm_mem_read(int fd, unsigned addr, void *buf, size_t len)
 		}
 
 		if (!cm_mem_parse_values(line, buf)) {
-			return false;
+			if (++errors >= 5) {
+				return false;
+			} else {
+				continue;
+			}
 		}
 
+		errors = 0;
 		buf = ((char*)buf) + 16;
 		addr += 16;
 	}
