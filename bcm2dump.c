@@ -18,7 +18,7 @@ static bool opt_shell = false;
 static int opt_verbosity = 0;
 static bool auto_detect_profile = true;
 
-static const char *opt_partition = NULL;
+static struct bcm2_partition *opt_partition = NULL;
 
 static const char *opt_codefile = NULL;
 static const char *opt_filename = NULL;
@@ -106,7 +106,10 @@ static bool dump_shell(int fd, bool flash, unsigned offset, unsigned length, FIL
 	if (flash) {
 		readfunc = &cm_flash_read;
 
-		if (!cm_flash_open(fd, opt_partition)) {
+		const char *name = opt_partition->altname[0] ?
+			opt_partition->altname : opt_partition->name;
+
+		if (!cm_flash_open(fd, name)) {
 			return false;
 		}
 	} else {
@@ -442,25 +445,19 @@ static bool resolve_offset_and_length(unsigned *off, unsigned *len, bool need_le
 		return true;
 	}
 
-	struct bcm2_partition *part = NULL;
+	opt_partition = NULL;
 
 	if (!strtou(opt_off, off, true)) {
-		part = bcm2_addrspace_find_partition(space, opt_off);
-		if (!part) {
+		opt_partition = bcm2_addrspace_find_partition(space, opt_off);
+		if (!opt_partition) {
 			fprintf(stderr, "error: partition '%s' not found in address space '%s'\n",
 					opt_off, space->name);
 			return false;
 		}
-		*off = part->offset;
-
-		if (part->altname[0]) {
-			opt_partition = part->altname;
-		} else {
-			opt_partition = part->name;
-		}
+		*off = opt_partition->offset;
 	}
 
-	if (opt_len || !part) {
+	if (opt_len || !opt_partition) {
 		if (!opt_len) {
 			if (need_len) {
 				fprintf(stderr, "error: no length specified\n");
@@ -472,7 +469,7 @@ static bool resolve_offset_and_length(unsigned *off, unsigned *len, bool need_le
 			return false;
 		}
 	} else {
-		*len = part->size;
+		*len = opt_partition->size;
 	}
 
 	if (!need_len) {
@@ -707,7 +704,7 @@ static bool do_dump(int fd, uint32_t off, uint32_t len)
 		} else {
 			if (opt_shell) {
 				if (opt_partition) {
-					ret = dump_shell(fd, true, 0, len, fp);
+					ret = dump_shell(fd, true, off - opt_partition->offset, len, fp);
 				} else {
 					fprintf(stderr, "error: shell dump from flash requires a partition name\n");
 				}
