@@ -69,7 +69,7 @@ bool cm_flash_read(int fd, unsigned addr, void *buf, size_t len)
 			buf = ((char*)buf) + 16;
 			len -= 16;
 		} else if (data) {
-			if (++errors >= 5) {
+			if (++errors >= 7) {
 				// a line after the first hexdump line failed to parse
 				return false;
 			}
@@ -142,7 +142,7 @@ bool cm_mem_read(int fd, unsigned addr, void *buf, size_t len)
 		}
 
 		if (!cm_mem_parse_values(line, buf)) {
-			if (++errors >= 5) {
+			if (++errors >= 7) {
 				return false;
 			} else {
 				continue;
