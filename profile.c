@@ -40,21 +40,6 @@ static bool keyfun_tc7200(const char *password, unsigned char *key)
 	return true;
 }
 
-static bool keyfun_dumb(const char *password, unsigned char *key)
-{
-	memset(key, 0, 32);
-
-	if (password) {
-		size_t len = strlen(password);
-		if (len > 32) {
-			len = 32;
-		}
-		memcpy(key, password, len);
-	}
-
-	return true;
-}
-
 struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "generic",
@@ -94,10 +79,10 @@ struct bcm2_profile bcm2_profiles[] = {
 				.size = 8 * 1024 * 1024,
 				.parts = {
 					{ "image2",     0xbf000000, 0x3e0000 },
-					{ "dynnv",      0xbf3e0000, 0x020000 },
+					{ "dynnv",      0xbf3e0000, 0x020000, "dyn" },
 					{ "bootloader", 0xbf400000, 0x010000 },
 					{ "image1",     0xbf410000, 0x3e0000 },
-					{ "permnv",     0xbf7f0000, 0x010000 }
+					{ "permnv",     0xbf7f0000, 0x010000, "perm" }
 				}
 			},
 
@@ -130,10 +115,10 @@ struct bcm2_profile bcm2_profiles[] = {
 				.parts = {
 					{ "bootloader", 0x000000, 0x008000 },
 					{ "unknown",    0x008000, 0x008000 },
-					{ "permnv",     0x010000, 0x010000 },
+					{ "permnv",     0x010000, 0x010000, "perm" },
 					{ "image1",     0x020000, 0x3e0000 },
 					{ "image2",     0x400000, 0x3e0000 },
-					{ "dynnv",      0x7e0000, 0x010000 }
+					{ "dynnv",      0x7e0000, 0x010000, "dyn" }
 				}
 			},
 
@@ -172,8 +157,8 @@ struct bcm2_profile bcm2_profiles[] = {
 				.size = 0x100000,
 				.parts = {
 					{ "bootloader", 0x00000, 0x10000 },
-					{ "permnv",     0x10000, 0x10000 },
-					{ "dynnv",      0x20000, 0xe0000 }
+					{ "permnv",     0x10000, 0x10000, "perm" },
+					{ "dynnv",      0x20000, 0xe0000, "dyn" }
 				},
 				.read = {
 					.addr = 0x83f81298,
@@ -184,10 +169,10 @@ struct bcm2_profile bcm2_profiles[] = {
 				.name = "flash",
 				.size = 64 * 1024 * 1024,
 				.parts = {
-					{ "linuxapps", 0x0000000, 0x19c0000 },
+					{ "linuxapps", 0x0000000, 0x19c0000, "image3e" },
 					{ "image1",    0x19c0000, 0x06c0000 },
 					{ "image2",    0x2080000, 0x06c0000 },
-					{ "linux",     0x2740000, 0x0480000 },
+					{ "linux",     0x2740000, 0x0480000, "image3" },
 					{ "linuxkfs",  0x2bc0000, 0x1200000 },
 					{ "dhtml",     0x3dc0000, 0x0240000 },
 				},

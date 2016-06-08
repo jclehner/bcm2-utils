@@ -452,7 +452,12 @@ static bool resolve_offset_and_length(unsigned *off, unsigned *len, bool need_le
 			return false;
 		}
 		*off = part->offset;
-		opt_partition = part->name;
+
+		if (part->altname[0]) {
+			opt_partition = part->altname;
+		} else {
+			opt_partition = part->name;
+		}
 	}
 
 	if (opt_len || !part) {

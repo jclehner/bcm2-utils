@@ -58,6 +58,8 @@ struct bcm2_partition {
 	uint32_t offset;
 	// size
 	uint32_t size;
+	// name used by the /flash/open command
+	char altname[32];
 };
 
 struct bcm2_func {
