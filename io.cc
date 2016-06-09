@@ -166,8 +166,10 @@ string io::readln(unsigned timeout) const
 
 	while (pending()) {
 		int c = getc();
-		if (c == EOF || c == '\n') {
+		if (c == '\n') {
 			lf = true;
+			break;
+		} else if (c == EOF) {
 			break;
 		} else if (c != '\r') {
 			if (cr) {
