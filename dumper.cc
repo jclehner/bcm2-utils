@@ -53,14 +53,12 @@ class parsing_dumper : public dumper
 
 string parsing_dumper::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t retries)
 {
-	printf("  %s: do_read_chunk(0x%08x, %u)\n", __func__, offset, length);
 	do_read_chunk(offset, length);
 
 	string line, linebuf, chunk;
 	uint32_t pos = offset;
 
 	while (chunk.size() < length && m_intf->pending()) {
-		printf("  %s: readln()\n", __func__);
 		line = m_intf->readln();
 		if (line.empty()) {
 			break;
@@ -68,12 +66,10 @@ string parsing_dumper::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 
 		line = trim(line);
 
-		printf("  %s: is_ignorable_line(\"%s\")\n", __func__, line.c_str());
 		if (is_ignorable_line(line)) {
 			continue;
 		} else {
 			try {
-				printf("  %s: parse_chunk_line(..., %08x)\n", __func__, pos);
 				string linebuf = parse_chunk_line(line, pos);
 				pos += linebuf.size();
 				chunk += linebuf;
@@ -91,7 +87,7 @@ string parsing_dumper::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 	if (chunk.size() != length) {
 		if (retries >= 2) {
 			throw runtime_error("read incomplete chunk @" + to_hex(offset)
-					+ ", " + to_string(length) + " length " + to_string(chunk.size()));
+					+ ": " + to_string(chunk.size()) + "/" +to_string(length) + " b");
 		}
 			
 		// TODO log
@@ -411,8 +407,6 @@ class dumpcode_dumper : public parsing_dumper
 					printf("\n");
 				}
 			}
-
-			cout << "READY @ 0x" << to_hex(m_loadaddr + m_entry) << endl;
 		}
 	}
 
@@ -447,14 +441,12 @@ void dumper::dump(uint32_t offset, uint32_t length, std::ostream& os)
 		throw invalid_argument("length " + to_string(length) + " not aligned to " + to_string(length_alignment()) + " bytes");
 	}
 
-	printf("%s: do_init(%08x, %u)\n", __func__, offset, length);
 	do_init(offset, length);
 
 	uint32_t remaining = length;
 
 	while (remaining) {
 		uint32_t n = min(chunk_size(), length);
-		printf("%s: read_chunk(%08x, %u)\n", __func__, offset, n);
 		string chunk = read_chunk(offset, n);
 
 		update_progress(offset, n);
@@ -468,8 +460,6 @@ void dumper::dump(uint32_t offset, uint32_t length, std::ostream& os)
 		remaining -= n;
 		offset += n;
 	}
-
-	printf("\n");
 
 	do_cleanup();
 }
