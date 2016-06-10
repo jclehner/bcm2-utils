@@ -31,6 +31,16 @@ template<class T> T lexical_cast(const std::string& str, unsigned base = 10)
 	std::istringstream istr(str);
 	T t;
 
+	if (!base) {
+		if (str.size() > 2 && str.substr(0, 2) == "0x") {
+			base = 16;
+		} else if (str.size() > 1 && str[0] == '0') {
+			base = 8;
+		} else {
+			base = 10;
+		}
+	}
+
 	if (!(istr >> std::setbase(base) >> t)) {
 		throw bad_lexical_cast("conversion failed: " + str + " -> " + std::string(typeid(T).name()));
 	}
