@@ -44,11 +44,12 @@ string parsing_dumper::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 		if (is_ignorable_line(line)) {
 			continue;
 		} else {
-			string linebuf = parse_chunk_line(line, pos);   
-			if (!linebuf.empty()) {
+			try {
+				string linebuf = parse_chunk_line(line, pos);
 				pos += linebuf.size();
 				chunk += linebuf;
-			} else {
+			} catch (const exception& e) {
+				// TODO log
 				break;
 			}
 		}
@@ -93,24 +94,20 @@ bool bfc_ram_dumper::is_ignorable_line(const string& line)
 
 string bfc_ram_dumper::parse_chunk_line(const string& line, uint32_t offset)
 {
-	try {
-		uint32_t val = hex_cast<uint32_t>(line.substr(0, 8));
-		if (val != offset) {
-			return "";
-		}
-
-		string linebuf;
-
-		for (unsigned i = 0; i < 4; ++i) {
-			val = hex_cast<uint32_t>(line.substr((i + 1) * 10, 8));
-			val = htonl(val);
-			linebuf += string(reinterpret_cast<char*>(&val), 4);
-		}
-
-		return linebuf;
-	} catch (const bad_lexical_cast& e) {
-		return "";
+	uint32_t val = hex_cast<uint32_t>(line.substr(0, 8));
+	if (val != offset) {
+		throw runtime_error("offset mismatch");
 	}
+
+	string linebuf;
+
+	for (unsigned i = 0; i < 4; ++i) {
+		val = hex_cast<uint32_t>(line.substr((i + 1) * 10, 8));
+		val = htonl(val);
+		linebuf += string(reinterpret_cast<char*>(&val), 4);
+	}
+
+	return linebuf;
 }
 
 class bfc_flash_dumper : public parsing_dumper
@@ -159,23 +156,19 @@ bool bfc_flash_dumper::is_ignorable_line(const string& line)
 
 string bfc_flash_dumper::parse_chunk_line(const string& line, uint32_t offset)
 {
-	try {
-		string linebuf;
+	string linebuf;
 
-		for (unsigned i = 0; i < 16; ++i) {
-			// don't change this to uint8_t
-			uint32_t val = hex_cast<uint32_t>(line.substr(i * 3 + (i / 4) * 2, 2));
-			if (val > 0xff) {
-				return "";
-			}
-
-			linebuf += char(val);
+	for (unsigned i = 0; i < 16; ++i) {
+		// don't change this to uint8_t
+		uint32_t val = hex_cast<uint32_t>(line.substr(i * 3 + (i / 4) * 2, 2));
+		if (val > 0xff) {
+			throw runtime_error("value out of range: 0x" + to_hex(val));
 		}
 
-		return linebuf;
-	} catch (const bad_lexical_cast& e) {
-		return "";
+		linebuf += char(val);
 	}
+
+	return linebuf;
 }
 
 class bootloader_ram_dumper : public parsing_dumper
@@ -221,25 +214,18 @@ bool bootloader_ram_dumper::is_ignorable_line(const string& line)
 string bootloader_ram_dumper::parse_chunk_line(const string& line, uint32_t offset)
 {
 	if (line.find("Value at") == 0) {
-		try {
-			if (offset != hex_cast<uint32_t>(line.substr(9, 8))) {
-				// TODO log
-				return "";
-			}
-
-			uint32_t val = hex_cast<uint32_t>(line.substr(19, 8));
-			val = htonl(val);
-
-			return string(reinterpret_cast<char*>(&val), 4);
-		} catch (const bad_lexical_cast& e) {
-			// TODO log
+		if (offset != hex_cast<uint32_t>(line.substr(9, 8))) {
+			throw runtime_error("offset mismatch");
 		}
+
+		uint32_t val = htonl(hex_cast<uint32_t>(line.substr(19, 8)));
+		return string(reinterpret_cast<char*>(&val), 4);
 	}
 
-	return "";
+	throw runtime_error("unexpected line");
 }
 
-class bootloader_fast_dumper : public parsing_dumper
+class dumpcode_dumper : public parsing_dumper
 {
 	public:
 	virtual uint32_t chunk_size() const override
@@ -250,12 +236,30 @@ class bootloader_fast_dumper : public parsing_dumper
 	virtual void cleanup() override;
 
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
-	virtual bool is_ignorable_line(const string& line) override;
-	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
+	virtual bool is_ignorable_line(const string& line) override
+	{
+		if (line.size() >= 36) {
+			if (line[0] == ':' && line[9] == ':') {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	virtual string parse_chunk_line(const string& line, uint32_t offset) override
+	{
+		string linebuf;
+		for (unsigned i = 0; i < 4; ++i) {
+			uint32_t val = htonl(hex_cast<uint32_t>(line.substr(1 + (i * 8), 8)));
+			linebuf += string(reinterpret_cast<char*>(&val), 4);
+		}
+
+		return linebuf;
+	}
 
 	private:
 	void upload_code();
-
 };
 
 
