@@ -3,7 +3,8 @@
 #include <functional>
 #include <memory>
 #include <string>
-#include <vector>
+#include <map>
+#include "util.h"
 #include "io.h"
 
 namespace bcm2dump {
@@ -54,6 +55,7 @@ class interface_rw_base
 {
 	public:
 	typedef std::function<void(uint32_t, uint32_t)> progress_listener;
+	typedef std::map<std::string, std::string> args;
 
 	virtual ~interface_rw_base()
 	{ do_cleanup(); }
@@ -62,10 +64,13 @@ class interface_rw_base
 	{ m_listener = listener; }
 
 	virtual void set_partition(const std::string& partition)
-	{ m_partition = partition; }
+	{ m_args["partition"] = partition; }
 
 	virtual void set_interface(const interface::sp& intf)
 	{ m_intf = intf; }
+
+	virtual void set_args(const args& args)
+	{ m_args = args; }
 
 	protected:
 	virtual void init() {}
@@ -84,7 +89,6 @@ class interface_rw_base
 			cleanup();
 			m_inited = false;
 		}
-
 	}
 
 	void do_init()
@@ -94,10 +98,20 @@ class interface_rw_base
 		m_inited = true;
 	}
 
+	template<class T> T arg(const std::string& name)
+	{
+		return lexical_cast<T>(m_args[name]);
+	}
+
+	std::string arg(const std::string& name)
+	{
+		return m_args[name];
+	}
+
 	progress_listener m_listener;
-	std::string m_partition;
 	interface::sp m_intf;
 	bool m_inited = false;
+	args m_args;
 };
 
 }

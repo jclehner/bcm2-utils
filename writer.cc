@@ -68,8 +68,8 @@ class bfc_flash_writer : public writer
 	protected:
 	virtual void init() override
 	{
-		if (!m_intf->runcmd("/flash/open " + m_partition, "opened")) {
-			throw runtime_error("failed to open partition: " + m_partition);
+		if (!m_intf->runcmd("/flash/open " + arg("partition"), "opened")) {
+			throw runtime_error("failed to open partition: " + arg("partition"));
 		}
 	}
 

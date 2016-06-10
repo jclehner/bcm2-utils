@@ -126,13 +126,13 @@ class bfc_flash_dumper : public parsing_dumper
 
 void bfc_flash_dumper::init()
 {
-	if (m_partition.empty()) {
+	if (arg("partition").empty()) {
 		throw runtime_error("cannot dump without a partition name");
 	}
 
 	cleanup();
-	if (!m_intf->runcmd("/flash/open " + m_partition, "opened")) {
-		throw runtime_error("failed to open partition " + m_partition);
+	if (!m_intf->runcmd("/flash/open " + arg("partition"), "opened")) {
+		throw runtime_error("failed to open partition " + arg("partition"));
 	}
 }
 
@@ -257,6 +257,8 @@ class bootloader_fast_dumper : public parsing_dumper
 	void upload_code();
 
 };
+
+
 
 template<class T> dumper::sp create_dumper(const interface::sp& intf)
 {
