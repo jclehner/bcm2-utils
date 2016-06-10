@@ -33,7 +33,8 @@ class dumper
 
 	virtual uint32_t chunk_size() const = 0;
 
-	virtual std::string read_chunk(uint32_t offset, uint32_t length) = 0;
+	void dump(uint32_t offset, uint32_t length, std::ostream& os);
+	std::string dump(uint32_t offset, uint32_t length);
 
 	static sp get(const interface::sp& interface, const bcm2_profile* profile, const bcm2_addrspace* space);
 
@@ -45,6 +46,7 @@ class dumper
 #endif
 
 	protected:
+	virtual std::string read_chunk(uint32_t offset, uint32_t length) = 0;
 	interface::sp m_intf;
 	std::string m_partition;
 };

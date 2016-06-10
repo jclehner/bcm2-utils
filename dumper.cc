@@ -291,6 +291,38 @@ class bootloader_fast_dumper : public parsing_dumper
 };
 }
 
+void dumper::dump(uint32_t offset, uint32_t length, std::ostream& os)
+{
+	if (offset % offset_alignment()) {
+		throw invalid_argument("offset not aligned to " + to_string(offset_alignment()) + " bytes");
+	}
+
+	if (length % length_alignment()) {
+		throw invalid_argument("length not aligned to " + to_string(length_alignment()) + " bytes");
+	}
+
+	while (length) {
+		uint32_t n = min(chunk_size(), length);
+		string chunk = read_chunk(offset, n);
+
+		if (chunk.size() != n) {
+			throw runtime_error("unexpected chunk length: " + to_string(chunk.size()));
+		}
+
+		os.write(chunk.c_str(), chunk.size());
+
+		length -= n;
+		offset += n;
+	}
+}
+
+string dumper::dump(uint32_t offset, uint32_t length)
+{
+	ostringstream ostr;
+	dump(offset, length, ostr);
+	return ostr.str();
+}
+
 dumper::sp dumper::get_bfc_ram(const shared_ptr<interface>& intf)
 {
 	sp p = make_shared<bfc_ram_dumper>();
