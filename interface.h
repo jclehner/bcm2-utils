@@ -1,5 +1,6 @@
 #ifndef BCM2DUMP_INTERFACE_H
 #define BCM2DUMP_INTERFACE_H
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -48,6 +49,57 @@ class interface
 	protected:
 	std::shared_ptr<io> m_io;
 };
+
+class interface_rw_base
+{
+	public:
+	typedef std::function<void(uint32_t, uint32_t)> progress_listener;
+
+	virtual ~interface_rw_base()
+	{ do_cleanup(); }
+
+	virtual void set_progress_listener(const progress_listener& listener)
+	{ m_listener = listener; }
+
+	virtual void set_partition(const std::string& partition)
+	{ m_partition = partition; }
+
+	virtual void set_interface(const interface::sp& intf)
+	{ m_intf = intf; }
+
+	protected:
+	virtual void init() {}
+	virtual void cleanup() {}
+
+	virtual void update_progress(uint32_t offset, uint32_t diff)
+	{
+		if (m_listener) {
+			m_listener(offset, diff);
+		}
+	}
+
+	void do_cleanup()
+	{
+		if (m_inited) {
+			cleanup();
+			m_inited = false;
+		}
+
+	}
+
+	void do_init()
+	{
+		do_cleanup();
+		init();
+		m_inited = true;
+	}
+
+	progress_listener m_listener;
+	std::string m_partition;
+	interface::sp m_intf;
+	bool m_inited = false;
+};
+
 }
 
 #endif

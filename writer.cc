@@ -68,8 +68,6 @@ class bfc_flash_writer : public writer
 	protected:
 	virtual void init() override
 	{
-		cleanup();
-
 		if (!m_intf->runcmd("/flash/open " + m_partition, "opened")) {
 			throw runtime_error("failed to open partition: " + m_partition);
 		}
@@ -131,13 +129,17 @@ void writer::write(uint32_t offset, const string& buf)
 		throw invalid_argument("offset must be aligned to " + to_string(alignment) + " bytes");
 	}
 
-	while (length) {
+	uint32_t remaining = length;
+
+	while (remaining) {
 		uint32_t n = length < max_size() ? min_size() : max_size();
-		if (!write_chunk(offset, buf.substr(buf.size() - length, n))) {
+		if (!write_chunk(offset, buf.substr(buf.size() - remaining, n))) {
 			throw runtime_error("failed to write chunk (@" + to_hex(offset) + ", " + to_string(n) + ")");
 		}
 
-		length -= n;
+		update_progress(offset, n);
+
+		remaining -= n;
 		offset += n;
 	}
 }

@@ -7,12 +7,10 @@
 #include "interface.h"
 
 namespace bcm2dump {
-class writer
+class writer : public interface_rw_base
 {
 	public:
 	typedef std::shared_ptr<writer> sp;
-
-	virtual ~writer() { cleanup(); }
 
 	virtual void set_partition(const std::string& partition)
 	{ m_partition = partition; }
@@ -37,13 +35,6 @@ class writer
 	virtual bool write_chunk(uint32_t offset, const std::string& chunk) = 0;
 	virtual void exec_impl(uint32_t offset)
 	{ throw std::runtime_error("not supported"); }
-
-	virtual void init() {}
-	virtual void cleanup() {}
-
-	std::string m_partition;
-	interface::sp m_intf;
-	bool m_inited = false;
 };
 }
 #endif

@@ -6,7 +6,7 @@
 #include "profile.h"
 
 namespace bcm2dump {
-class dumper
+class dumper : public interface_rw_base
 {
 	public:
 	typedef std::shared_ptr<dumper> sp;
@@ -21,12 +21,6 @@ class dumper
 	};
 
 	virtual ~dumper() { do_cleanup(); }
-
-	virtual void set_partition(const std::string& partition)
-	{ m_partition = partition; }
-
-	virtual void set_interface(const interface::sp& intf)
-	{ m_intf = intf; }
 
 	virtual uint32_t offset_alignment() const
 	{ return 4; }
@@ -43,15 +37,6 @@ class dumper
 
 	protected:
 	virtual std::string read_chunk(uint32_t offset, uint32_t length) = 0;
-	virtual void init() {}
-	virtual void cleanup() {}
-
-	void do_cleanup();
-	void do_init();
-
-	bool m_inited = false;
-	interface::sp m_intf;
-	std::string m_partition;
 };
 }
 #endif

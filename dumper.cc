@@ -296,9 +296,13 @@ void dumper::dump(uint32_t offset, uint32_t length, std::ostream& os)
 
 	do_init();
 
-	while (length) {
+	uint32_t remaining = length;
+
+	while (remaining) {
 		uint32_t n = min(chunk_size(), length);
 		string chunk = read_chunk(offset, n);
+
+		update_progress(offset, n);
 
 		if (chunk.size() != n) {
 			throw runtime_error("unexpected chunk length: " + to_string(chunk.size()));
@@ -306,7 +310,7 @@ void dumper::dump(uint32_t offset, uint32_t length, std::ostream& os)
 
 		os.write(chunk.c_str(), chunk.size());
 
-		length -= n;
+		remaining -= n;
 		offset += n;
 	}
 
@@ -318,21 +322,6 @@ string dumper::dump(uint32_t offset, uint32_t length)
 	ostringstream ostr;
 	dump(offset, length, ostr);
 	return ostr.str();
-}
-
-void dumper::do_init()
-{
-	cleanup();
-	init();
-	m_inited = true;
-}
-
-void dumper::do_cleanup()
-{
-	if (m_inited) {
-		cleanup();
-		m_inited = false;
-	}
 }
 
 // TODO this should be migrated to something like
