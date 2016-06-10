@@ -131,32 +131,14 @@ void bfc_flash_dumper::init()
 	}
 
 	cleanup();
-	m_intf->runcmd("/flash/open " + m_partition);
-
-	bool opened = false;
-
-	while (m_intf->pending()) {
-		string line = m_intf->readln();
-		if (line.empty()) {
-			break;
-		}
-
-		if (line.find("opened") != string::npos) {
-			opened = true;
-		}
-	}
-
-	if (!opened) {
+	if (!m_intf->runcmd("/flash/open " + m_partition, "opened")) {
 		throw runtime_error("failed to open partition " + m_partition);
 	}
 }
 
 void bfc_flash_dumper::cleanup()
 {
-	m_intf->runcmd("/flash/close");
-	while (m_intf->pending()) {
-		m_intf->readln();
-	}
+	m_intf->runcmd("/flash/close", "closed");
 }
 
 void bfc_flash_dumper::do_read_chunk(uint32_t offset, uint32_t length)
