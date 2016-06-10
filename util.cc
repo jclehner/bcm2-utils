@@ -10,7 +10,7 @@ string trim(const string& str)
 
 	i = ret.find_last_not_of(" \r\n\t");
 	if (i != string::npos) {
-		ret.erase(i);
+		ret.erase(i + 1);
 	}
 
 	return ret;

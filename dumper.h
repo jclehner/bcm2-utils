@@ -25,6 +25,9 @@ class dumper
 	virtual void set_partition(const std::string& partition)
 	{ m_partition = partition; }
 
+	virtual void set_interface(const interface::sp& intf)
+	{ m_intf = intf; }
+
 	virtual uint32_t offset_alignment() const
 	{ return 4; }
 

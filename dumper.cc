@@ -177,9 +177,8 @@ void bfc_flash_dumper::do_read_chunk(uint32_t offset, uint32_t length)
 
 bool bfc_flash_dumper::is_ignorable_line(const string& line)
 {
-
-	if (line.size() >= 55) {
-		if (line.back() == ' ' && line.substr(11, 3) == "   ") {
+	if (line.size() >= 53) {
+		if (line.substr(11, 3) == "   " && line.substr(25, 3) == "   ") {
 			return false;
 		}
 	}	
@@ -193,8 +192,13 @@ string bfc_flash_dumper::parse_chunk_line(const string& line, uint32_t offset)
 		string linebuf;
 
 		for (unsigned i = 0; i < 16; ++i) {
-			uint8_t val = hex_cast<uint8_t>(line.substr(i * 3 + (i / 4) * 3, 2));
-			linebuf += char(val & 0xff);
+			// don't change this to uint8_t
+			uint32_t val = hex_cast<uint32_t>(line.substr(i * 3 + (i / 4) * 2, 2));
+			if (val > 0xff) {
+				return "";
+			}
+
+			linebuf += char(val);
 		}
 
 		return linebuf;
@@ -288,6 +292,13 @@ class bootloader_fast_dumper : public parsing_dumper
 	virtual bool is_ignorable_line(const string& line) override;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
 };
+
+template<class T> dumper::sp get_dumper(const interface::sp& intf)
+{
+	dumper::sp ret = make_shared<T>();
+	ret->set_interface(intf);
+	return ret;
+}
 }
 
 void dumper::dump(uint32_t offset, uint32_t length, std::ostream& os)
@@ -324,9 +335,12 @@ string dumper::dump(uint32_t offset, uint32_t length)
 
 dumper::sp dumper::get_bfc_ram(const shared_ptr<interface>& intf)
 {
-	sp p = make_shared<bfc_ram_dumper>();
-	p->m_intf = intf;
-	return p;
+	return get_dumper<bfc_ram_dumper>(intf);
+}
+
+dumper::sp dumper::get_bfc_flash(const shared_ptr<interface>& intf)
+{
+	return get_dumper<bfc_flash_dumper>(intf);
 }
 }
 
