@@ -20,6 +20,11 @@ template<class T> T extract(const std::string& data, std::string::size_type offs
 	return *reinterpret_cast<const T*>(data.substr(offset, sizeof(data)).c_str());
 }
 
+template<class T> void patch(std::string& data, std::string::size_type offset, const T& t)
+{
+	data.replace(offset, sizeof(T), std::string(reinterpret_cast<const char*>(&t), sizeof(T)));
+}
+
 class bad_lexical_cast : public std::invalid_argument
 {
 	public:

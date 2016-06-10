@@ -30,7 +30,7 @@ class dumper : public interface_rw_base
 
 	virtual uint32_t chunk_size() const = 0;
 
-	void dump(uint32_t offset, uint32_t length, std::ostream& os);
+	virtual void dump(uint32_t offset, uint32_t length, std::ostream& os);
 	std::string dump(uint32_t offset, uint32_t length);
 
 	static sp create(const interface::sp& interface, const std::string& type);

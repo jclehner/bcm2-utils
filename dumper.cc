@@ -1,5 +1,9 @@
 #include <arpa/inet.h>
 #include <iostream>
+#include <fstream>
+#include "bcm2dump.h"
+#include "mipsasm.h"
+#include "writer.h"
 #include "dumper.h"
 #include "util.h"
 
@@ -11,6 +15,16 @@ namespace {
 template<class T> T hex_cast(const std::string& str)
 {
 	return lexical_cast<T>(str, 16);
+}
+
+inline void patch32(string& buf, string::size_type offset, uint32_t n)
+{
+	patch<uint32_t>(buf, offset, htonl(n));
+}
+
+inline uint32_t calc_checksum(const string& buf)
+{
+	return 0xbeefc0de;
 }
 
 class parsing_dumper : public dumper
@@ -29,6 +43,7 @@ class parsing_dumper : public dumper
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) = 0;
 	virtual bool is_ignorable_line(const string& line) = 0;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) = 0;
+	virtual void on_chunk_error(uint32_t offset, uint32_t length) {}
 };
 
 string parsing_dumper::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t retries)
@@ -58,10 +73,11 @@ string parsing_dumper::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 	if (chunk.size() != length) {
 		if (retries >= 2) {
 			throw runtime_error("failed to read chunk (@" + to_hex(offset)
-					+ ", " + to_string(length) + "); line was\n'" + line + "'");
+					+ ", " + to_string(length) + "); length " + to_string(chunk.size()) + ", line \n'" + line + "'");
 		}
 			
 		// TODO log
+		on_chunk_error(offset, length);
 		return read_chunk_impl(offset, length, retries + 1);
 	}
 
@@ -71,6 +87,12 @@ string parsing_dumper::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 class bfc_ram_dumper : public parsing_dumper
 {
 	public:
+	virtual uint32_t length_alignment() const
+	{ return 4; }
+
+	virtual uint32_t chunk_size() const override
+	{ return 4; }
+
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
 	virtual bool is_ignorable_line(const string& line) override;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
@@ -113,7 +135,7 @@ string bfc_ram_dumper::parse_chunk_line(const string& line, uint32_t offset)
 class bfc_flash_dumper : public parsing_dumper
 {
 	protected:
-	virtual void init() override;
+	virtual void init(uint32_t offset, uint32_t length) override;
 	virtual void cleanup() override;
 
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
@@ -121,7 +143,7 @@ class bfc_flash_dumper : public parsing_dumper
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
 };
 
-void bfc_flash_dumper::init()
+void bfc_flash_dumper::init(uint32_t offset, uint32_t length)
 {
 	if (arg("partition").empty()) {
 		throw runtime_error("cannot dump without a partition name");
@@ -177,9 +199,12 @@ class bootloader_ram_dumper : public parsing_dumper
 	virtual uint32_t chunk_size() const override
 	{ return 4; }
 
+	virtual uint32_t length_alignment() const
+	{ return 4; }
+
 
 	protected:
-	virtual void init() override;
+	virtual void init(uint32_t offset, uint32_t length) override;
 	virtual void cleanup() override;
 
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
@@ -187,7 +212,7 @@ class bootloader_ram_dumper : public parsing_dumper
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
 };
 
-void bootloader_ram_dumper::init()
+void bootloader_ram_dumper::init(uint32_t offset, uint32_t length)
 {
 	m_intf->write("r");
 }
@@ -225,21 +250,34 @@ string bootloader_ram_dumper::parse_chunk_line(const string& line, uint32_t offs
 	throw runtime_error("unexpected line");
 }
 
+// this defines uint32 dumpcode[]
+#include "dumpcode.h"
+
 class dumpcode_dumper : public parsing_dumper
 {
 	public:
-	virtual uint32_t chunk_size() const override
-	{ return 2048; }
+	dumpcode_dumper(const bcm2_func* func = nullptr) : m_dump_func(func) {}
+
+	virtual uint32_t chunk_size() const
+	{ return 0x4000; }
+
+	virtual void set_interface(const interface::sp& intf) override
+	{
+		parsing_dumper::set_interface(intf);
+		m_ramw = writer::create(intf, "ram");
+		m_ramr = dumper::create(intf, "ram");
+	}
 
 	protected:
-	virtual void init() override;
-	virtual void cleanup() override;
+	virtual void do_read_chunk(uint32_t offset, uint32_t length) override
+	{
+		m_ramw->exec(m_profile->loadaddr + m_entry);
+	}
 
-	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
 	virtual bool is_ignorable_line(const string& line) override
 	{
-		if (line.size() >= 36) {
-			if (line[0] == ':' && line[9] == ':') {
+		if (line.size() <= 36) {
+			if (line[0] == ':') {
 				return false;
 			}
 		}
@@ -251,7 +289,7 @@ class dumpcode_dumper : public parsing_dumper
 	{
 		string linebuf;
 		for (unsigned i = 0; i < 4; ++i) {
-			uint32_t val = htonl(hex_cast<uint32_t>(line.substr(1 + (i * 8), 8)));
+			uint32_t val = htonl(hex_cast<uint32_t>(line.substr(1 + i * 9, 8)));
 			linebuf += string(reinterpret_cast<char*>(&val), 4);
 		}
 
@@ -259,10 +297,148 @@ class dumpcode_dumper : public parsing_dumper
 	}
 
 	private:
-	void upload_code();
+	void on_chunk_error(uint32_t offset, uint32_t length)
+	{
+		if (!arg("codefile").empty()) {
+			throw runtime_error("error recovery is not possible with custom dumpcode");
+		}
+
+		ofstream of("dumpcode_post.bin");
+		m_ramr->dump(m_loadaddr, m_code.size(), of);
+
+		patch32(m_code, 0x10, offset);
+		m_ramw->write(m_loadaddr + 0x10, m_code.substr(0x10, 4));
+
+		patch32(m_code, 0x1c, m_dump_length - (offset - m_dump_offset));
+		m_ramw->write(m_loadaddr + 0x1c, m_code.substr(0x1c, 4));
+	}
+
+	void init(uint32_t offset, uint32_t length) override
+	{
+		if (!m_profile) {
+			throw runtime_error("must specify a profile for dumpcode dump");
+		}
+
+		if (!m_profile->loadaddr || !m_profile->buffer || !m_profile->printf) {
+			throw runtime_error("insufficient profile infos for dumpcode dump");
+		}
+
+		if (m_profile->loadaddr & 0xffff) {
+			throw runtime_error("loadaddr must be aligned to 64k");
+		}
+
+		m_dump_offset = offset;
+		m_dump_length = length;
+
+		uint32_t kseg1 = m_profile->kseg1mask;
+		m_loadaddr = kseg1 | m_profile->loadaddr;
+
+		if (arg("codefile").empty()) {
+			m_code = string(reinterpret_cast<const char*>(dumpcode), sizeof(dumpcode));
+			m_entry = 0x4c;
+
+			patch32(m_code, 0x10, 0);
+			patch32(m_code, 0x14, kseg1 | m_profile->buffer);
+			patch32(m_code, 0x18, offset);
+			patch32(m_code, 0x1c, length);
+			patch32(m_code, 0x20, chunk_size());
+			patch32(m_code, 0x24, kseg1 | m_profile->printf);
+
+			if (m_dump_func && m_dump_func->addr) {
+				patch32(m_code, 0x0c, m_dump_func->mode);
+				patch32(m_code, 0x28, kseg1 | m_dump_func->addr);
+
+				for (unsigned i = 0; i < BCM2_PATCH_NUM; ++i) {
+					uint32_t offset = 0x2c + (8 * i);
+					uint32_t addr = m_dump_func->patch[i].addr;
+					patch32(m_code, offset, addr ? (kseg1 | addr) : 0);
+					patch32(m_code, offset + 4, addr ? m_dump_func->patch[i].word : 0);
+				}
+			}
+
+			uint32_t codesize = m_code.size();
+			if (mipsasm_resolve_labels(reinterpret_cast<uint32_t*>(&m_code[0]), &codesize, m_entry) != 0) {
+				throw runtime_error("failed to resolve mips asm labels");
+			}
+
+			m_code.resize(codesize);
+			uint32_t checksum = calc_checksum(m_code.substr(m_entry, m_code.size() - 4 - m_entry));
+			uint32_t actual = ntohl(extract<uint32_t>(m_ramr->dump(m_loadaddr + m_code.size() - 4, 4)));
+
+			patch32(m_code, codesize - 4, checksum);
+
+			progress pg;
+			progress_init(&pg, m_loadaddr, m_code.size());
+			printf("updating dump code at 0x%08x (%u b)\n", m_loadaddr, codesize);
+
+			for (unsigned pass = 0; pass < 2; ++pass) {
+				string ramcode = m_ramr->dump(m_loadaddr, m_code.size());
+				for (size_t i = 0; i < m_code.size(); i += 4) {
+					if (!pass) {
+						progress_add(&pg, 4);
+						printf("\rdump: ");
+						progress_print(&pg, stdout);
+					}
+
+					if (ramcode.substr(i, 4) != m_code.substr(i, 4)) {
+						if (pass == 1) {
+							throw runtime_error("dump code verification failed at 0x" + to_hex(i + m_loadaddr, 8));
+						}
+						m_ramw->write(m_loadaddr + i, m_code.substr(i, 4));
+					}
+				}
+
+				if (!pass) {
+					printf("\n");
+				}
+			}
+
+#if 1
+			unsigned i = 0;
+
+			ofstream out("dumpcode.bin");
+			m_ramr->dump(m_loadaddr, m_code.size(), out);
+			out.close();
+
+			do {
+				cout << "loop " << i << endl;
+				m_ramw->exec(m_loadaddr + m_entry);
+
+				unsigned lines = 0;
+
+				while (m_intf->pending()) {
+					string line = m_intf->readln(0);
+					if (!is_ignorable_line(line)) {
+						cout << "\r '" << line << "' " << ++lines << flush;
+
+						if (!i && lines < 20) {
+							cout << endl;
+						}
+					} else {
+						cout << "\r '" << line << "' (bad)" << endl;
+					}
+				}
+
+				cout << endl;
+			} while (++i < (length / chunk_size()));
+			exit(0);
+#endif
+		}
+
+	}
+
+	string m_code;
+	uint32_t m_loadaddr = 0;
+	uint32_t m_entry = 0;
+
+	uint32_t m_dump_offset = 0;
+	uint32_t m_dump_length = 0;
+
+	const bcm2_func* m_dump_func = nullptr;
+
+	writer::sp m_ramw;
+	dumper::sp m_ramr;
 };
-
-
 
 template<class T> dumper::sp create_dumper(const interface::sp& intf)
 {
@@ -279,10 +455,10 @@ void dumper::dump(uint32_t offset, uint32_t length, std::ostream& os)
 	}
 
 	if (length % length_alignment()) {
-		throw invalid_argument("length not aligned to " + to_string(length_alignment()) + " bytes");
+		throw invalid_argument("length " + to_string(length) + " not aligned to " + to_string(length_alignment()) + " bytes");
 	}
 
-	do_init();
+	do_init(offset, length);
 
 	uint32_t remaining = length;
 
@@ -319,6 +495,8 @@ dumper::sp dumper::create(const interface::sp& intf, const string& type)
 	if (intf->name() == "bootloader") {
 		if (type == "ram") {
 			return create_dumper<bootloader_ram_dumper>(intf);
+		} else if (type == "qram") {
+			return create_dumper<dumpcode_dumper>(intf);
 		} else if (type == "flash") {
 			// TODO
 		}

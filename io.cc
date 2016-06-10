@@ -5,16 +5,28 @@
 #include <fcntl.h>
 #include <cstring>
 #include <cerrno>
+#include <list>
 #include "util.h"
 #include "io.h"
 using namespace std;
 
-//#define DEBUG
+#define DEBUG
 
 typedef runtime_error user_error;
 
 namespace bcm2dump {
 namespace {
+
+list<string> lines;
+
+void add_line(const string& line, bool in)
+{
+	if (lines.size() == 1000) {
+		lines.pop_front();
+	}
+
+	lines.push_back((in ? "==> " : "<== ") + line);
+}
 
 unsigned to_termspeed(unsigned speed)
 {
@@ -103,7 +115,7 @@ void fdio::write(const string& str)
 		throw system_error(errno, system_category(), "write");
 	}
 #ifdef DEBUG
-	printf("<<< '%s'\n", trim(str).c_str());
+	add_line("'" + trim(str) + "'", false);
 #endif
 }
 
@@ -191,9 +203,13 @@ string io::readln(unsigned timeout) const
 
 	if (!line.empty()) {
 #ifdef DEBUG
-		printf(">>> '%s'\n", line.c_str());
+		add_line("'" + line + "'", true);
 #endif
 		return line;
+	} else if (lf) {
+#ifdef DEBUG
+		add_line("(empty)", true);
+#endif
 	}
 
 	return lf ? string("\0", 1) : "";
@@ -202,5 +218,10 @@ string io::readln(unsigned timeout) const
 shared_ptr<io> io::open_serial(const char* tty, unsigned speed)
 {
 	return make_shared<serial>(tty, speed);	
+}
+
+list<string> io::get_last_lines()
+{
+	return lines;
 }
 }

@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <map>
+#include "profile.h"
 #include "util.h"
 #include "io.h"
 
@@ -60,11 +61,14 @@ class interface_rw_base
 	virtual ~interface_rw_base()
 	{ do_cleanup(); }
 
-	virtual void set_progress_listener(const progress_listener& listener)
+	virtual void set_progress_listener(const progress_listener& listener = progress_listener())
 	{ m_listener = listener; }
 
 	virtual void set_partition(const std::string& partition)
 	{ m_args["partition"] = partition; }
+
+	virtual void set_profile(const bcm2_profile* profile)
+	{ m_profile = profile; }
 
 	virtual void set_interface(const interface::sp& intf)
 	{ m_intf = intf; }
@@ -73,7 +77,7 @@ class interface_rw_base
 	{ m_args = args; }
 
 	protected:
-	virtual void init() {}
+	virtual void init(uint32_t offset, uint32_t length) {}
 	virtual void cleanup() {}
 
 	virtual void update_progress(uint32_t offset, uint32_t diff)
@@ -91,10 +95,10 @@ class interface_rw_base
 		}
 	}
 
-	void do_init()
+	void do_init(uint32_t offset, uint32_t length)
 	{
 		do_cleanup();
-		init();
+		init(offset, length);
 		m_inited = true;
 	}
 
@@ -110,6 +114,7 @@ class interface_rw_base
 
 	progress_listener m_listener;
 	interface::sp m_intf;
+	const bcm2_profile* m_profile;
 	bool m_inited = false;
 	args m_args;
 };
