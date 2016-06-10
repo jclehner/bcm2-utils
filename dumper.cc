@@ -22,6 +22,11 @@ inline void patch32(string& buf, string::size_type offset, uint32_t n)
 	patch<uint32_t>(buf, offset, htonl(n));
 }
 
+template<class T> string to_buf(const T& t)
+{
+	return string(reinterpret_cast<const char*>(&t), sizeof(T));
+}
+
 inline uint32_t calc_checksum(const string& buf)
 {
 	return 0xbeefc0de;
@@ -48,22 +53,35 @@ class parsing_dumper : public dumper
 
 string parsing_dumper::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t retries)
 {
+	printf("  %s: do_read_chunk(0x%08x, %u)\n", __func__, offset, length);
 	do_read_chunk(offset, length);
 
 	string line, linebuf, chunk;
 	uint32_t pos = offset;
 
 	while (chunk.size() < length && m_intf->pending()) {
-		line = trim(m_intf->readln(100));
+		printf("  %s: readln()\n", __func__);
+		line = m_intf->readln();
+		if (line.empty()) {
+			break;
+		}
 
+		line = trim(line);
+
+		printf("  %s: is_ignorable_line(\"%s\")\n", __func__, line.c_str());
 		if (is_ignorable_line(line)) {
 			continue;
 		} else {
 			try {
+				printf("  %s: parse_chunk_line(..., %08x)\n", __func__, pos);
 				string linebuf = parse_chunk_line(line, pos);
 				pos += linebuf.size();
 				chunk += linebuf;
 			} catch (const exception& e) {
+				if (retries >= 2) {
+					throw runtime_error("failed to read chunk line @" + to_hex(pos) + ": '" + line + "' (" + e.what() + ")");
+				}
+
 				// TODO log
 				break;
 			}
@@ -72,8 +90,8 @@ string parsing_dumper::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 
 	if (chunk.size() != length) {
 		if (retries >= 2) {
-			throw runtime_error("failed to read chunk (@" + to_hex(offset)
-					+ ", " + to_string(length) + "); length " + to_string(chunk.size()) + ", line \n'" + line + "'");
+			throw runtime_error("read incomplete chunk @" + to_hex(offset)
+					+ ", " + to_string(length) + " length " + to_string(chunk.size()));
 		}
 			
 		// TODO log
@@ -116,17 +134,13 @@ bool bfc_ram_dumper::is_ignorable_line(const string& line)
 
 string bfc_ram_dumper::parse_chunk_line(const string& line, uint32_t offset)
 {
-	uint32_t val = hex_cast<uint32_t>(line.substr(0, 8));
-	if (val != offset) {
+	if (offset != hex_cast<uint32_t>(line.substr(0, 8))) {
 		throw runtime_error("offset mismatch");
 	}
 
 	string linebuf;
-
 	for (unsigned i = 0; i < 4; ++i) {
-		val = hex_cast<uint32_t>(line.substr((i + 1) * 10, 8));
-		val = htonl(val);
-		linebuf += string(reinterpret_cast<char*>(&val), 4);
+		linebuf += to_buf(htonl(hex_cast<uint32_t>(line.substr((i + 1) * 10, 8))));
 	}
 
 	return linebuf;
@@ -243,8 +257,7 @@ string bootloader_ram_dumper::parse_chunk_line(const string& line, uint32_t offs
 			throw runtime_error("offset mismatch");
 		}
 
-		uint32_t val = htonl(hex_cast<uint32_t>(line.substr(19, 8)));
-		return string(reinterpret_cast<char*>(&val), 4);
+		return to_buf(htonl(hex_cast<uint32_t>(line.substr(19, 8))));
 	}
 
 	throw runtime_error("unexpected line");
@@ -288,9 +301,12 @@ class dumpcode_dumper : public parsing_dumper
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override
 	{
 		string linebuf;
+		string::size_type beg = 1;
+
 		for (unsigned i = 0; i < 4; ++i) {
-			uint32_t val = htonl(hex_cast<uint32_t>(line.substr(1 + i * 9, 8)));
-			linebuf += string(reinterpret_cast<char*>(&val), 4);
+			string valstr = line.substr(beg, line.find(':', beg + 1) - beg);
+			linebuf += to_buf(htonl(hex_cast<uint32_t>(valstr)));
+			beg += valstr.size() + 1;
 		}
 
 		return linebuf;
@@ -299,7 +315,7 @@ class dumpcode_dumper : public parsing_dumper
 	private:
 	void on_chunk_error(uint32_t offset, uint32_t length)
 	{
-		if (!arg("codefile").empty()) {
+		if (!arg("codefile").empty() || true) {
 			throw runtime_error("error recovery is not possible with custom dumpcode");
 		}
 
@@ -369,14 +385,17 @@ class dumpcode_dumper : public parsing_dumper
 
 			progress pg;
 			progress_init(&pg, m_loadaddr, m_code.size());
-			printf("updating dump code at 0x%08x (%u b)\n", m_loadaddr, codesize);
+
+			if (m_listener) {
+				printf("updating dump code at 0x%08x (%u b)\n", m_loadaddr, codesize);
+			}
 
 			for (unsigned pass = 0; pass < 2; ++pass) {
 				string ramcode = m_ramr->dump(m_loadaddr, m_code.size());
-				for (size_t i = 0; i < m_code.size(); i += 4) {
-					if (!pass) {
+				for (uint32_t i = 0; i < m_code.size(); i += 4) {
+					if (!pass && m_listener) {
 						progress_add(&pg, 4);
-						printf("\rdump: ");
+						printf("\r ");
 						progress_print(&pg, stdout);
 					}
 
@@ -388,43 +407,13 @@ class dumpcode_dumper : public parsing_dumper
 					}
 				}
 
-				if (!pass) {
+				if (!pass && m_listener) {
 					printf("\n");
 				}
 			}
 
-#if 1
-			unsigned i = 0;
-
-			ofstream out("dumpcode.bin");
-			m_ramr->dump(m_loadaddr, m_code.size(), out);
-			out.close();
-
-			do {
-				cout << "loop " << i << endl;
-				m_ramw->exec(m_loadaddr + m_entry);
-
-				unsigned lines = 0;
-
-				while (m_intf->pending()) {
-					string line = m_intf->readln(0);
-					if (!is_ignorable_line(line)) {
-						cout << "\r '" << line << "' " << ++lines << flush;
-
-						if (!i && lines < 20) {
-							cout << endl;
-						}
-					} else {
-						cout << "\r '" << line << "' (bad)" << endl;
-					}
-				}
-
-				cout << endl;
-			} while (++i < (length / chunk_size()));
-			exit(0);
-#endif
+			cout << "READY @ 0x" << to_hex(m_loadaddr + m_entry) << endl;
 		}
-
 	}
 
 	string m_code;
@@ -458,12 +447,14 @@ void dumper::dump(uint32_t offset, uint32_t length, std::ostream& os)
 		throw invalid_argument("length " + to_string(length) + " not aligned to " + to_string(length_alignment()) + " bytes");
 	}
 
+	printf("%s: do_init(%08x, %u)\n", __func__, offset, length);
 	do_init(offset, length);
 
 	uint32_t remaining = length;
 
 	while (remaining) {
 		uint32_t n = min(chunk_size(), length);
+		printf("%s: read_chunk(%08x, %u)\n", __func__, offset, n);
 		string chunk = read_chunk(offset, n);
 
 		update_progress(offset, n);
@@ -477,6 +468,8 @@ void dumper::dump(uint32_t offset, uint32_t length, std::ostream& os)
 		remaining -= n;
 		offset += n;
 	}
+
+	printf("\n");
 
 	do_cleanup();
 }
