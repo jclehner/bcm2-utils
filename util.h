@@ -15,6 +15,11 @@ inline bool contains(const std::string& haystack, const std::string& needle)
 	return haystack.find(needle) != std::string::npos;
 }
 
+template<class T> T extract(const std::string& data, std::string::size_type offset = 0)
+{
+	return *reinterpret_cast<const T*>(data.substr(offset, sizeof(data)).c_str());
+}
+
 class bad_lexical_cast : public std::invalid_argument
 {
 	public:
@@ -33,7 +38,7 @@ template<class T> T lexical_cast(const std::string& str, unsigned base = 10)
 	return t;
 }
 
-template<class T> std::string to_hex(const T& t, size_t width = sizeof(T))
+template<class T> std::string to_hex(const T& t, size_t width = sizeof(T) * 2)
 {
 	std::ostringstream ostr;
 	ostr << std::setfill('0') << std::setw(width) << std::hex << t;

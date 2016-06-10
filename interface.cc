@@ -79,12 +79,36 @@ bool bootloader::is_active()
 
 void bootloader::runcmd(const string& cmd)
 {
+#if 0
 	if (cmd.size() != 1) {
 		throw invalid_argument("invalid bootloader command: " + cmd);
 	}
+#endif
 
 	m_io->write(cmd);
 }
+}
+
+bool interface::runcmd(const string& cmd, const string& expect, bool stop_on_match)
+{
+	runcmd(cmd);
+	bool match = false;
+
+	while (pending()) {
+		string line = readln();
+		if (line.empty()) {
+			break;
+		}
+
+		if (line.find(expect) != string::npos) {
+			match = true;
+			if (stop_on_match) {
+				break;
+			}
+		}
+	}
+
+	return match;
 }
 
 shared_ptr<interface> interface::detect(const shared_ptr<io>& io)

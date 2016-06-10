@@ -16,34 +16,23 @@ template<class T> T hex_cast(const std::string& str)
 class parsing_dumper : public dumper
 {
 	public:
-	virtual ~parsing_dumper()
-	{ cleanup(); }
-
 	virtual string read_chunk(uint32_t offset, uint32_t length) override final
-	{ return read_chunk_impl(offset, length, 0); }
+	{
+		return read_chunk_impl(offset, length, 0);
+	}
 
 	virtual uint32_t chunk_size() const override
 	{ return 2048; }
 
 	protected:
-	virtual void init() {}
-	virtual void cleanup() {}
 	virtual string read_chunk_impl(uint32_t offset, uint32_t length, uint32_t retries);
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) = 0;
 	virtual bool is_ignorable_line(const string& line) = 0;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) = 0;
-
-	private:
-	bool m_inited = false;
 };
 
 string parsing_dumper::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t retries)
 {
-	if (!m_inited) {
-		init();
-		m_inited = true;
-	}
-
 	do_read_chunk(offset, length);
 
 	string line, linebuf, chunk;
@@ -281,9 +270,13 @@ class bootloader_fast_dumper : public parsing_dumper
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
 	virtual bool is_ignorable_line(const string& line) override;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
+
+	private:
+	void upload_code();
+
 };
 
-template<class T> dumper::sp get_dumper(const interface::sp& intf)
+template<class T> dumper::sp create_dumper(const interface::sp& intf)
 {
 	dumper::sp ret = make_shared<T>();
 	ret->set_interface(intf);
@@ -301,6 +294,8 @@ void dumper::dump(uint32_t offset, uint32_t length, std::ostream& os)
 		throw invalid_argument("length not aligned to " + to_string(length_alignment()) + " bytes");
 	}
 
+	do_init();
+
 	while (length) {
 		uint32_t n = min(chunk_size(), length);
 		string chunk = read_chunk(offset, n);
@@ -314,6 +309,8 @@ void dumper::dump(uint32_t offset, uint32_t length, std::ostream& os)
 		length -= n;
 		offset += n;
 	}
+
+	do_cleanup();
 }
 
 string dumper::dump(uint32_t offset, uint32_t length)
@@ -323,19 +320,40 @@ string dumper::dump(uint32_t offset, uint32_t length)
 	return ostr.str();
 }
 
-dumper::sp dumper::get_bfc_ram(const shared_ptr<interface>& intf)
+void dumper::do_init()
 {
-	return get_dumper<bfc_ram_dumper>(intf);
+	cleanup();
+	init();
+	m_inited = true;
 }
 
-dumper::sp dumper::get_bfc_flash(const shared_ptr<interface>& intf)
+void dumper::do_cleanup()
 {
-	return get_dumper<bfc_flash_dumper>(intf);
+	if (m_inited) {
+		cleanup();
+		m_inited = false;
+	}
 }
 
-dumper::sp dumper::get_bootloader_ram(const shared_ptr<interface>& intf)
+// TODO this should be migrated to something like
+// interface::create_dumper(const string& type)
+dumper::sp dumper::create(const interface::sp& intf, const string& type)
 {
-	return get_dumper<bootloader_ram_dumper>(intf);
+	if (intf->name() == "bootloader") {
+		if (type == "ram") {
+			return create_dumper<bootloader_ram_dumper>(intf);
+		} else if (type == "flash") {
+			// TODO
+		}
+	} else if (intf->name() == "bfc") {
+		if (type == "ram") {
+			return create_dumper<bfc_ram_dumper>(intf);
+		} else if (type == "flash") {
+			return create_dumper<bfc_flash_dumper>(intf);
+		}
+	}
+
+	throw invalid_argument("no such dumper: " + intf->name() + "-" + type);
 }
 }
 

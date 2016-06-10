@@ -20,7 +20,7 @@ class dumper
 		const char* filename;
 	};
 
-	virtual ~dumper() {}
+	virtual ~dumper() { do_cleanup(); }
 
 	virtual void set_partition(const std::string& partition)
 	{ m_partition = partition; }
@@ -39,17 +39,17 @@ class dumper
 	void dump(uint32_t offset, uint32_t length, std::ostream& os);
 	std::string dump(uint32_t offset, uint32_t length);
 
-	static sp get(const interface::sp& interface, const bcm2_profile* profile, const bcm2_addrspace* space);
-
-#if 1
-	// XXX for testing only
-	static sp get_bfc_ram(const interface::sp& interface);
-	static sp get_bfc_flash(const interface::sp& interface);
-	static sp get_bootloader_ram(const interface::sp& interface);
-#endif
+	static sp create(const interface::sp& interface, const std::string& type);
 
 	protected:
 	virtual std::string read_chunk(uint32_t offset, uint32_t length) = 0;
+	virtual void init() {}
+	virtual void cleanup() {}
+
+	void do_cleanup();
+	void do_init();
+
+	bool m_inited = false;
 	interface::sp m_intf;
 	std::string m_partition;
 };

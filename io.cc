@@ -5,8 +5,11 @@
 #include <fcntl.h>
 #include <cstring>
 #include <cerrno>
+#include "util.h"
 #include "io.h"
 using namespace std;
+
+//#define DEBUG
 
 typedef runtime_error user_error;
 
@@ -99,6 +102,9 @@ void fdio::write(const string& str)
 	if (::write(m_fd, str.c_str(), str.size()) != str.size()) {
 		throw system_error(errno, system_category(), "write");
 	}
+#ifdef DEBUG
+	printf("<<< '%s'\n", trim(str).c_str());
+#endif
 }
 
 void serial::write(const string& str)
@@ -184,6 +190,9 @@ string io::readln(unsigned timeout) const
 	}
 
 	if (!line.empty()) {
+#ifdef DEBUG
+		printf(">>> '%s'\n", line.c_str());
+#endif
 		return line;
 	}
 

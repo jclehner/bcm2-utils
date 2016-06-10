@@ -10,16 +10,24 @@ namespace {
 class bootloader_ram_writer : public writer
 {
 	protected:
-	virtual void write_chunk(uint32_t offset, const string& chunk) override
+	virtual bool write_chunk(uint32_t offset, const string& chunk) override
 	{
 		try {
-			m_intf->runcmd("w");
+			// just to be safe
+			m_intf->writeln("\r\n");
+
+			if (!m_intf->runcmd("w", "Write memory.", true)) {
+				return false;
+			}
+
 			m_intf->writeln(to_hex(offset));
 			uint32_t val = ntohl(extract<uint32_t>(chunk));
-			m_intf->writeln(to_hex(val));
+			return m_intf->runcmd(to_hex(val) + "\r\n", "Main Menu");
 		} catch (const exception& e) {
 			// ensure that we're in a sane state
-			m_intf->writeln();
+			m_intf->runcmd("\r\n", "Main Menu");
+			// TODO log
+			return false;
 		}
 	}
 
@@ -38,10 +46,11 @@ class bfc_ram_writer : public writer
 	{ return 1; }
 
 	protected:
-	virtual void write_chunk(uint32_t offset, const string& chunk) override
+	virtual bool write_chunk(uint32_t offset, const string& chunk) override
 	{
 		uint32_t val = chunk.size() == 4 ? ntohl(extract<uint32_t>(chunk)) : chunk[0];
-		m_intf->runcmd("/write_memory -s " + to_string(chunk.size()) + " 0x" + to_hex(offset) + " 0x" + to_hex(val));
+		return m_intf->runcmd("/write_memory -s " + to_string(chunk.size()) + " 0x" + 
+				to_hex(offset) + " 0x" + to_hex(val), "Writing");
 	}
 
 	virtual void exec_impl(uint32_t offset) override
@@ -73,12 +82,11 @@ class bfc_flash_writer : public writer
 		}
 	}
 
-	virtual void write_chunk(uint32_t offset, const string& chunk) override
+	virtual bool write_chunk(uint32_t offset, const string& chunk) override
 	{
 		uint32_t val = chunk.size() == 4 ? ntohl(extract<uint32_t>(chunk)) : chunk[0];
-		if (!m_intf->runcmd("/flash/write " + to_string(chunk.size()) + " 0x" + to_hex(offset) + " 0x" + to_hex(val), "value written")) {
-			throw runtime_error("failed to write value at offset " + to_hex(offset));
-		}
+		return m_intf->runcmd("/flash/write " + to_string(chunk.size()) + " 0x" 
+				+ to_hex(offset) + " 0x" + to_hex(val), "value written");
 	}
 };
 
@@ -125,8 +133,12 @@ void writer::write(uint32_t offset, const string& buf)
 
 	while (length) {
 		uint32_t n = length < max_size() ? min_size() : max_size();
-		write_chunk(offset + n, buf.substr(buf.size() - length, n));
+		if (!write_chunk(offset, buf.substr(buf.size() - length, n))) {
+			throw runtime_error("failed to write chunk (@" + to_hex(offset) + ", " + to_string(n) + ")");
+		}
+
 		length -= n;
+		offset += n;
 	}
 }
 

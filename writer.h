@@ -34,7 +34,7 @@ class writer
 	static sp create(const interface::sp& intf, const std::string& type);
 
 	protected:
-	virtual void write_chunk(uint32_t offset, const std::string& chunk) = 0;
+	virtual bool write_chunk(uint32_t offset, const std::string& chunk) = 0;
 	virtual void exec_impl(uint32_t offset)
 	{ throw std::runtime_error("not supported"); }
 

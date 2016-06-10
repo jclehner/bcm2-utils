@@ -16,6 +16,8 @@ class interface
 
 	virtual std::string name() const = 0;
 	virtual void runcmd(const std::string& cmd) = 0;
+	virtual bool runcmd(const std::string& cmd, const std::string& expect, bool stop_on_match = false);
+
 	virtual bool is_active() = 0;
 
 	bool is_active(const std::shared_ptr<io>& io)
