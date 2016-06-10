@@ -235,15 +235,7 @@ void bootloader_ram_dumper::cleanup()
 
 void bootloader_ram_dumper::do_read_chunk(uint32_t offset, uint32_t length)
 {
-	while (m_intf->pending()) {
-		string line = m_intf->readln();
-		if (line.find("address:") != string::npos) {
-			m_intf->writeln("0x" + to_hex(offset));
-			return;
-		}
-	}
-
-	throw runtime_error("unexpected status");
+	m_intf->writeln("0x" + to_hex(offset));
 }
 
 bool bootloader_ram_dumper::is_ignorable_line(const string& line)
@@ -257,21 +249,19 @@ bool bootloader_ram_dumper::is_ignorable_line(const string& line)
 
 string bootloader_ram_dumper::parse_chunk_line(const string& line, uint32_t offset)
 {
-	while (m_intf->pending()) {
-		string line = m_intf->readln();
-		if (line.find("Value at") == 0) {
-			try {
-				if (offset != hex_cast<uint32_t>(line.substr(9, 8))) {
-					break;
-				}
-
-				uint32_t val = hex_cast<uint32_t>(line.substr(19, 8));
-				val = htonl(val);
-				
-				return string(reinterpret_cast<char*>(&val), 4);
-			} catch (const bad_lexical_cast& e) {
-				break;
+	if (line.find("Value at") == 0) {
+		try {
+			if (offset != hex_cast<uint32_t>(line.substr(9, 8))) {
+				// TODO log
+				return "";
 			}
+
+			uint32_t val = hex_cast<uint32_t>(line.substr(19, 8));
+			val = htonl(val);
+
+			return string(reinterpret_cast<char*>(&val), 4);
+		} catch (const bad_lexical_cast& e) {
+			// TODO log
 		}
 	}
 
@@ -341,6 +331,11 @@ dumper::sp dumper::get_bfc_ram(const shared_ptr<interface>& intf)
 dumper::sp dumper::get_bfc_flash(const shared_ptr<interface>& intf)
 {
 	return get_dumper<bfc_flash_dumper>(intf);
+}
+
+dumper::sp dumper::get_bootloader_ram(const shared_ptr<interface>& intf)
+{
+	return get_dumper<bootloader_ram_dumper>(intf);
 }
 }
 
