@@ -19,7 +19,7 @@ class parsing_dumper : public dumper
 	virtual ~parsing_dumper()
 	{ cleanup(); }
 
-	virtual string read_chunk(uint32_t offset, uint32_t length) override
+	virtual string read_chunk(uint32_t offset, uint32_t length) override final
 	{ return read_chunk_impl(offset, length, 0); }
 
 	virtual uint32_t chunk_size() const override
@@ -67,8 +67,8 @@ string parsing_dumper::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 
 	if (chunk.size() != length) {
 		if (retries >= 2) {
-			throw runtime_error("failed to read chunk (@" + to_string(offset)
-					+ ", " + to_string(length) + "); length was " + to_string(chunk.size()));
+			throw runtime_error("failed to read chunk (@" + to_hex(offset)
+					+ ", " + to_string(length) + "); line was\n'" + line + "'");
 		}
 			
 		// TODO log
@@ -81,7 +81,6 @@ string parsing_dumper::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 class bfc_ram_dumper : public parsing_dumper
 {
 	public:
-
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
 	virtual bool is_ignorable_line(const string& line) override;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
@@ -94,7 +93,7 @@ void bfc_ram_dumper::do_read_chunk(uint32_t offset, uint32_t length)
 
 bool bfc_ram_dumper::is_ignorable_line(const string& line)
 {
-	if (line.size() >= 66) {
+	if (line.size() >= 65) {
 		if (line[8] == ':' || line.substr(48, 3) == " | ") {
 			return false;
 		}
