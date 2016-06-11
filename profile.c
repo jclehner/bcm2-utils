@@ -62,7 +62,9 @@ struct bcm2_profile bcm2_profiles[] = {
 		.blsig = 0x3345,
 		.kseg1mask = 0x20000000,
 		.cfg_md5key = "544d4d5f5457473835302d3400000000",
-		.magic = { 0x80f89da0, "Oct 16 2007" },
+		.magic = {
+			{ 0x80f89da0, "Oct 16 2007" }
+		},
 		.spaces = {
 			{
 				.name = "ram",
@@ -98,7 +100,9 @@ struct bcm2_profile bcm2_profiles[] = {
 		.cfg_defkeys = {
 			"0001020304050607080910111213141516171819202122232425262728293031",
 		},
-		.magic = { 0x82f00014, "TWG870" },
+		.magic = {
+			{ 0x82f00014, "TWG870" }
+		},
 		.spaces = {
 			{
 				.name = "ram",
@@ -140,7 +144,10 @@ struct bcm2_profile bcm2_profiles[] = {
 		.cfg_defkeys = {
 			"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
 		},
-		.magic = { 0x83f8e618, "2.4.0alpha18p1" },
+		.magic = {
+			{ 0x83f8e618, "2.4.0alpha18p1" },
+			{ 0x85f00014, "TC7200" }
+		},
 		.spaces = {
 			{
 				.name = "ram",
@@ -161,8 +168,11 @@ struct bcm2_profile bcm2_profiles[] = {
 					{ "dynnv",      0x20000, 0xe0000, "dyn" }
 				},
 				.read = {
-					.addr = 0x83f81298,
-					.mode = BCM2_READ_FUNC_OBL,
+					{
+						.interface = BCM2_INTF_BLDR,
+						.addr = 0x83f81298,
+						.mode = BCM2_READ_FUNC_OBL,
+					}
 				},
 			},
 			{
@@ -173,17 +183,20 @@ struct bcm2_profile bcm2_profiles[] = {
 					{ "image1",    0x19c0000, 0x06c0000 },
 					{ "image2",    0x2080000, 0x06c0000 },
 					{ "linux",     0x2740000, 0x0480000, "image3" },
-					{ "linuxkfs",  0x2bc0000, 0x1200000 },
+					{ "linuxkfs",  0x2bc0000, 0x1200000, "" },
 					{ "dhtml",     0x3dc0000, 0x0240000 },
 				},
 				.read = {
-					.addr = 0x83f831b4,
-					.mode = BCM2_READ_FUNC_BOL,
-					.patch = {
-						{ 0x83f83380, 0x10000017 },
+					{
+						.interface = BCM2_INTF_BLDR,
+						.addr = 0x83f831b4,
+						.mode = BCM2_READ_FUNC_BOL,
+						.patch = {
+							{ 0x83f83380, 0x10000017 },
+						}
 					}
 				},
-			}
+			},
 		}
 	},
 	// end marker

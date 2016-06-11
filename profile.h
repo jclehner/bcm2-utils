@@ -23,10 +23,17 @@
 #include <stdint.h>
 
 #define BCM2_PATCH_NUM 4
+#define BCM2_INTF_NUM 2
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+enum bcm2_interface
+{
+	BCM2_INTF_BLDR = 1,
+	BCM2_INTF_BFC = 2
+};
 
 enum bcm2_read_func_mode
 {
@@ -58,7 +65,7 @@ struct bcm2_partition {
 	uint32_t offset;
 	// size
 	uint32_t size;
-	// name used by the /flash/open command
+	// internal partition name (for BFC `/flash/open`)
 	char altname[32];
 };
 
@@ -70,6 +77,8 @@ struct bcm2_func {
 	uint32_t mode;
 	// return value type
 	enum bcm2_func_ret retv;
+	// contexts of this function
+	int contexts;
 	// patches to be applied to the bootloader
 	// before using this function.
 	struct {
@@ -91,6 +100,9 @@ struct bcm2_addrspace {
 	// bootloader does memory-mapped flash). this is
 	// automatically set for address spaces named "ram"
 	bool mem;
+	// combination of context ids from bcm2_interface;
+	// 0 means all contexts supported
+	int contexts;
 	// minimum offset of this address space
 	uint32_t min;
 	// size of this address space. can be 0 to disable size
@@ -98,11 +110,11 @@ struct bcm2_addrspace {
 	uint32_t size;
 	// partitions within this address space
 	struct bcm2_partition parts[16];
-	// read function to read from this address space (can
+	// read functions to read from this address space (can
 	// be left blank for ram segment)
-	struct bcm2_func read;
+	struct bcm2_func read[BCM2_INTF_NUM];
 	// not yet used
-	struct bcm2_func write;
+	struct bcm2_func write[BCM2_INTF_NUM];
 };
 
 struct bcm2_profile {
@@ -139,7 +151,7 @@ struct bcm2_profile {
 	struct {
 		uint32_t addr;
 		char data[32];
-	} magic;
+	} magic[4];
 	// a key that is appended to the configuration file data
 	// before calculating its checksum. specify as a hex string 
 	char cfg_md5key[65];
@@ -150,7 +162,7 @@ struct bcm2_profile {
 	// key derivation failed.
 	bool (*cfg_keyfun)(const char *password, unsigned char *key);
 	// address spaces that can be dumped
-	struct bcm2_addrspace spaces[4];
+	struct bcm2_addrspace spaces[8];
 };
 
 extern struct bcm2_profile bcm2_profiles[];
