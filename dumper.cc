@@ -75,6 +75,7 @@ string parsing_dumper::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 				pos += linebuf.size();
 				chunk += linebuf;
 				last = line;
+				update_progress(pos);
 			} catch (const exception& e) {
 				if (retries >= 2) {
 					throw runtime_error("failed to read chunk line @" + to_hex(pos) + ": '" + line + "' (" + e.what() + ")");
@@ -377,22 +378,23 @@ class dumpcode_dumper : public parsing_dumper
 			}
 
 			m_code.resize(codesize);
-			uint32_t checksum = calc_checksum(m_code.substr(m_entry, m_code.size() - 4 - m_entry));
+			uint32_t expected = calc_checksum(m_code.substr(m_entry, m_code.size() - 4 - m_entry));
 			uint32_t actual = ntohl(extract<uint32_t>(m_ramr->dump(m_loadaddr + m_code.size() - 4, 4)));
+			bool quick = (expected == actual);
 
-			patch32(m_code, codesize - 4, checksum);
+			patch32(m_code, codesize - 4, expected);
 
 			progress pg;
 			progress_init(&pg, m_loadaddr, m_code.size());
 
-			if (m_listener) {
+			if (m_listener && !quick) {
 				printf("updating dump code at 0x%08x (%u b)\n", m_loadaddr, codesize);
 			}
 
 			for (unsigned pass = 0; pass < 2; ++pass) {
 				string ramcode = m_ramr->dump(m_loadaddr, m_code.size());
 				for (uint32_t i = 0; i < m_code.size(); i += 4) {
-					if (!pass && m_listener) {
+					if (!quick && pass == 0 && m_listener) {
 						progress_add(&pg, 4);
 						printf("\r ");
 						progress_print(&pg, stdout);
@@ -406,7 +408,7 @@ class dumpcode_dumper : public parsing_dumper
 					}
 				}
 
-				if (!pass && m_listener) {
+				if (!quick && pass == 0 && m_listener) {
 					printf("\n");
 				}
 			}
@@ -452,7 +454,7 @@ void dumper::dump(uint32_t offset, uint32_t length, std::ostream& os)
 		uint32_t n = min(chunk_size(), length);
 		string chunk = read_chunk(offset, n);
 
-		update_progress(offset, n);
+		update_progress(offset + n);
 
 		if (chunk.size() != n) {
 			throw runtime_error("unexpected chunk length: " + to_string(chunk.size()));

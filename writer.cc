@@ -137,7 +137,7 @@ void writer::write(uint32_t offset, const string& buf)
 			throw runtime_error("failed to write chunk (@" + to_hex(offset) + ", " + to_string(n) + ")");
 		}
 
-		update_progress(offset, n);
+		update_progress(offset);
 
 		remaining -= n;
 		offset += n;

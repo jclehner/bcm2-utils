@@ -56,6 +56,11 @@ void progress_init(struct progress *p, unsigned min, unsigned len)
 	p->max = min - 1 + len;
 }
 
+void progress_set(struct progress *p, unsigned n)
+{
+	progress_add(p, n - p->cur);
+}
+
 void progress_add(struct progress *p, unsigned n)
 {
 	if (!n) {
@@ -98,18 +103,20 @@ void progress_print(struct progress *p, FILE *fp)
 	unsigned speed = p->cur < p->max ? p->speed_now : p->speed_avg;
 	fprintf(fp, "%6.2f%% (0x%08x) %4d bytes/s ", p->percentage, p->cur, speed);
 #else
-	fprintf(fp, "%6.2f%% (0x%08x) %4d|%4d bytes/s ", p->percentage, p->cur, p->speed_now, p->speed_avg);
+	//fprintf(fp, "%6.2f%% (0x%08x) %5d|%5d bytes/s ", p->percentage, p->cur, p->speed_now, p->speed_avg);
 #endif
+	fprintf(fp, "%6.2f%% (0x%08x) ", p->percentage, p->cur);
 
 	if (p->cur < p->max) {
-		fprintf(fp, "(ETA  ");
+		fprintf(fp, "%5d|%5d bytes/s (ETA  ", p->speed_now, p->speed_avg);
 		print_time(fp, p->eta_days, &p->eta);
 	} else {
 		struct tm elapsed;
 		unsigned days;
+		time_t diff = time(NULL) - p->beg;
 
-		gmtime_days(time(NULL) - p->beg, &days, &elapsed);
-		fprintf(fp, "(ELT  ");
+		gmtime_days(diff, &days, &elapsed);
+		fprintf(fp, "      %5ld bytes/s (ELT  ", (p->max - p->min) / diff);
 		print_time(fp, days, &elapsed);
 	}
 

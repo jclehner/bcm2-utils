@@ -81,6 +81,7 @@ struct progress {
 
 void progress_init(struct progress *p, unsigned min, unsigned len);
 void progress_add(struct progress *p, unsigned n);
+void progress_set(struct progress *p, unsigned n);
 void progress_print(struct progress *p, FILE *fp);
 
 struct code_cfg {

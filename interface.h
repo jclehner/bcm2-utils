@@ -55,7 +55,7 @@ class interface
 class interface_rw_base
 {
 	public:
-	typedef std::function<void(uint32_t, uint32_t)> progress_listener;
+	typedef std::function<void(uint32_t)> progress_listener;
 	typedef std::map<std::string, std::string> args;
 
 	virtual ~interface_rw_base()
@@ -80,10 +80,10 @@ class interface_rw_base
 	virtual void init(uint32_t offset, uint32_t length) {}
 	virtual void cleanup() {}
 
-	virtual void update_progress(uint32_t offset, uint32_t diff)
+	virtual void update_progress(uint32_t offset)
 	{
 		if (m_listener) {
-			m_listener(offset, diff);
+			m_listener(offset);
 		}
 	}
 
