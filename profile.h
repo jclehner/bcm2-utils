@@ -77,8 +77,8 @@ struct bcm2_func {
 	uint32_t mode;
 	// return value type
 	enum bcm2_func_ret retv;
-	// contexts of this function
-	int contexts;
+	// interface(s) this function is valid for
+	int interface;
 	// patches to be applied to the bootloader
 	// before using this function.
 	struct {
@@ -93,16 +93,16 @@ struct bcm2_addrspace {
 	// short name to identify the address space. if a
 	// device has only one flash chip, name it "flash".
 	// if it has an spi/nand combo, name the spi device
-	// "nvram", and the nand "flash". always define at 
+	// "nvram", and the nand "flash". always define at
 	// least one address space called "ram".
 	char name[16];
 	// set to true if this is refers to ram (in case the
 	// bootloader does memory-mapped flash). this is
 	// automatically set for address spaces named "ram"
 	bool mem;
-	// combination of context ids from bcm2_interface;
-	// 0 means all contexts supported
-	int contexts;
+	// combination of interface ids from bcm2_interface;
+	// 0 means all interfaces supported
+	int interface;
 	// minimum offset of this address space
 	uint32_t min;
 	// size of this address space. can be 0 to disable size
@@ -151,7 +151,7 @@ struct bcm2_profile {
 	struct {
 		uint32_t addr;
 		char data[32];
-	} magic[4];
+	} magic[BCM2_INTF_NUM];
 	// a key that is appended to the configuration file data
 	// before calculating its checksum. specify as a hex string 
 	char cfg_md5key[65];

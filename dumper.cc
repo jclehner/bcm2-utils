@@ -331,34 +331,36 @@ class dumpcode_dumper : public parsing_dumper
 
 	void init(uint32_t offset, uint32_t length) override
 	{
-		if (!m_profile) {
+		const bcm2_profile* profile = m_intf->profile();
+
+		if (!profile) {
 			throw runtime_error("must specify a profile for dumpcode dump");
 		}
 
-		if (!m_profile->loadaddr || !m_profile->buffer || !m_profile->printf) {
+		if (!profile->loadaddr || !profile->buffer || !profile->printf) {
 			throw runtime_error("insufficient profile infos for dumpcode dump");
 		}
 
-		if (m_profile->loadaddr & 0xffff) {
+		if (profile->loadaddr & 0xffff) {
 			throw runtime_error("loadaddr must be aligned to 64k");
 		}
 
 		m_dump_offset = offset;
 		m_dump_length = length;
 
-		uint32_t kseg1 = m_profile->kseg1mask;
-		m_loadaddr = kseg1 | m_profile->loadaddr;
+		uint32_t kseg1 = profile->kseg1mask;
+		m_loadaddr = kseg1 | profile->loadaddr;
 
 		if (arg("codefile").empty()) {
 			m_code = string(reinterpret_cast<const char*>(dumpcode), sizeof(dumpcode));
 			m_entry = 0x4c;
 
 			patch32(m_code, 0x10, 0);
-			patch32(m_code, 0x14, kseg1 | m_profile->buffer);
+			patch32(m_code, 0x14, kseg1 | profile->buffer);
 			patch32(m_code, 0x18, offset);
 			patch32(m_code, 0x1c, length);
 			patch32(m_code, 0x20, chunk_size());
-			patch32(m_code, 0x24, kseg1 | m_profile->printf);
+			patch32(m_code, 0x24, kseg1 | profile->printf);
 
 			if (m_dump_func && m_dump_func->addr) {
 				patch32(m_code, 0x0c, m_dump_func->mode);

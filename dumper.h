@@ -32,6 +32,8 @@ class dumper : public interface_rw_base
 
 	virtual void dump(uint32_t offset, uint32_t length, std::ostream& os);
 	std::string dump(uint32_t offset, uint32_t length);
+	std::string read(uint32_t offset, uint32_t length)
+	{ return dump(offset, length); }
 
 	static sp create(const interface::sp& interface, const std::string& type);
 

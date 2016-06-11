@@ -9,6 +9,7 @@ namespace bcm2dump {
 class io
 {
 	public:
+	typedef std::shared_ptr<io> sp;
 	virtual ~io() {}
 
 	virtual int getc() const = 0;
@@ -20,7 +21,7 @@ class io
 
 	virtual void iflush() = 0;
 
-	static std::shared_ptr<io> open_serial(const char* tty, unsigned speed);
+	static sp open_serial(const char* tty, unsigned speed);
 	static std::list<std::string> get_last_lines();
 };
 }

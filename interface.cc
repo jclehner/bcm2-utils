@@ -1,4 +1,5 @@
 #include "interface.h"
+#include "dumper.h"
 using namespace std;
 
 namespace bcm2dump {
@@ -87,6 +88,37 @@ void bootloader::runcmd(const string& cmd)
 
 	m_io->write(cmd);
 }
+
+interface::sp detect_interface(const io::sp &io)
+{
+	interface::sp intf = make_shared<bootloader>();
+	if (intf->is_active(io)) {
+		return intf;
+	}
+
+	intf = make_shared<bfc>();
+	if (intf->is_active(io)) {
+		return intf;
+	}
+
+	throw user_error("interface auto-detection failed");
+}
+
+void detect_profile(const interface::sp& intf)
+{
+	dumper::sp ram = dumper::create(intf, "ram");
+	const bcm2_profile* p = bcm2_profiles;
+
+	for (; p->name[0]; ++p) {
+		for (size_t i = 0; i < BCM2_INTF_NUM; ++i) {
+			string data(p->magic[i].data);
+			if (ram->read(p->magic[i].addr, data.size()) == data) {
+				intf->set_profile(p);
+				break;
+			}
+		}
+	}
+}
 }
 
 bool interface::runcmd(const string& cmd, const string& expect, bool stop_on_match)
@@ -111,18 +143,10 @@ bool interface::runcmd(const string& cmd, const string& expect, bool stop_on_mat
 	return match;
 }
 
-shared_ptr<interface> interface::detect(const shared_ptr<io>& io)
+interface::sp interface::detect(const io::sp& io)
 {
-	shared_ptr<interface> intf = make_shared<bootloader>();
-	if (intf->is_active(io)) {
-		return intf;
-	}
-
-	intf = make_shared<bfc>();
-	if (intf->is_active(io)) {
-		return intf;
-	}
-
-	throw user_error("interface auto-detection failed");
+	interface::sp intf = detect_interface(io);
+	detect_profile(intf);
+	return intf;
 }
 }

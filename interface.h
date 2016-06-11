@@ -12,6 +12,8 @@ namespace bcm2dump {
 
 class interface
 {
+	friend class interface_rw_base;
+
 	public:
 	typedef std::shared_ptr<interface> sp;
 
@@ -22,6 +24,9 @@ class interface
 	virtual bool runcmd(const std::string& cmd, const std::string& expect, bool stop_on_match = false);
 
 	virtual bool is_active() = 0;
+
+	virtual void set_profile(const bcm2_profile* profile)
+	{ m_profile = profile; }
 
 	bool is_active(const std::shared_ptr<io>& io)
 	{
@@ -48,8 +53,12 @@ class interface
 
 	static std::shared_ptr<interface> detect(const std::shared_ptr<io>& io);
 
+	const bcm2_profile* profile() const
+	{ return m_profile; }
+
 	protected:
 	std::shared_ptr<io> m_io;
+	const bcm2_profile* m_profile;
 };
 
 class interface_rw_base
@@ -66,9 +75,6 @@ class interface_rw_base
 
 	virtual void set_partition(const std::string& partition)
 	{ m_args["partition"] = partition; }
-
-	virtual void set_profile(const bcm2_profile* profile)
-	{ m_profile = profile; }
 
 	virtual void set_interface(const interface::sp& intf)
 	{ m_intf = intf; }
