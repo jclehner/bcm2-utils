@@ -27,9 +27,15 @@ template<class T> string to_buf(const T& t)
 	return string(reinterpret_cast<const char*>(&t), sizeof(T));
 }
 
-inline uint32_t calc_checksum(const string& buf)
+uint32_t calc_checksum(const string& buf)
 {
-	return 0xbeefc0de;
+	uint32_t checksum = 0xdeadbeef;
+
+	for (char c : buf) {
+		checksum ^= (c * 0xffffff);
+	}
+
+	return checksum;
 }
 
 class parsing_dumper : public dumper
@@ -48,23 +54,18 @@ class parsing_dumper : public dumper
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) = 0;
 	virtual bool is_ignorable_line(const string& line) = 0;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) = 0;
-	virtual void on_chunk_error(uint32_t offset, uint32_t length) {}
+	virtual void on_chunk_retry(uint32_t offset, uint32_t length) {}
 };
 
 string parsing_dumper::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t retries)
 {
 	do_read_chunk(offset, length);
 
-	string line, linebuf, chunk;
+	string line, linebuf, chunk, last;
 	uint32_t pos = offset;
 
 	while (chunk.size() < length && m_intf->pending()) {
-		line = m_intf->readln();
-		if (line.empty()) {
-			break;
-		}
-
-		line = trim(line);
+		line = trim(m_intf->readln());
 
 		if (is_ignorable_line(line)) {
 			continue;
@@ -73,6 +74,7 @@ string parsing_dumper::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 				string linebuf = parse_chunk_line(line, pos);
 				pos += linebuf.size();
 				chunk += linebuf;
+				last = line;
 			} catch (const exception& e) {
 				if (retries >= 2) {
 					throw runtime_error("failed to read chunk line @" + to_hex(pos) + ": '" + line + "' (" + e.what() + ")");
@@ -87,11 +89,12 @@ string parsing_dumper::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 	if (chunk.size() != length) {
 		if (retries >= 2) {
 			throw runtime_error("read incomplete chunk @" + to_hex(offset)
-					+ ": " + to_string(chunk.size()) + "/" +to_string(length) + " b");
+					+ ": " + to_string(chunk.size()) + "/" +to_string(length)
+					+ " b; last line:\n'" + last + "'");
 		}
 			
 		// TODO log
-		on_chunk_error(offset, length);
+		on_chunk_retry(offset, length);
 		return read_chunk_impl(offset, length, retries + 1);
 	}
 
@@ -280,12 +283,12 @@ class dumpcode_dumper : public parsing_dumper
 	protected:
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override
 	{
-		m_ramw->exec(m_profile->loadaddr + m_entry);
+		m_ramw->exec(m_loadaddr + m_entry);
 	}
 
 	virtual bool is_ignorable_line(const string& line) override
 	{
-		if (line.size() <= 36) {
+		if (line.size() >= 8 && line.size() <= 36) {
 			if (line[0] == ':') {
 				return false;
 			}
@@ -309,9 +312,9 @@ class dumpcode_dumper : public parsing_dumper
 	}
 
 	private:
-	void on_chunk_error(uint32_t offset, uint32_t length)
+	void on_chunk_retry(uint32_t offset, uint32_t length)
 	{
-		if (!arg("codefile").empty() || true) {
+		if (!arg("codefile").empty()) {
 			throw runtime_error("error recovery is not possible with custom dumpcode");
 		}
 
