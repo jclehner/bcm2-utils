@@ -78,7 +78,7 @@ struct bcm2_func {
 	// return value type
 	enum bcm2_func_ret retv;
 	// interface(s) this function is valid for
-	int interface;
+	int intf;
 	// patches to be applied to the bootloader
 	// before using this function.
 	struct {
@@ -102,7 +102,7 @@ struct bcm2_addrspace {
 	bool mem;
 	// combination of interface ids from bcm2_interface;
 	// 0 means all interfaces supported
-	int interface;
+	int intf;
 	// minimum offset of this address space
 	uint32_t min;
 	// size of this address space. can be 0 to disable size

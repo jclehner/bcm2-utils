@@ -338,6 +338,20 @@ class dumpcode_dumper : public parsing_dumper
 		m_ramw->write(m_loadaddr + 0x1c, m_code.substr(0x1c, 4));
 	}
 
+	void init_dump_func()
+	{
+		for (size_t i = 0; i < BCM2_INTF_NUM; ++i) {
+			if (m_space->read[i].addr && (m_space->read[i].intf & m_intf->id())) {
+				m_dump_func = &m_space->read[i];
+				return;
+			}
+		}
+
+		if (!m_space->mem) {
+			throw runtime_error("no 'read' function defined for " + string(m_space->name));
+		}
+	}
+
 	void init(uint32_t offset, uint32_t length) override
 	{
 		const bcm2_profile* profile = m_intf->profile();

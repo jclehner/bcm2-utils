@@ -169,8 +169,8 @@ struct bcm2_profile bcm2_profiles[] = {
 				},
 				.read = {
 					{
-						.interface = BCM2_INTF_BLDR,
 						.addr = 0x83f81298,
+						.intf = BCM2_INTF_BLDR,
 						.mode = BCM2_READ_FUNC_OBL,
 					}
 				},
@@ -188,8 +188,8 @@ struct bcm2_profile bcm2_profiles[] = {
 				},
 				.read = {
 					{
-						.interface = BCM2_INTF_BLDR,
 						.addr = 0x83f831b4,
+						.intf = BCM2_INTF_BLDR,
 						.mode = BCM2_READ_FUNC_BOL,
 						.patch = {
 							{ 0x83f83380, 0x10000017 },

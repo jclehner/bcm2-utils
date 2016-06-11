@@ -56,6 +56,8 @@ class interface
 	const bcm2_profile* profile() const
 	{ return m_profile; }
 
+	virtual bcm2_interface id() const = 0;
+
 	protected:
 	std::shared_ptr<io> m_io;
 	const bcm2_profile* m_profile;
@@ -120,7 +122,7 @@ class interface_rw_base
 
 	progress_listener m_listener;
 	interface::sp m_intf;
-	const bcm2_profile* m_profile;
+	const bcm2_addrspace* m_space = nullptr;
 	bool m_inited = false;
 	args m_args;
 };
