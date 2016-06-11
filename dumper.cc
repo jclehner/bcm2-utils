@@ -27,6 +27,15 @@ template<class T> string to_buf(const T& t)
 	return string(reinterpret_cast<const char*>(&t), sizeof(T));
 }
 
+template<class T> T align_to(const T& num, const T& alignment)
+{
+	if (num % alignment) {
+		return ((num / alignment) + 1) * alignment;
+	}
+
+	return num;
+}
+
 uint32_t calc_checksum(const string& buf)
 {
 	uint32_t checksum = 0xdeadbeef;
@@ -438,22 +447,21 @@ template<class T> dumper::sp create_dumper(const interface::sp& intf)
 }
 }
 
-void dumper::dump(uint32_t offset, uint32_t length, std::ostream& os)
+void dumper::dump(uint32_t offset, uint32_t wbytes, std::ostream& os)
 {
 	if (offset % offset_alignment()) {
 		throw invalid_argument("offset not aligned to " + to_string(offset_alignment()) + " bytes");
 	}
 
-	if (length % length_alignment()) {
-		throw invalid_argument("length " + to_string(length) + " not aligned to " + to_string(length_alignment()) + " bytes");
+	uint32_t rbytes = align_to(wbytes, length_alignment());
+	if (wbytes != rbytes) {
+		// TODO log
 	}
 
-	do_init(offset, length);
+	do_init(offset, rbytes);
 
-	uint32_t remaining = length;
-
-	while (remaining) {
-		uint32_t n = min(chunk_size(), length);
+	while (rbytes) {
+		uint32_t n = min(chunk_size(), rbytes);
 		string chunk = read_chunk(offset, n);
 
 		update_progress(offset + n);
@@ -462,9 +470,10 @@ void dumper::dump(uint32_t offset, uint32_t length, std::ostream& os)
 			throw runtime_error("unexpected chunk length: " + to_string(chunk.size()));
 		}
 
-		os.write(chunk.c_str(), chunk.size());
+		os.write(chunk.c_str(), min(n, wbytes));
 
-		remaining -= n;
+		wbytes = (wbytes >= n) ? wbytes - n : 0;
+		rbytes -= n;
 		offset += n;
 	}
 
