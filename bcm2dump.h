@@ -40,6 +40,10 @@
 // offset, buffer, length
 #define CODE_DUMP_PARAMS_OBL (1 << 1)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int ser_open(const char *dev, unsigned speed);
 bool ser_write(int fd, const char *str);
 bool ser_read(int fd, char *buf, size_t len);
@@ -102,6 +106,10 @@ typedef void (*code_upload_callback)(struct progress*, bool, void*);
 bool code_init_and_upload(int fd, struct code_cfg *cfg, code_upload_callback callback, void *arg);
 bool code_run(int fd, struct code_cfg *cfg);
 bool code_parse_values(const char *line, uint32_t *val, bool *parseable);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

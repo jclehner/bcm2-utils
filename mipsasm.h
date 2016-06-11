@@ -124,6 +124,14 @@
 /* use this to define a label */
 #define ASM_LABEL(n) (ASM_LABEL_MARKER | ((n) & ASM_LABEL_MASK))
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int mipsasm_resolve_labels(uint32_t *code, uint32_t *size, uint32_t offset);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -8,6 +8,8 @@ bcm2cfg_OBJ = common.o nonvol.o profile.o bcm2cfg.o
 bcm2dump_OBJ = common.o code.o bootloader.o \
 			   mipsasm.o progress.o profile.o \
 			   serial.o bcm2dump.o cm.o
+iotest_OBJ = io.o dumper.o writer.o interface.o \
+	util.o progress.o mipsasm.o iotest.o profile.o
 
 .PHONY: all clean
 
@@ -18,6 +20,9 @@ bcm2cfg: $(bcm2cfg_OBJ) nonvol.h
 
 bcm2dump: $(bcm2dump_OBJ) bcm2dump.h
 	$(CC) $(CFLAGS) $(bcm2dump_OBJ) -o bcm2dump
+
+iotest: $(iotest_OBJ)
+	$(CXX) $(CXXFLAGS) $(iotest_OBJ) -o iotest
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) $< -o $@
