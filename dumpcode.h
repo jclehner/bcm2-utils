@@ -9,8 +9,7 @@
 #define L_LOOP_WORDS ASM_LABEL(6)
 #define L_OUT        ASM_LABEL(7)
 
-#define DATA_BEGIN 0x10
-#define CODE_BEGIN 0x4c
+#define CODE_ENTRY 0x4c
 
 uint32_t dumpcode[] = {
 		_WORD(CODE_MAGIC),
@@ -55,13 +54,15 @@ uint32_t dumpcode[] = {
 		LW(S1, 0x18, S7),
 		// length
 		LW(S2, 0x1c, S7),
-		// dump offset
+		// bail out if length is zero
+		BEQZ(S2, L_OUT),
+		// delay slot: dump offset
 		LW(S3, 0x10, S7),
-		// flash read function
-		LW(S4, 0x28, S7),
 		// branch to start_dump if we have a dump offset
 		BNEZ(S3, L_START_DUMP),
-		// delay slot: maximum of 4 words can be patched
+		// delay slot: flash read function
+		LW(S4, 0x28, S7),
+		// maximum of 4 words can be patched
 		ORI(T0, ZERO, 4),
 
 		// pointer to first patch blob
@@ -70,7 +71,7 @@ _DEF_LABEL(L_LOOP_PATCH),
 		// load patch offset
 		LW(T2, 0, T1),
 		// break if patch offset is zero
-		BEQ(T2, 0, L_PATCH_DONE),
+		BEQZ(T2, L_PATCH_DONE),
 		// delay slot: load patch word
 		LW(T3, 4, T1),
 		// patch word at t1

@@ -85,6 +85,7 @@
 #define ANDI(rt, rs, imm)    ASM_I(0x0c, rs, rt, imm)
 #define B(target)            BEQ(ZERO, ZERO, target)
 #define BEQ(rs, rt, target)  ASM_I(0x04, rs, rt, target)
+#define BEQZ(rs, target)     BEQ(rs, ZERO, target)
 #define BGTZ(rs, target)     ASM_I(0x07, rs, 0, target)
 #define BLT(rs, rt, target)  SLT(AT, rs, rt), BNE(AT, ZERO, target)
 #define BNE(rs, rt, target)  ASM_I(0x05, rs, rt, target)
