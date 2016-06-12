@@ -1,26 +1,4 @@
-/**
- * bcm2-utils
- * Copyright (C) 2016 Joseph C. Lehner <joseph.c.lehner@gmail.com>
- *
- * bcm2-utils is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * bcm2-utils is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with bcm2-utils.  If not, see <http://www.gnu.org/licenses/>.
- *
- */
-
-#include <string.h>
-#include <stdio.h>
 #include "profile.h"
-#include "common.h"
 
 static bool keyfun_tc7200(const char *password, unsigned char *key)
 {
@@ -202,38 +180,3 @@ struct bcm2_profile bcm2_profiles[] = {
 	// end marker
 	{ .name = "" },
 };
-
-void *find_by_name(const char *name, void *list, size_t elemsize)
-{
-	char *p = list;
-
-	for (; *p; p += elemsize) {
-		if (!strcasecmp(p, name)) {
-			return p;
-		}
-	}
-
-	return NULL;
-}
-
-struct bcm2_profile *bcm2_profile_find(const char *name)
-{
-	return find_by_name(name, bcm2_profiles, sizeof(*bcm2_profiles));
-}
-
-struct bcm2_addrspace *bcm2_profile_find_addrspace(struct bcm2_profile *profile,
-		const char *name)
-{
-	struct bcm2_addrspace *s = find_by_name(name, profile->spaces, sizeof(*profile->spaces));
-	if (s && !strcmp(s->name, "ram")) {
-		s->mem = true;
-	}
-
-	return s;
-}
-
-struct bcm2_partition *bcm2_addrspace_find_partition(struct bcm2_addrspace *addrspace,
-		const char *name)
-{
-	return find_by_name(name, addrspace->parts, sizeof(*addrspace->parts));
-}

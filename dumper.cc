@@ -286,6 +286,16 @@ class dumpcode_dumper : public parsing_dumper
 	virtual void set_interface(const interface::sp& intf) override
 	{
 		parsing_dumper::set_interface(intf);
+
+		const bcm2_profile* profile = intf->profile();
+		if (!profile) {
+			throw runtime_error("dumpcode requires a profile");
+		} else if (!profile->loadaddr || !profile->buffer || !profile->printf) {
+			throw runtime_error("insufficient profile infos for dumpcode");
+		} else if (profile->loadaddr & 0xffff) {
+			throw runtime_error("loadaddr must be aligned to 64k");
+		}
+
 		m_ramw = writer::create(intf, "ram");
 		m_ramr = dumper::create(intf, "ram");
 	}
@@ -355,17 +365,9 @@ class dumpcode_dumper : public parsing_dumper
 	void init(uint32_t offset, uint32_t length) override
 	{
 		const bcm2_profile* profile = m_intf->profile();
-
-		if (!profile) {
-			throw runtime_error("must specify a profile for dumpcode dump");
-		}
-
-		if (!profile->loadaddr || !profile->buffer || !profile->printf) {
-			throw runtime_error("insufficient profile infos for dumpcode dump");
-		}
-
-		if (profile->loadaddr & 0xffff) {
-			throw runtime_error("loadaddr must be aligned to 64k");
+		if (profile->buflen && length > profile->buflen) {
+			throw runtime_error("requested length exceeds buffer size ("
+					+ to_string(profile->buflen) + " b)");
 		}
 
 		m_dump_offset = offset;

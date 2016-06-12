@@ -20,6 +20,9 @@ class bfc : public interface
 
 	virtual bool is_active() override;
 
+	virtual bcm2_interface id() const override
+	{ return BCM2_INTF_BFC; }
+
 	protected:
 	virtual void runcmd(const string& cmd) override
 	{ m_io->writeln(cmd); }
@@ -54,6 +57,9 @@ class bootloader : public interface
 	{ return "bootloader"; }
 
 	virtual bool is_active() override;
+
+	virtual bcm2_interface id() const override
+	{ return BCM2_INTF_BLDR; }
 
 	protected:
 	virtual void runcmd(const string& cmd) override;

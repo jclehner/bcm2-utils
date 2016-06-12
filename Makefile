@@ -9,7 +9,7 @@ bcm2dump_OBJ = common.o code.o bootloader.o \
 			   mipsasm.o progress.o profile.o \
 			   serial.o bcm2dump.o cm.o
 iotest_OBJ = io.o dumper.o writer.o interface.o \
-	util.o progress.o mipsasm.o iotest.o profile.o
+	util.o progress.o mipsasm.o iotest.o profile.o profiledef.o
 
 .PHONY: all clean
 

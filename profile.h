@@ -17,15 +17,21 @@
  *
  */
 
-#ifndef BCM2_UTILS_H
-#define BCM2_UTILS_H
+#ifndef BCM2UTILS_PROFILE_H
+#define BCM2UTILS_PROFILE_H
 #include <stdbool.h>
+#include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 
 #define BCM2_PATCH_NUM 4
 #define BCM2_INTF_NUM 2
 
 #ifdef __cplusplus
+#include <string>
+#include <vector>
+#include <memory>
+
 extern "C" {
 #endif
 
@@ -69,6 +75,13 @@ struct bcm2_partition {
 	char altname[32];
 };
 
+struct bcm2_patch {
+	// patch this address...
+	uint32_t addr;
+	// ... with this word
+	uint32_t word;
+};
+
 struct bcm2_func {
 	// address of this function
 	uint32_t addr;
@@ -81,12 +94,7 @@ struct bcm2_func {
 	int intf;
 	// patches to be applied to the bootloader
 	// before using this function.
-	struct {
-		// patch this address...
-		uint32_t addr;
-		// ... with this word
-		uint32_t word;
-	} patch[BCM2_PATCH_NUM];
+	struct bcm2_patch patch[BCM2_PATCH_NUM];
 };
 
 struct bcm2_addrspace {
@@ -115,6 +123,11 @@ struct bcm2_addrspace {
 	struct bcm2_func read[BCM2_INTF_NUM];
 	// not yet used
 	struct bcm2_func write[BCM2_INTF_NUM];
+};
+
+struct bcm2_magic {
+	uint32_t addr;
+	char data[32];
 };
 
 struct bcm2_profile {
@@ -148,10 +161,7 @@ struct bcm2_profile {
 	// a location in memory with a constant value (ideally a
 	// bootloader string), which can be used to automatically
 	// identify the connected device
-	struct {
-		uint32_t addr;
-		char data[32];
-	} magic[BCM2_INTF_NUM];
+	struct bcm2_magic magic[BCM2_INTF_NUM];
 	// a key that is appended to the configuration file data
 	// before calculating its checksum. specify as a hex string 
 	char cfg_md5key[65];
@@ -175,6 +185,172 @@ struct bcm2_partition *bcm2_addrspace_find_partition(
 
 #ifdef __cplusplus
 }
-#endif
 
+
+namespace bcm2dump {
+
+class func
+{
+	public:
+	func(uint32_t addr, uint32_t args = 0, uint32_t intf = 0, uint32_t retv = 0)
+	: m_addr(addr), m_args(args), m_intf(intf), m_retv(retv) {}
+
+	uint32_t addr() const
+	{ return m_addr; }
+
+	uint32_t args() const
+	{ return m_args; }
+
+	uint32_t intf() const
+	{ return m_intf; }
+
+	uint32_t retv() const
+	{ return m_retv; }
+
+	const std::vector<const bcm2_patch*>& patches() const
+	{ return m_patches; }
+
+	std::vector<const bcm2_patch*>& patches()
+	{ return m_patches; }
+
+	private:
+	uint32_t m_addr;
+	uint32_t m_args;
+	uint32_t m_intf;
+	uint32_t m_retv;
+	std::vector<const bcm2_patch*> m_patches;
+};
+
+class profile;
+
+class addrspace
+{
+	public:
+	class part
+	{
+		public:
+		friend class addrspace;
+
+		std::string name() const
+		{ return m_p ? m_p->name : ""; }
+
+		uint32_t offset() const
+		{ return m_p->offset; }
+
+		uint32_t size() const
+		{ return m_p->size; }
+
+		private:
+		part(const bcm2_partition* p) : m_p(p) {}
+
+		const bcm2_partition* m_p;
+	};
+
+	addrspace(const bcm2_addrspace* a, const profile& p);
+	addrspace() {}
+
+	std::string name() const
+	{ return m_p->name; }
+
+	bool mem() const
+	{ return m_p->mem || name() == "ram"; }
+
+	int interfaces() const
+	{ return m_p->intf; }
+
+	uint32_t min() const
+	{ return m_p->min; }
+
+	uint32_t size() const
+	{ return m_size; }
+
+	const std::vector<part>& partitions() const
+	{ return m_partitions; }
+
+	const part& partition(const std::string& name) const;
+
+	func read_func(bcm2_interface intf) const;
+
+	bool check_offset(uint32_t offset, bool exception = true) const
+	{ return check_range(offset, 0, "", exception); }
+
+	uint32_t check_offset(uint32_t offset, const std::string& name) const
+	{
+		check_range(offset, 0, name, true);
+		return offset;
+	}
+
+	uint32_t check_offset(uint32_t offset, const char* name) const
+	{
+		return check_offset(offset, std::string(name));
+	}
+
+	bool check_range(uint32_t offset, uint32_t length, bool exception = true) const
+	{ return check_range(offset, length, "", exception); }
+
+	void check_range(uint32_t offset, uint32_t length, const char* name) const
+	{ check_range(offset, length, name, true); }
+
+	void check_range(uint32_t offset, uint32_t length, const std::string& name) const
+	{ check_range(offset, length, name, true); }
+
+	private:
+	bool check_range(uint32_t offset, uint32_t length, const std::string& name, bool exception) const;
+
+	const bcm2_addrspace* m_p;
+	uint32_t m_size;
+	uint32_t m_kseg1;
+	std::string m_profile_name;
+	std::vector<part> m_partitions;
+	std::vector<func> m_read_funcs;
+};
+
+
+class profile
+{
+	public:
+	typedef std::shared_ptr<profile> sp;
+
+	struct codecfg
+	{
+		uint32_t loadaddr;
+		uint32_t buffer;
+		uint32_t buflen;
+		uint32_t printf;
+		uint32_t scanf;
+	};
+
+	virtual ~profile() {}
+
+	virtual std::string name() const = 0;
+	virtual std::string pretty() const = 0;
+	virtual bool mipsel() const = 0;
+	virtual unsigned baudrate() const = 0;
+	virtual uint16_t pssig() const = 0;
+	virtual uint16_t blsig() const = 0;
+	virtual uint32_t kseg1() const = 0;
+	virtual std::vector<const bcm2_magic*> magics() const = 0;
+	virtual std::vector<addrspace> spaces() const = 0;
+	virtual const addrspace& space(const std::string& name, bcm2_interface intf) const = 0;
+	virtual const addrspace& ram() const = 0;
+
+	virtual const codecfg& code_config(bcm2_interface intf) const = 0;
+	virtual std::string md5_key() const = 0;
+
+	//virtual std::string encrypt(const std::string& buf, const std::string& key) = 0;
+	//virtual std::string decrypt(const std::string& buf, const std::string& key) = 0;
+
+	virtual size_t key_length() const = 0;
+	virtual std::vector<std::string> default_keys() const = 0;
+	virtual std::string derive_key(const std::string& pw) const = 0;
+
+	static sp get(const std::string& name);
+	static std::vector<profile::sp> list();
+
+	private:
+	static std::vector<profile::sp> s_profiles;
+};
+}
+
+#endif
 #endif
