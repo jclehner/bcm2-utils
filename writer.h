@@ -7,7 +7,7 @@
 #include "interface.h"
 
 namespace bcm2dump {
-class writer : public interface_rw_base
+class writer : public reader_writer
 {
 	public:
 	typedef std::shared_ptr<writer> sp;

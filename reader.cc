@@ -47,6 +47,8 @@ uint32_t calc_checksum(const string& buf)
 	return checksum;
 }
 
+// reader implementation an interactive text-based
+// user interface
 class parsing_reader : public reader
 {
 	public:
@@ -60,9 +62,13 @@ class parsing_reader : public reader
 
 	protected:
 	virtual string read_chunk_impl(uint32_t offset, uint32_t length, uint32_t retries);
+	// issues a command that displays the requested chunk
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) = 0;
+	// checks if the line is junk (as opposed to a possible chunk line)
 	virtual bool is_ignorable_line(const string& line) = 0;
+	// parses one line of data
 	virtual string parse_chunk_line(const string& line, uint32_t offset) = 0;
+	// called if a chunk was not successfully read
 	virtual void on_chunk_retry(uint32_t offset, uint32_t length) {}
 };
 

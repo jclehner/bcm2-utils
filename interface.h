@@ -12,7 +12,7 @@ namespace bcm2dump {
 
 class interface
 {
-	friend class interface_rw_base;
+	friend class reader_writer;
 	typedef bcm2dump::profile profile_type;
 
 	public:
@@ -64,13 +64,13 @@ class interface
 	profile::sp m_profile;
 };
 
-class interface_rw_base
+class reader_writer
 {
 	public:
 	typedef std::function<void(uint32_t)> progress_listener;
 	typedef std::map<std::string, std::string> args;
 
-	virtual ~interface_rw_base()
+	virtual ~reader_writer()
 	{ do_cleanup(); }
 
 	virtual void set_progress_listener(const progress_listener& listener = progress_listener())

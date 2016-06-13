@@ -6,7 +6,7 @@
 #include "profile.h"
 
 namespace bcm2dump {
-class reader : public interface_rw_base
+class reader : public reader_writer
 {
 	public:
 	typedef std::shared_ptr<reader> sp;
