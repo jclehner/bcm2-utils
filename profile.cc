@@ -138,7 +138,7 @@ class profile_wrapper : public profile
 	virtual const addrspace& ram() const override
 	{ return m_ram; }
 
-	virtual const codecfg& code_config(bcm2_interface intf) const override
+	virtual const codecfg_type& codecfg(bcm2_interface intf) const override
 	{ return m_codecfg; }
 
 	virtual string md5_key() const override
@@ -247,7 +247,7 @@ class profile_wrapper : public profile
 	vector<const bcm2_magic*> m_magic;
 	vector<addrspace> m_spaces;
 	addrspace m_ram;
-	profile::codecfg m_codecfg;
+	codecfg_type m_codecfg;
 };
 }
 
@@ -383,12 +383,10 @@ void profile::print_to_stdout(bool verbose) const
 			cout << string(28, ' ');
 		}
 
-		cout << "R";
-
 		if (space.is_ram() || space.is_writable()) {
-			cout << "W";
+			cout << "RW";
 		} else {
-			cout << "O";
+			cout << "RO";
 		}
 
 		cout << endl << string(54, '-') << endl;

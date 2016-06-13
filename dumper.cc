@@ -287,12 +287,15 @@ class dumpcode_dumper : public parsing_dumper
 	{
 		parsing_dumper::set_interface(intf);
 
-		const bcm2_profile* profile = intf->profile();
-		if (!profile) {
+		if (!intf->profile()) {
 			throw runtime_error("dumpcode requires a profile");
-		} else if (!profile->loadaddr || !profile->buffer || !profile->printf) {
+		}
+
+		const codecfg& cfg = intf->profile()->codecfg(intf->id());
+
+		if (!cfg.loadaddr || !cfg.buffer || !cfg.printf) {
 			throw runtime_error("insufficient profile infos for dumpcode");
-		} else if (profile->loadaddr & 0xffff) {
+		} else if (cfg.loadaddr & 0xffff) {
 			throw runtime_error("loadaddr must be aligned to 64k");
 		}
 
@@ -364,28 +367,30 @@ class dumpcode_dumper : public parsing_dumper
 
 	void init(uint32_t offset, uint32_t length) override
 	{
-		const bcm2_profile* profile = m_intf->profile();
-		if (profile->buflen && length > profile->buflen) {
+		const profile::sp& profile = m_intf->profile();
+		const codecfg& cfg = profile->codecfg(m_intf->id());
+
+		if (cfg.buflen && length > cfg.buflen) {
 			throw runtime_error("requested length exceeds buffer size ("
-					+ to_string(profile->buflen) + " b)");
+					+ to_string(cfg.buflen) + " b)");
 		}
 
 		m_dump_offset = offset;
 		m_dump_length = length;
 
-		uint32_t kseg1 = profile->kseg1mask;
-		m_loadaddr = kseg1 | profile->loadaddr;
+		uint32_t kseg1 = profile->kseg1();
+		m_loadaddr = kseg1 | cfg.loadaddr;
 
 		if (arg("codefile").empty()) {
 			m_code = string(reinterpret_cast<const char*>(dumpcode), sizeof(dumpcode));
 			m_entry = 0x4c;
 
 			patch32(m_code, 0x10, 0);
-			patch32(m_code, 0x14, kseg1 | profile->buffer);
+			patch32(m_code, 0x14, kseg1 | cfg.buffer);
 			patch32(m_code, 0x18, offset);
 			patch32(m_code, 0x1c, length);
 			patch32(m_code, 0x20, chunk_size());
-			patch32(m_code, 0x24, kseg1 | profile->printf);
+			patch32(m_code, 0x24, kseg1 | cfg.printf);
 
 			if (m_dump_func && m_dump_func->addr) {
 				patch32(m_code, 0x0c, m_dump_func->mode);

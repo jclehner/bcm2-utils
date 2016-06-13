@@ -322,19 +322,22 @@ class addrspace
 };
 
 
+struct codecfg
+{
+	uint32_t loadaddr;
+	uint32_t buffer;
+	uint32_t buflen;
+	uint32_t printf;
+	uint32_t scanf;
+};
+
 class profile
 {
+	protected:
+	typedef bcm2dump::codecfg codecfg_type;
+
 	public:
 	typedef std::shared_ptr<profile> sp;
-
-	struct codecfg
-	{
-		uint32_t loadaddr;
-		uint32_t buffer;
-		uint32_t buflen;
-		uint32_t printf;
-		uint32_t scanf;
-	};
 
 	virtual ~profile() {}
 
@@ -350,7 +353,7 @@ class profile
 	virtual const addrspace& space(const std::string& name, bcm2_interface intf) const = 0;
 	virtual const addrspace& ram() const = 0;
 
-	virtual const codecfg& code_config(bcm2_interface intf) const = 0;
+	virtual const codecfg_type& codecfg(bcm2_interface intf) const = 0;
 	virtual std::string md5_key() const = 0;
 
 	//virtual std::string encrypt(const std::string& buf, const std::string& key) = 0;

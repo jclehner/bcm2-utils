@@ -113,12 +113,11 @@ interface::sp detect_interface(const io::sp &io)
 void detect_profile(const interface::sp& intf)
 {
 	dumper::sp ram = dumper::create(intf, "ram");
-	const bcm2_profile* p = bcm2_profiles;
 
-	for (; p->name[0]; ++p) {
-		for (size_t i = 0; i < BCM2_INTF_NUM; ++i) {
-			string data(p->magic[i].data);
-			if (ram->read(p->magic[i].addr, data.size()) == data) {
+	for (auto p : profile::list()) {
+		for (auto magic : p->magics()) {
+			string data = magic->data;
+			if (ram->read(magic->addr, data.size()) == data) {
 				intf->set_profile(p);
 				break;
 			}

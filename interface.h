@@ -13,6 +13,7 @@ namespace bcm2dump {
 class interface
 {
 	friend class interface_rw_base;
+	typedef bcm2dump::profile profile_type;
 
 	public:
 	typedef std::shared_ptr<interface> sp;
@@ -25,8 +26,11 @@ class interface
 
 	virtual bool is_active() = 0;
 
-	virtual void set_profile(const bcm2_profile* profile)
+	virtual void set_profile(const profile::sp& profile)
 	{ m_profile = profile; }
+
+	virtual profile_type::sp profile() const
+	{ return m_profile; }
 
 	bool is_active(const std::shared_ptr<io>& io)
 	{
@@ -53,14 +57,11 @@ class interface
 
 	static std::shared_ptr<interface> detect(const std::shared_ptr<io>& io);
 
-	const bcm2_profile* profile() const
-	{ return m_profile; }
-
 	virtual bcm2_interface id() const = 0;
 
 	protected:
 	std::shared_ptr<io> m_io;
-	const bcm2_profile* m_profile;
+	profile::sp m_profile;
 };
 
 class interface_rw_base
