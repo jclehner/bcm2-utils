@@ -300,9 +300,9 @@ class addrspace
 	private:
 	bool check_range(uint32_t offset, uint32_t length, const std::string& name, bool exception) const;
 
-	const bcm2_addrspace* m_p;
-	uint32_t m_size;
-	uint32_t m_kseg1;
+	const bcm2_addrspace* m_p = nullptr;
+	uint32_t m_size = 0;
+	uint32_t m_kseg1 = 0;
 	std::string m_profile_name;
 	std::vector<part> m_partitions;
 	std::vector<func> m_read_funcs;
