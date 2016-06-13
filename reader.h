@@ -21,10 +21,11 @@ class reader : public reader_writer
 
 	virtual uint32_t chunk_size() const = 0;
 
+	virtual void dump(const addrspace::part& partition, std::ostream& os);
 	virtual void dump(uint32_t offset, uint32_t length, std::ostream& os);
 	std::string read(uint32_t offset, uint32_t length);
 
-	static sp create(const interface::sp& interface, const std::string& type);
+	static sp create(const interface::sp& interface, const std::string& type, bool no_dumpcode = false);
 
 	protected:
 	virtual std::string read_chunk(uint32_t offset, uint32_t length) = 0;

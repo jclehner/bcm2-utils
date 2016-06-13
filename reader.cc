@@ -510,6 +510,12 @@ void reader::dump(uint32_t offset, uint32_t wbytes, std::ostream& os)
 	do_cleanup();
 }
 
+void reader::dump(const addrspace::part& partition, ostream& os)
+{
+	set_partition(partition.altname());
+	dump(partition.offset(), partition.size(), os);
+}
+
 string reader::read(uint32_t offset, uint32_t length)
 {
 	ostringstream ostr;
@@ -519,13 +525,15 @@ string reader::read(uint32_t offset, uint32_t length)
 
 // TODO this should be migrated to something like
 // interface::create_reader(const string& type)
-reader::sp reader::create(const interface::sp& intf, const string& type)
+reader::sp reader::create(const interface::sp& intf, const string& type, bool no_dumpcode)
 {
 	if (intf->name() == "bootloader") {
 		if (type == "ram") {
-			return create_reader<bootloader_ram_reader>(intf);
-		} else if (type == "qram") {
-			return create_reader<dumpcode_reader>(intf);
+			if (no_dumpcode) {
+				return create_reader<bootloader_ram_reader>(intf);
+			} else {
+				return create_reader<dumpcode_reader>(intf);
+			}
 		} else if (type == "flash") {
 			// TODO
 		}

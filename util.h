@@ -93,6 +93,9 @@ class logger
 	static std::ostream& e()
 	{ return log(ERR); }
 
+	static void loglevel(severity s)
+	{ s_loglevel = s; }
+
 	private:
 	static std::ofstream s_bucket;
 	static severity s_loglevel;
