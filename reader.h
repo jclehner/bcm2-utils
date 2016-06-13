@@ -11,7 +11,7 @@ class reader : public reader_writer
 	public:
 	typedef std::shared_ptr<reader> sp;
 
-	virtual ~reader() { do_cleanup(); }
+	virtual ~reader() {}
 
 	virtual uint32_t offset_alignment() const
 	{ return 4; }
@@ -21,7 +21,7 @@ class reader : public reader_writer
 
 	virtual uint32_t chunk_size() const = 0;
 
-	virtual void dump(const addrspace::part& partition, std::ostream& os);
+	virtual void dump(const addrspace::part& partition, std::ostream& os, uint32_t length = 0);
 	virtual void dump(uint32_t offset, uint32_t length, std::ostream& os);
 	std::string read(uint32_t offset, uint32_t length);
 

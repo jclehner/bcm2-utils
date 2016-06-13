@@ -52,6 +52,8 @@ uint32_t calc_checksum(const string& buf)
 class parsing_reader : public reader
 {
 	public:
+	virtual ~parsing_reader() {}
+
 	virtual string read_chunk(uint32_t offset, uint32_t length) override final
 	{
 		return read_chunk_impl(offset, length, 0);
@@ -111,7 +113,7 @@ string parsing_reader::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 			
 		on_chunk_retry(offset, length);
 
-		logger::d() << "retrying chunk 0x" << to_hex(offset) << endl;
+		logger::d() << endl << "retrying chunk 0x" << to_hex(offset) << endl;
 		return read_chunk_impl(offset, length, retries + 1);
 	}
 
@@ -121,6 +123,8 @@ string parsing_reader::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 class bfc_ram_reader : public parsing_reader
 {
 	public:
+	virtual ~bfc_ram_reader() {}
+
 	virtual uint32_t length_alignment() const override
 	{ return 16; }
 
@@ -165,6 +169,8 @@ string bfc_ram_reader::parse_chunk_line(const string& line, uint32_t offset)
 class bfc_flash_reader : public parsing_reader
 {
 	public:
+	virtual ~bfc_flash_reader() {}
+
 	virtual uint32_t chunk_size() const override
 	{ return 8192; }
 
@@ -175,27 +181,63 @@ class bfc_flash_reader : public parsing_reader
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
 	virtual bool is_ignorable_line(const string& line) override;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
+
+	virtual void update_progress(uint32_t offset) override
+	{
+		parsing_reader::update_progress(m_partition->offset() + offset);
+	}
 };
 
 void bfc_flash_reader::init(uint32_t offset, uint32_t length)
 {
-	if (arg("partition").empty()) {
-		throw runtime_error("cannot dump without a partition name");
+	logger::d() << __PRETTY_FUNCTION__ << endl;
+
+	if (!m_partition) {
+		throw runtime_error("no partition name specified");
 	}
 
-	cleanup();
-	if (!m_intf->runcmd("/flash/open " + arg("partition"), "driver opened")) {
-		throw runtime_error("failed to open partition " + arg("partition"));
+	for (unsigned pass = 0; pass < 2; ++pass) {
+		m_intf->runcmd("/flash/open " + m_partition->altname());
+
+		bool opened = false;
+		bool retry = false;
+
+		while (m_intf->pending()) {
+			string line = m_intf->readln();
+			if (contains(line, "opened twice")) {
+				retry = true;
+				opened = false;
+			} else if (contains(line, "driver opened") || contains(line, "NandFlashRead")) {
+				opened = true;
+			}
+		}
+
+		if (opened) {
+			break;
+		} else if (retry && pass == 0) {
+			cleanup();
+		} else {
+			throw runtime_error("failed to open partition " + m_partition->name());
+		}
 	}
 }
 
 void bfc_flash_reader::cleanup()
 {
+	logger::d() << __PRETTY_FUNCTION__ << endl;
 	m_intf->runcmd("/flash/close", "driver closed");
 }
 
 void bfc_flash_reader::do_read_chunk(uint32_t offset, uint32_t length)
 {
+	if (offset < m_partition->offset()) {
+		// just to be safe. this should never happen
+		throw runtime_error("offset 0x" + to_hex(offset) + " is less than partition offset");
+	}
+
+	// because readDirect expects an offset *within* the partition
+	offset -= m_partition->offset();
+
 	m_intf->runcmd("/flash/readDirect " + to_string(length) + " " + to_string(offset));
 }
 
@@ -230,12 +272,13 @@ string bfc_flash_reader::parse_chunk_line(const string& line, uint32_t offset)
 class bootloader_ram_reader : public parsing_reader
 {
 	public:
+	virtual ~bootloader_ram_reader() {}
+
 	virtual uint32_t chunk_size() const override
 	{ return 4; }
 
 	virtual uint32_t length_alignment() const
 	{ return 4; }
-
 
 	protected:
 	virtual void init(uint32_t offset, uint32_t length) override;
@@ -510,10 +553,10 @@ void reader::dump(uint32_t offset, uint32_t wbytes, std::ostream& os)
 	do_cleanup();
 }
 
-void reader::dump(const addrspace::part& partition, ostream& os)
+void reader::dump(const addrspace::part& partition, ostream& os, uint32_t length)
 {
-	set_partition(partition.altname());
-	dump(partition.offset(), partition.size(), os);
+	set_partition(partition);
+	dump(partition.offset(), !length ? partition.size() : length, os);
 }
 
 string reader::read(uint32_t offset, uint32_t length)

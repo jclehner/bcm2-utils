@@ -25,7 +25,9 @@ void add_line(const string& line, bool in)
 		lines.pop_front();
 	}
 
-	lines.push_back((in ? "==> " : "<== ") + trim(line));
+	lines.push_back((in ? "==> " : "<== ") + line);
+
+	logger::log(logger::TRACE) << lines.back() << endl;
 }
 
 unsigned to_termspeed(unsigned speed)

@@ -9,7 +9,11 @@ namespace {
 
 class bootloader_ram_writer : public writer
 {
+	public:
+	virtual ~bootloader_ram_writer() {}
+
 	protected:
+
 	virtual bool write_chunk(uint32_t offset, const string& chunk) override
 	{
 		try {
@@ -42,6 +46,8 @@ class bootloader_ram_writer : public writer
 class bfc_ram_writer : public writer
 {
 	public:
+	virtual ~bfc_ram_writer() {}
+
 	virtual uint32_t min_size() const override
 	{ return 1; }
 
@@ -62,6 +68,8 @@ class bfc_ram_writer : public writer
 class bfc_flash_writer : public writer
 {
 	public:
+	virtual ~bfc_flash_writer() {}
+
 	virtual uint32_t min_size() const override
 	{ return 1; }
 

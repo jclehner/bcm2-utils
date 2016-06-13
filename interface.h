@@ -76,8 +76,8 @@ class reader_writer
 	virtual void set_progress_listener(const progress_listener& listener = progress_listener())
 	{ m_listener = listener; }
 
-	virtual void set_partition(const std::string& partition)
-	{ m_args["partition"] = partition; }
+	virtual void set_partition(const addrspace::part& partition)
+	{ m_partition = &partition; }
 
 	virtual void set_interface(const interface::sp& intf)
 	{ m_intf = intf; }
@@ -106,7 +106,6 @@ class reader_writer
 
 	void do_init(uint32_t offset, uint32_t length)
 	{
-		do_cleanup();
 		init(offset, length);
 		m_inited = true;
 	}
@@ -123,6 +122,8 @@ class reader_writer
 
 	progress_listener m_listener;
 	interface::sp m_intf;
+	const addrspace::part* m_partition;
+
 	const bcm2_addrspace* m_space = nullptr;
 	bool m_inited = false;
 	args m_args;
