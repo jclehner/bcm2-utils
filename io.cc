@@ -25,7 +25,7 @@ void add_line(const string& line, bool in)
 		lines.pop_front();
 	}
 
-	lines.push_back((in ? "==> " : "<== ") + line);
+	lines.push_back((in ? "==> " : "<== ") + trim(line));
 }
 
 unsigned to_termspeed(unsigned speed)

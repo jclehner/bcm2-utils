@@ -8,7 +8,7 @@
 
 namespace bcm2dump {
 
-std::string trim(const std::string& str);
+std::string trim(std::string str);
 
 inline bool contains(const std::string& haystack, const std::string& needle)
 {
