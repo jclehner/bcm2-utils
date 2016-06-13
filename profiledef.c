@@ -87,7 +87,7 @@ struct bcm2_profile bcm2_profiles[] = {
 				.min = 0x80000000,
 				.size = 64 * 1024 * 1024,
 				.parts = {
-					{ "image1/2",   0x82f00000, 0x3e0000 },
+					{ "image",   0x82f00000, 0x3e0000 },
 					{ "bootloader", 0x83f80000, 0x010000 },
 				}
 			},
@@ -133,7 +133,7 @@ struct bcm2_profile bcm2_profiles[] = {
 				.size = 128 * 1024 * 1024,
 				.parts = {
 					{ "bootloader", 0x83f80000, 0x020000 },
-					{ "image1/2",   0x85f00000, 0x6c0000 },
+					{ "image",   0x85f00000, 0x6c0000 },
 					{ "linux",      0x87000000, 0x480000 }
 				}
 			},
