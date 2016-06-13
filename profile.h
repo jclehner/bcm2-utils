@@ -252,8 +252,11 @@ class addrspace
 	std::string name() const
 	{ return m_p->name; }
 
-	bool mem() const
-	{ return m_p->mem || name() == "ram"; }
+	bool is_mem() const
+	{ return m_p->mem || is_ram(); }
+
+	bool is_ram() const
+	{ return name() == "ram"; }
 
 	int interfaces() const
 	{ return m_p->intf; }

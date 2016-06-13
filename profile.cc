@@ -188,8 +188,8 @@ class profile_wrapper : public profile
 
 	void parse_magic()
 	{
-		const bcm2_magic* m = m_p->magic;
-		for (; m->addr && m->data[0]; ++m) {
+		for (size_t i = 0; i < BCM2_INTF_NUM && m_p->magic[i].addr; ++i) {
+			const bcm2_magic* m = &m_p->magic[i];
 			m_ram.check_range(m->addr, strlen(m->data), "magic");
 			m_magic.push_back(m);
 		}
@@ -268,20 +268,30 @@ addrspace::addrspace(const bcm2_addrspace* a, const profile& p)
 
 bool addrspace::check_range(uint32_t offset, uint32_t length, const string& name, bool exception) const
 {
-	uint32_t max = min() + m_size - 1;
+	// ignore memory address of 0
+	if (!offset && is_ram()) {
+		return true;
+	}
 
-	if (offset >= min() && (m_size && offset <= max)) {
-		return true;
-	} else if (!m_size || !length || ((offset + length) <= max)) {
-		return true;
-	} else if (!exception) {
+	offset &= ~m_kseg1;
+
+	uint32_t max = min() + m_size - 1;
+	uint32_t last = offset + length - 1;
+
+	if (offset >= min() && m_size && offset <= max) {
+		if (!m_size || !length || last <= max) {
+			return true;
+		}
+	}
+
+	if (!exception) {
 		return false;
 	}
 
 	string msg;
 
 	if (length) {
-		msg = "range " + this->name() + ":0x" + to_hex(offset) + "-0x" + to_hex(max);
+		msg = "range " + this->name() + ":0x" + to_hex(offset) + "-0x" + to_hex(last);
 	} else {
 		msg = "offset " + this->name() + ":0x" + to_hex(offset);
 	}
