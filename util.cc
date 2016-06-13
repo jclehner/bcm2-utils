@@ -33,4 +33,22 @@ string to_hex(const std::string& buffer)
 
 	return ret;
 }
+
+ofstream logger::s_bucket;
+logger::severity logger::s_loglevel = logger::INFO;
+
+ostream& logger::log(severity s)
+{
+	if (s < s_loglevel) {
+		return s_bucket;
+	} else if (s >= WARN) {
+		return cerr;
+	} else {
+		return cout;
+	}
+
+}
+
+
+
 }

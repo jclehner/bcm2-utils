@@ -98,13 +98,14 @@ string parsing_dumper::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 
 	if (chunk.size() != length) {
 		if (retries >= 2) {
-			throw runtime_error("read incomplete chunk @" + to_hex(offset)
+			throw runtime_error("read incomplete chunk 0x" + to_hex(offset)
 					+ ": " + to_string(chunk.size()) + "/" +to_string(length)
 					+ " b; last line:\n'" + last + "'");
 		}
 			
-		// TODO log
 		on_chunk_retry(offset, length);
+
+		logger::d() << "retrying chunk 0x" << to_hex(offset) << endl;
 		return read_chunk_impl(offset, length, retries + 1);
 	}
 

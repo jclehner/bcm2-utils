@@ -119,10 +119,12 @@ void detect_profile(const interface::sp& intf)
 			string data = magic->data;
 			if (ram->read(magic->addr, data.size()) == data) {
 				intf->set_profile(p);
-				break;
+				return;
 			}
 		}
 	}
+
+	logger::i() << "profile auto-detection failed" << endl;
 }
 }
 

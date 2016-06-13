@@ -3,6 +3,8 @@
 #include <stdexcept>
 #include <typeinfo>
 #include <iomanip>
+#include <iostream>
+#include <fstream>
 #include <sstream>
 #include <string>
 
@@ -61,6 +63,41 @@ template<class T> std::string to_hex(const T& t, size_t width = sizeof(T) * 2)
 }
 
 std::string to_hex(const std::string& buffer);
+
+class logger
+{
+	public:
+	enum severity
+	{
+		TRACE = 0,
+		DEBUG = 1,
+		INFO = 2,
+		WARN = 3,
+		ERR = 4
+	};
+
+	static std::ostream& log(severity s);
+
+	static std::ostream& v()
+	{ return log(TRACE); }
+
+	static std::ostream& d()
+	{ return log(DEBUG); }
+
+	static std::ostream& i()
+	{ return log(INFO); }
+
+	static std::ostream& w()
+	{ return log(WARN); }
+
+	static std::ostream& e()
+	{ return log(ERR); }
+
+	private:
+	static std::ofstream s_bucket;
+	static severity s_loglevel;
+};
+
 
 }
 
