@@ -48,6 +48,37 @@ string from_hex(const string& hex)
 	throw invalid_argument("invalid hex string: " + hex);
 }
 
+string rpad(string str, size_t padding)
+{
+	return str.size() >= padding ? str : str + string(padding - str.size(), ' ');
+}
+
+string lpad(string str, size_t padding)
+{
+	return str.size() >= padding ? str : string(padding - str.size(), ' ') + str;
+}
+
+string row(const string& name, size_t padding, const string& value)
+{
+	return rpad(name, padding) + "  " + value;
+}
+
+template<class T> string row(const string& name, size_t padding, const T& value)
+{
+	return row(name, padding, to_string(value));
+}
+
+string to_pretty_size(size_t size)
+{
+	if (!(size % (1024 * 1024))) {
+		return to_string(size / (1024 * 1024)) + " MB";
+	} else if (!(size % 1024)) {
+		return to_string(size / 1024) + " KB";
+	} else {
+		return to_string(size) + "  B";
+	}
+}
+
 class profile_wrapper : public profile
 {
 	public:
@@ -310,7 +341,7 @@ const addrspace::part& addrspace::partition(const string& name) const
 	throw invalid_argument(m_profile_name + ": " + this->name() + ": no such partition: " + name);
 }
 
-std::vector<profile::sp> profile::s_profiles;
+vector<profile::sp> profile::s_profiles;
 
 profile::sp profile::get(const string& name)
 {
@@ -333,4 +364,44 @@ vector<profile::sp> profile::list()
 
 	return s_profiles;
 }
+
+void profile::print_to_stdout(bool verbose) const
+{
+	cout << name() << ": " << pretty() << endl;
+	cout << string(name().size() + 2 + pretty().size(), '=') << endl;
+
+	//cout << row("baudrate", 12, baudrate()) << endl;
+	cout << row("pssig", 12, "0x" + to_hex(pssig())) << endl;
+	cout << row("blsig", 12, "0x" + to_hex(blsig())) << endl;
+
+	for (auto space : spaces()) {
+		cout << endl << rpad(space.name(), 12) << "  0x" << to_hex(space.min());
+		if (space.size()) {
+			cout << " - 0x" << to_hex(space.min() + space.size() - 1);
+			cout << "  (" << lpad(to_pretty_size(space.size()), 9) << ")  ";
+		} else {
+			cout << string(28, ' ');
+		}
+
+		cout << "R";
+
+		if (space.is_ram() || space.is_writable()) {
+			cout << "W";
+		} else {
+			cout << "O";
+		}
+
+		cout << endl << string(54, '-') << endl;
+
+		if (space.partitions().empty()) {
+			cout << "(no partitions defined)" << endl;
+		}
+
+		for (auto part : space.partitions()) {
+				cout << rpad(part.name(), 12) << "  0x" << to_hex(part.offset());
+				cout << " - 0x" << to_hex(part.offset() + part.size() - 1) << "  (" << lpad(to_pretty_size(part.size()), 9) << ")" << endl;
+		}
+	}
+}
+
 }

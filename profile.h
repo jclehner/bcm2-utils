@@ -37,8 +37,16 @@ extern "C" {
 
 enum bcm2_interface
 {
+	BCM2_INTF_ALL = 0,
 	BCM2_INTF_BLDR = 1,
 	BCM2_INTF_BFC = 2
+};
+
+enum bcm2_mem
+{
+	BCM2_MEM_NONE = 0,
+	BCM2_MEM_R = 1,
+	BCM2_MEM_RW = 2
 };
 
 enum bcm2_read_func_mode
@@ -104,10 +112,9 @@ struct bcm2_addrspace {
 	// "nvram", and the nand "flash". always define at
 	// least one address space called "ram".
 	char name[16];
-	// set to true if this is refers to ram (in case the
-	// bootloader does memory-mapped flash). this is
-	// automatically set for address spaces named "ram"
-	bool mem;
+	// used for memory mapped address space. ignored
+	// for address spaces named "ram".
+	enum bcm2_mem mem;
 	// combination of interface ids from bcm2_interface;
 	// 0 means all interfaces supported
 	int intf;
@@ -240,6 +247,9 @@ class addrspace
 		uint32_t size() const
 		{ return m_p->size; }
 
+		std::string altname() const
+		{ return m_p->altname; }
+
 		private:
 		part(const bcm2_partition* p) : m_p(p) {}
 
@@ -257,6 +267,9 @@ class addrspace
 
 	bool is_ram() const
 	{ return name() == "ram"; }
+
+	bool is_writable() const
+	{ return is_ram() || m_p->mem == BCM2_MEM_RW; }
 
 	int interfaces() const
 	{ return m_p->intf; }
@@ -347,8 +360,11 @@ class profile
 	virtual std::vector<std::string> default_keys() const = 0;
 	virtual std::string derive_key(const std::string& pw) const = 0;
 
+	void print_to_stdout(bool verbose = false) const;
+
 	static sp get(const std::string& name);
 	static std::vector<profile::sp> list();
+
 
 	private:
 	static std::vector<profile::sp> s_profiles;

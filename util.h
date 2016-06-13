@@ -60,6 +60,8 @@ template<class T> std::string to_hex(const T& t, size_t width = sizeof(T) * 2)
 	return ostr.str();
 }
 
+std::string to_hex(const std::string& buffer);
+
 }
 
 #endif

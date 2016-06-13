@@ -16,4 +16,15 @@ string trim(const string& str)
 
 	return ret;
 }
+
+string to_hex(const std::string& buffer)
+{
+	string ret;
+
+	for (char c : buffer) {
+		ret += to_hex(c);
+	}
+
+	return ret;
+}
 }
