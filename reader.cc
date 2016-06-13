@@ -164,6 +164,10 @@ string bfc_ram_reader::parse_chunk_line(const string& line, uint32_t offset)
 
 class bfc_flash_reader : public parsing_reader
 {
+	public:
+	virtual uint32_t chunk_size() const override
+	{ return 8192; }
+
 	protected:
 	virtual void init(uint32_t offset, uint32_t length) override;
 	virtual void cleanup() override;
@@ -180,14 +184,14 @@ void bfc_flash_reader::init(uint32_t offset, uint32_t length)
 	}
 
 	cleanup();
-	if (!m_intf->runcmd("/flash/open " + arg("partition"), "opened")) {
+	if (!m_intf->runcmd("/flash/open " + arg("partition"), "driver opened")) {
 		throw runtime_error("failed to open partition " + arg("partition"));
 	}
 }
 
 void bfc_flash_reader::cleanup()
 {
-	m_intf->runcmd("/flash/close", "closed");
+	m_intf->runcmd("/flash/close", "driver closed");
 }
 
 void bfc_flash_reader::do_read_chunk(uint32_t offset, uint32_t length)
