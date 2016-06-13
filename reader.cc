@@ -4,7 +4,7 @@
 #include "bcm2dump.h"
 #include "mipsasm.h"
 #include "writer.h"
-#include "dumper.h"
+#include "reader.h"
 #include "util.h"
 
 using namespace std;
@@ -47,7 +47,7 @@ uint32_t calc_checksum(const string& buf)
 	return checksum;
 }
 
-class parsing_dumper : public dumper
+class parsing_reader : public reader
 {
 	public:
 	virtual string read_chunk(uint32_t offset, uint32_t length) override final
@@ -66,7 +66,7 @@ class parsing_dumper : public dumper
 	virtual void on_chunk_retry(uint32_t offset, uint32_t length) {}
 };
 
-string parsing_dumper::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t retries)
+string parsing_reader::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t retries)
 {
 	do_read_chunk(offset, length);
 
@@ -112,7 +112,7 @@ string parsing_dumper::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 	return chunk;
 }
 
-class bfc_ram_dumper : public parsing_dumper
+class bfc_ram_reader : public parsing_reader
 {
 	public:
 	virtual uint32_t length_alignment() const override
@@ -126,12 +126,12 @@ class bfc_ram_dumper : public parsing_dumper
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
 };
 
-void bfc_ram_dumper::do_read_chunk(uint32_t offset, uint32_t length)
+void bfc_ram_reader::do_read_chunk(uint32_t offset, uint32_t length)
 {
 	m_intf->runcmd("/read_memory -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
 }
 
-bool bfc_ram_dumper::is_ignorable_line(const string& line)
+bool bfc_ram_reader::is_ignorable_line(const string& line)
 {
 	if (line.size() >= 65) {
 		if (line[8] == ':' || line.substr(48, 3) == " | ") {
@@ -142,7 +142,7 @@ bool bfc_ram_dumper::is_ignorable_line(const string& line)
 	return true;
 }
 
-string bfc_ram_dumper::parse_chunk_line(const string& line, uint32_t offset)
+string bfc_ram_reader::parse_chunk_line(const string& line, uint32_t offset)
 {
 	if (offset != hex_cast<uint32_t>(line.substr(0, 8))) {
 		throw runtime_error("offset mismatch");
@@ -156,7 +156,7 @@ string bfc_ram_dumper::parse_chunk_line(const string& line, uint32_t offset)
 	return linebuf;
 }
 
-class bfc_flash_dumper : public parsing_dumper
+class bfc_flash_reader : public parsing_reader
 {
 	protected:
 	virtual void init(uint32_t offset, uint32_t length) override;
@@ -167,7 +167,7 @@ class bfc_flash_dumper : public parsing_dumper
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
 };
 
-void bfc_flash_dumper::init(uint32_t offset, uint32_t length)
+void bfc_flash_reader::init(uint32_t offset, uint32_t length)
 {
 	if (arg("partition").empty()) {
 		throw runtime_error("cannot dump without a partition name");
@@ -179,17 +179,17 @@ void bfc_flash_dumper::init(uint32_t offset, uint32_t length)
 	}
 }
 
-void bfc_flash_dumper::cleanup()
+void bfc_flash_reader::cleanup()
 {
 	m_intf->runcmd("/flash/close", "closed");
 }
 
-void bfc_flash_dumper::do_read_chunk(uint32_t offset, uint32_t length)
+void bfc_flash_reader::do_read_chunk(uint32_t offset, uint32_t length)
 {
 	m_intf->runcmd("/flash/readDirect " + to_string(length) + " " + to_string(offset));
 }
 
-bool bfc_flash_dumper::is_ignorable_line(const string& line)
+bool bfc_flash_reader::is_ignorable_line(const string& line)
 {
 	if (line.size() >= 53) {
 		if (line.substr(11, 3) == "   " && line.substr(25, 3) == "   ") {
@@ -200,7 +200,7 @@ bool bfc_flash_dumper::is_ignorable_line(const string& line)
 	return true;
 }
 
-string bfc_flash_dumper::parse_chunk_line(const string& line, uint32_t offset)
+string bfc_flash_reader::parse_chunk_line(const string& line, uint32_t offset)
 {
 	string linebuf;
 
@@ -217,7 +217,7 @@ string bfc_flash_dumper::parse_chunk_line(const string& line, uint32_t offset)
 	return linebuf;
 }
 
-class bootloader_ram_dumper : public parsing_dumper
+class bootloader_ram_reader : public parsing_reader
 {
 	public:
 	virtual uint32_t chunk_size() const override
@@ -236,22 +236,23 @@ class bootloader_ram_dumper : public parsing_dumper
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
 };
 
-void bootloader_ram_dumper::init(uint32_t offset, uint32_t length)
+void bootloader_ram_reader::init(uint32_t offset, uint32_t length)
 {
 	m_intf->write("r");
 }
 
-void bootloader_ram_dumper::cleanup()
+void bootloader_ram_reader::cleanup()
 {
+	m_intf->writeln();
 	m_intf->writeln();
 }
 
-void bootloader_ram_dumper::do_read_chunk(uint32_t offset, uint32_t length)
+void bootloader_ram_reader::do_read_chunk(uint32_t offset, uint32_t length)
 {
 	m_intf->writeln("0x" + to_hex(offset));
 }
 
-bool bootloader_ram_dumper::is_ignorable_line(const string& line)
+bool bootloader_ram_reader::is_ignorable_line(const string& line)
 {
 	if (contains(line, "Value at") || contains(line, "(hex)")) {
 		return false;
@@ -260,7 +261,7 @@ bool bootloader_ram_dumper::is_ignorable_line(const string& line)
 	return true;
 }
 
-string bootloader_ram_dumper::parse_chunk_line(const string& line, uint32_t offset)
+string bootloader_ram_reader::parse_chunk_line(const string& line, uint32_t offset)
 {
 	if (line.find("Value at") == 0) {
 		if (offset != hex_cast<uint32_t>(line.substr(9, 8))) {
@@ -276,17 +277,17 @@ string bootloader_ram_dumper::parse_chunk_line(const string& line, uint32_t offs
 // this defines uint32 dumpcode[]
 #include "dumpcode.h"
 
-class dumpcode_dumper : public parsing_dumper
+class dumpcode_reader : public parsing_reader
 {
 	public:
-	dumpcode_dumper(const bcm2_func* func = nullptr) : m_dump_func(func) {}
+	dumpcode_reader(const bcm2_func* func = nullptr) : m_dump_func(func) {}
 
 	virtual uint32_t chunk_size() const
 	{ return 0x4000; }
 
 	virtual void set_interface(const interface::sp& intf) override
 	{
-		parsing_dumper::set_interface(intf);
+		parsing_reader::set_interface(intf);
 
 		if (!intf->profile()) {
 			throw runtime_error("dumpcode requires a profile");
@@ -301,7 +302,7 @@ class dumpcode_dumper : public parsing_dumper
 		}
 
 		m_ramw = writer::create(intf, "ram");
-		m_ramr = dumper::create(intf, "ram");
+		m_ramr = reader::create(intf, "ram");
 	}
 
 	protected:
@@ -409,7 +410,7 @@ class dumpcode_dumper : public parsing_dumper
 
 			m_code.resize(codesize);
 			uint32_t expected = calc_checksum(m_code.substr(m_entry, m_code.size() - 4 - m_entry));
-			uint32_t actual = ntohl(extract<uint32_t>(m_ramr->dump(m_loadaddr + m_code.size() - 4, 4)));
+			uint32_t actual = ntohl(extract<uint32_t>(m_ramr->read(m_loadaddr + m_code.size() - 4, 4)));
 			bool quick = (expected == actual);
 
 			patch32(m_code, codesize - 4, expected);
@@ -422,7 +423,7 @@ class dumpcode_dumper : public parsing_dumper
 			}
 
 			for (unsigned pass = 0; pass < 2; ++pass) {
-				string ramcode = m_ramr->dump(m_loadaddr, m_code.size());
+				string ramcode = m_ramr->read(m_loadaddr, m_code.size());
 				for (uint32_t i = 0; i < m_code.size(); i += 4) {
 					if (!quick && pass == 0 && m_listener) {
 						progress_add(&pg, 4);
@@ -455,18 +456,18 @@ class dumpcode_dumper : public parsing_dumper
 	const bcm2_func* m_dump_func = nullptr;
 
 	writer::sp m_ramw;
-	dumper::sp m_ramr;
+	reader::sp m_ramr;
 };
 
-template<class T> dumper::sp create_dumper(const interface::sp& intf)
+template<class T> reader::sp create_reader(const interface::sp& intf)
 {
-	dumper::sp ret = make_shared<T>();
+	reader::sp ret = make_shared<T>();
 	ret->set_interface(intf);
 	return ret;
 }
 }
 
-void dumper::dump(uint32_t offset, uint32_t wbytes, std::ostream& os)
+void reader::dump(uint32_t offset, uint32_t wbytes, std::ostream& os)
 {
 	if (offset % offset_alignment()) {
 		throw invalid_argument("offset not aligned to " + to_string(offset_alignment()) + " bytes");
@@ -499,7 +500,7 @@ void dumper::dump(uint32_t offset, uint32_t wbytes, std::ostream& os)
 	do_cleanup();
 }
 
-string dumper::dump(uint32_t offset, uint32_t length)
+string reader::read(uint32_t offset, uint32_t length)
 {
 	ostringstream ostr;
 	dump(offset, length, ostr);
@@ -507,26 +508,26 @@ string dumper::dump(uint32_t offset, uint32_t length)
 }
 
 // TODO this should be migrated to something like
-// interface::create_dumper(const string& type)
-dumper::sp dumper::create(const interface::sp& intf, const string& type)
+// interface::create_reader(const string& type)
+reader::sp reader::create(const interface::sp& intf, const string& type)
 {
 	if (intf->name() == "bootloader") {
 		if (type == "ram") {
-			return create_dumper<bootloader_ram_dumper>(intf);
+			return create_reader<bootloader_ram_reader>(intf);
 		} else if (type == "qram") {
-			return create_dumper<dumpcode_dumper>(intf);
+			return create_reader<dumpcode_reader>(intf);
 		} else if (type == "flash") {
 			// TODO
 		}
 	} else if (intf->name() == "bfc") {
 		if (type == "ram") {
-			return create_dumper<bfc_ram_dumper>(intf);
+			return create_reader<bfc_ram_reader>(intf);
 		} else if (type == "flash") {
-			return create_dumper<bfc_flash_dumper>(intf);
+			return create_reader<bfc_flash_reader>(intf);
 		}
 	}
 
-	throw invalid_argument("no such dumper: " + intf->name() + "-" + type);
+	throw invalid_argument("no such reader: " + intf->name() + "-" + type);
 }
 }
 

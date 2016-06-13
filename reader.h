@@ -6,21 +6,12 @@
 #include "profile.h"
 
 namespace bcm2dump {
-class dumper : public interface_rw_base
+class reader : public interface_rw_base
 {
 	public:
-	typedef std::shared_ptr<dumper> sp;
+	typedef std::shared_ptr<reader> sp;
 
-	struct params
-	{
-		uint32_t offset;
-		uint32_t length;
-		bcm2_partition* partition;
-		bcm2_addrspace* space;
-		const char* filename;
-	};
-
-	virtual ~dumper() { do_cleanup(); }
+	virtual ~reader() { do_cleanup(); }
 
 	virtual uint32_t offset_alignment() const
 	{ return 4; }
@@ -31,9 +22,7 @@ class dumper : public interface_rw_base
 	virtual uint32_t chunk_size() const = 0;
 
 	virtual void dump(uint32_t offset, uint32_t length, std::ostream& os);
-	std::string dump(uint32_t offset, uint32_t length);
-	std::string read(uint32_t offset, uint32_t length)
-	{ return dump(offset, length); }
+	std::string read(uint32_t offset, uint32_t length);
 
 	static sp create(const interface::sp& interface, const std::string& type);
 

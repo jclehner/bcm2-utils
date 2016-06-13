@@ -1,5 +1,5 @@
 #include "interface.h"
-#include "dumper.h"
+#include "reader.h"
 using namespace std;
 
 namespace bcm2dump {
@@ -112,7 +112,7 @@ interface::sp detect_interface(const io::sp &io)
 
 void detect_profile(const interface::sp& intf)
 {
-	dumper::sp ram = dumper::create(intf, "ram");
+	reader::sp ram = reader::create(intf, "ram");
 
 	for (auto p : profile::list()) {
 		for (auto magic : p->magics()) {
