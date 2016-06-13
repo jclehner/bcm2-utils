@@ -114,11 +114,11 @@ string parsing_dumper::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 class bfc_ram_dumper : public parsing_dumper
 {
 	public:
-	virtual uint32_t length_alignment() const
-	{ return 4; }
+	virtual uint32_t length_alignment() const override
+	{ return 16; }
 
 	virtual uint32_t chunk_size() const override
-	{ return 4; }
+	{ return 0x4000; }
 
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
 	virtual bool is_ignorable_line(const string& line) override;
@@ -127,7 +127,7 @@ class bfc_ram_dumper : public parsing_dumper
 
 void bfc_ram_dumper::do_read_chunk(uint32_t offset, uint32_t length)
 {
-	m_intf->runcmd("/read_memory -s 4 -n " + to_string(length) + " " + to_string(offset));
+	m_intf->runcmd("/read_memory -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
 }
 
 bool bfc_ram_dumper::is_ignorable_line(const string& line)
@@ -340,9 +340,6 @@ class dumpcode_dumper : public parsing_dumper
 		if (!arg("codefile").empty()) {
 			throw runtime_error("error recovery is not possible with custom dumpcode");
 		}
-
-		ofstream of("dumpcode_post.bin");
-		m_ramr->dump(m_loadaddr, m_code.size(), of);
 
 		patch32(m_code, 0x10, offset);
 		m_ramw->write(m_loadaddr + 0x10, m_code.substr(0x10, 4));
