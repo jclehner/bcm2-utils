@@ -49,7 +49,7 @@ template<class T> T lexical_cast(const std::string& str, unsigned base = 10)
 	}
 
 	if (!(istr >> std::setbase(base) >> t)) {
-		throw bad_lexical_cast("conversion failed: " + str + " -> " + std::string(typeid(T).name()));
+		throw bad_lexical_cast("conversion failed: '" + str + "' -> " + std::string(typeid(T).name()));
 	}
 
 	return t;
