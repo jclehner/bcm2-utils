@@ -25,7 +25,7 @@ class bfc : public interface
 
 	protected:
 	virtual void runcmd(const string& cmd) override
-	{ m_io->writeln(cmd); }
+	{ writeln(cmd); }
 };
 
 bool bfc::is_active()
@@ -95,9 +95,58 @@ void bootloader::runcmd(const string& cmd)
 	m_io->write(cmd);
 }
 
+class bfc_telnet : public bfc
+{
+	public:
+	static unsigned constexpr invalid = 0;
+	static unsigned constexpr connected = 1;
+	static unsigned constexpr authenticated = 2;
+	static unsigned constexpr rooted = 3;
+
+	virtual void runcmd(const string& cmd) override;
+
+	virtual bool is_active() override;
+
+	int status() const
+	{ return m_status; }
+
+	private:
+	unsigned m_status = invalid;
+};
+
+bool bfc_telnet::is_active()
+{
+	while (pending()) {
+		string line = readln();
+		if (line.empty()) {
+			break;
+		}
+
+		if (contains(line, "Telnet")) {
+			m_status = connected;
+		}
+	}
+
+	return m_status >= connected;
+}
+
+void bfc_telnet::runcmd(const string& cmd)
+{
+	if (m_status < authenticated) {
+		throw runtime_error("not authenticated");
+	}
+
+	bfc::runcmd(cmd);
+}
+
 interface::sp detect_interface(const io::sp &io)
 {
-	interface::sp intf = make_shared<bootloader>();
+	interface::sp intf = make_shared<bfc_telnet>();
+	if (intf->is_active(io)) {
+		return intf;
+	}
+
+	intf = make_shared<bootloader>();
 	if (intf->is_active(io)) {
 		return intf;
 	}

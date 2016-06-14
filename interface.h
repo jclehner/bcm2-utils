@@ -44,16 +44,16 @@ class interface
 		return true;
 	}
 
-	void writeln(const std::string& str = "")
+	virtual void writeln(const std::string& str = "")
 	{ m_io->writeln(str); }
 
-	void write(const std::string& str)
+	virtual void write(const std::string& str)
 	{ m_io->write(str); }
 
-	std::string readln(unsigned timeout = 100) const
+	virtual std::string readln(unsigned timeout = 100) const
 	{ return m_io->readln(timeout); }
 
-	bool pending(unsigned timeout = 100) const
+	virtual bool pending(unsigned timeout = 100) const
 	{ return m_io->pending(); }
 
 	static std::shared_ptr<interface> detect(const std::shared_ptr<io>& io);

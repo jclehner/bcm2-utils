@@ -1,7 +1,11 @@
 #include <system_error>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <arpa/inet.h>
 #include <stdexcept>
 #include <termios.h>
 #include <unistd.h>
+#include <netdb.h>
 #include <fcntl.h>
 #include <cstring>
 #include <cerrno>
@@ -28,6 +32,77 @@ void add_line(const string& line, bool in)
 	lines.push_back((in ? "==> " : "<== ") + line);
 
 	logger::t() << lines.back() << endl;
+}
+
+bool set_nonblock(int fd, bool nonblock)
+{
+	int flags = 0;
+	if ((flags = fcntl(fd, F_GETFL, 0)) < 0) {
+		return false;
+	}
+
+	if (nonblock) {
+		flags |= O_NONBLOCK;
+	} else {
+		flags &= ~O_NONBLOCK;
+	}
+
+	if (fcntl(fd, F_SETFL, flags) < 0) {
+		return false;
+	}
+
+	return true;
+}
+
+int connect_nonblock(int fd, sockaddr* addr, socklen_t len)
+{
+	if (!set_nonblock(fd, true)) {
+		return -1;
+	}
+
+	int err = connect(fd, addr, len);
+	if (err) {
+		if (errno != EINPROGRESS) {
+			return -1;
+		}
+
+		fd_set rset, wset;
+		FD_ZERO(&rset);
+		FD_ZERO(&wset);
+		FD_SET(fd, &rset);
+		FD_SET(fd, &wset);
+
+		timeval tv;
+		tv.tv_sec = 5;
+		tv.tv_usec = 0;
+
+		err = select(fd + 1, &rset, &wset, NULL, &tv);
+		if (err <= 0) {
+			if (!err) {
+				errno = ETIMEDOUT;
+			}
+
+			perror("select");
+
+			return -1;
+		}
+
+		err = 0;
+		len = sizeof(err);
+
+		if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len) != 0 || err) {
+			if (err) {
+				errno = err;
+			}
+			return -1;
+		}
+	}
+
+	if (!set_nonblock(fd, false)) {
+		return -1;
+	}
+
+	return 0;
 }
 
 unsigned to_termspeed(unsigned speed)
@@ -59,14 +134,14 @@ class fdio : public io
 	virtual ~fdio()
 	{ close(); }
 
-	virtual bool pending(unsigned timeout) const override;
+	virtual bool pending(unsigned timeout) override;
 	virtual void write(const string& str) override;
 
 	protected:
 	virtual void close()
 	{ ::close(m_fd); }
 
-	virtual int getc() const override;
+	virtual int getc() override;
 
 	int m_fd;
 };
@@ -75,11 +150,33 @@ class serial : public fdio
 {
 	public:
 	serial(const char* tty, unsigned speed);
+	virtual ~serial() {}
 	virtual void write(const string& str) override;
 	virtual void writeln(const string& str) override;
 };
 
-bool fdio::pending(unsigned timeout) const
+class tcp : public fdio
+{
+	public:
+	tcp(const string& addr, uint16_t port);
+	virtual ~tcp() {}
+	virtual void write(const string& str) override;
+	virtual void writeln(const string& str) override
+	{ write(str + "\r\n"); }
+};
+
+class telnet : public tcp
+{
+	public:
+	telnet(const string& addr, uint16_t port) : tcp(addr, port) {}
+	virtual ~telnet() { close(); }
+	virtual int getc() override;
+
+	protected:
+	virtual void close() override;
+};
+
+bool fdio::pending(unsigned timeout)
 {
 	fd_set fds;
 	FD_ZERO(&fds);
@@ -97,12 +194,12 @@ bool fdio::pending(unsigned timeout) const
 	return ret;
 }
 
-int fdio::getc() const
+int fdio::getc()
 {
 	char c;
 	ssize_t ret = read(m_fd, &c, 1);
 	if (ret == 0) {
-		return EOF;
+		return eof;
 	} else if (ret != 1) {
 		throw system_error(errno, system_category(), "read");
 	}
@@ -170,7 +267,7 @@ serial::serial(const char* tty, unsigned speed)
 	}
 }
 
-tcp::tcp(const string& addr, unsigned short port)
+tcp::tcp(const string& addr, uint16_t port)
 {
 	m_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (m_fd < 0) {
@@ -190,7 +287,12 @@ tcp::tcp(const string& addr, unsigned short port)
 
 	error = 0;
 	for (addrinfo* rp = result; rp; rp = rp->ai_next) {
-		if (connect(m_fd, rp->ai_addr, rp->ai_addrlen) == 0) {
+		sockaddr_in* addr = reinterpret_cast<sockaddr_in*>(rp->ai_addr);
+		addr->sin_port = htons(port);
+
+		logger::d() << "trying " << inet_ntoa(addr->sin_addr) << endl;
+
+		if (connect_nonblock(m_fd, rp->ai_addr, rp->ai_addrlen) == 0) {
 			error = 0;
 			break;
 		} else {
@@ -212,9 +314,41 @@ void tcp::write(const string& str)
 	}
 }
 
+int telnet::getc()
+{
+	int c = tcp::getc();
+	if (c == 0xff) {
+		c = tcp::getc();
+		switch (c) {
+		case 246:  // are you there?
+			// yes i am
+			write(string("\x00", 1));
+			break;
+		case 244:
+			close();
+			return eof;
+		default:
+			return ign;
+
+		}
+
+		if (c > 0 && c < 0xff) {
+			logger::v() << endl << "telnet cmd " << c << endl;
+			return ign;
+		}
+	}
+
+	return c;
 }
 
-string io::readln(unsigned timeout) const
+void telnet::close()
+{
+	write("\xff\xf1");
+	tcp::close();
+}
+}
+
+string io::readln(unsigned timeout)
 {
 	string line;
 	bool lf = false, cr = false;
@@ -224,15 +358,17 @@ string io::readln(unsigned timeout) const
 		if (c == '\n') {
 			lf = true;
 			break;
-		} else if (c == EOF) {
+		} else if (c == eof) {
 			break;
 		} else if (c != '\r') {
 			if (cr) {
 				line.clear();
 			}
 
-			line += char(c & 0xff);
-			cr = false;
+			if (c != ign) {
+				line += char(c & 0xff);
+				cr = false;
+			}
 		} else {
 			cr = true;
 		}
@@ -259,7 +395,7 @@ shared_ptr<io> io::open_serial(const char* tty, unsigned speed)
 
 shared_ptr<io> io::open_telnet(const string& address, unsigned short port)
 {
-	return make_shared<tcp>(address, port);
+	return make_shared<telnet>(address, port);
 }
 
 list<string> io::get_last_lines()
