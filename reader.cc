@@ -96,26 +96,28 @@ string parsing_reader::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 				last = line;
 				update_progress(pos);
 			} catch (const exception& e) {
+				string msg = "failed to parse chunk line @" + to_hex(pos) + ": '" + line + "' (" + e.what() + ")";
 				if (retries >= 2) {
-					throw runtime_error("failed to read chunk line @" + to_hex(pos) + ": '" + line + "' (" + e.what() + ")");
+					throw runtime_error(msg);
 				}
 
-				// TODO log
+				logger::d() << msg << endl;
 				break;
 			}
 		}
 	}
 
 	if (chunk.size() != length) {
+		string msg = "read incomplete chunk 0x" + to_hex(offset)
+					+ ": " + to_string(chunk.size()) + "/" +to_string(length);
+
 		if (retries >= 2) {
-			throw runtime_error("read incomplete chunk 0x" + to_hex(offset)
-					+ ": " + to_string(chunk.size()) + "/" +to_string(length)
-					+ " b; last line:\n'" + last + "'");
+			throw runtime_error(msg);
 		}
+
+		logger::d() << endl << msg << "; retrying" << endl;
 			
 		on_chunk_retry(offset, length);
-
-		logger::d() << endl << "retrying chunk 0x" << to_hex(offset) << endl;
 		return read_chunk_impl(offset, length, retries + 1);
 	}
 
@@ -217,6 +219,7 @@ void bfc_flash_reader::init(uint32_t offset, uint32_t length)
 		if (opened) {
 			break;
 		} else if (retry && pass == 0) {
+			logger::d() << "closing flash driver before reopening" << endl;
 			cleanup();
 		} else {
 			throw runtime_error("failed to open partition " + m_partition->name());
@@ -529,9 +532,6 @@ void reader::dump(uint32_t offset, uint32_t wbytes, std::ostream& os)
 	}
 
 	uint32_t rbytes = align_to(wbytes, length_alignment());
-	if (wbytes != rbytes) {
-		// TODO log
-	}
 
 	do_init(offset, rbytes);
 

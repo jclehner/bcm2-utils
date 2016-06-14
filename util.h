@@ -71,15 +71,19 @@ class logger
 	{
 		TRACE = 0,
 		DEBUG = 1,
-		INFO = 2,
-		WARN = 3,
-		ERR = 4
+		VERBOSE = 2,
+		INFO = 3,
+		WARN = 4,
+		ERR = 5
 	};
 
 	static std::ostream& log(severity s);
 
-	static std::ostream& v()
+	static std::ostream& t()
 	{ return log(TRACE); }
+
+	static std::ostream& v()
+	{ return log(VERBOSE); }
 
 	static std::ostream& d()
 	{ return log(DEBUG); }
