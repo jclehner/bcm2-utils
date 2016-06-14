@@ -110,15 +110,23 @@ string parsing_reader::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 	if (chunk.size() != length) {
 		string msg = "read incomplete chunk 0x" + to_hex(offset)
 					+ ": " + to_string(chunk.size()) + "/" +to_string(length);
+		if (retries < 2) {
+			// if the dump is still underway, we need to wait for it to finish
+			// before issuing the next command
 
-		if (retries >= 2) {
-			throw runtime_error(msg);
+			for (unsigned i = 0; i < 10; ++i) {
+				if (m_intf->is_active()) {
+					logger::d() << endl << msg << "; retrying" << endl;
+					on_chunk_retry(offset, length);
+					return read_chunk_impl(offset, length, retries + 1);
+				} else if (i != 9) {
+					sleep(1);
+				}
+			}
 		}
 
-		logger::d() << endl << msg << "; retrying" << endl;
-			
-		on_chunk_retry(offset, length);
-		return read_chunk_impl(offset, length, retries + 1);
+		throw runtime_error(msg);
+
 	}
 
 	return chunk;

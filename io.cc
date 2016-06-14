@@ -77,7 +77,6 @@ class serial : public fdio
 	serial(const char* tty, unsigned speed);
 	virtual void write(const string& str) override;
 	virtual void writeln(const string& str) override;
-	virtual void iflush() override;
 };
 
 bool fdio::pending(unsigned timeout) const
@@ -171,12 +170,48 @@ serial::serial(const char* tty, unsigned speed)
 	}
 }
 
-void serial::iflush()
+tcp::tcp(const string& addr, unsigned short port)
 {
-	if (tcflush(m_fd, TCIFLUSH) < 0) {
-		throw system_error(errno, system_category(), "tcflush");
+	m_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (m_fd < 0) {
+		throw system_error(errno, system_category(), "socket");
+	}
+
+	addrinfo hints = { 0 };
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
+
+	addrinfo* result;
+	int error = getaddrinfo(addr.c_str(), nullptr, &hints, &result);
+	if (error) {
+		throw system_error(error, system_category(), "getaddrinfo");
+	}
+
+	error = 0;
+	for (addrinfo* rp = result; rp; rp = rp->ai_next) {
+		if (connect(m_fd, rp->ai_addr, rp->ai_addrlen) == 0) {
+			error = 0;
+			break;
+		} else {
+			error = errno;
+		}
+	}
+
+	freeaddrinfo(result);
+
+	if (error) {
+		throw system_error(error, system_category(), "connect");
 	}
 }
+
+void tcp::write(const string& str)
+{
+	if (send(m_fd, str.data(), str.size(), MSG_NOSIGNAL) != str.size()) {
+		throw system_error(errno, system_category(), "send");
+	}
+}
+
 }
 
 string io::readln(unsigned timeout) const
@@ -220,6 +255,11 @@ string io::readln(unsigned timeout) const
 shared_ptr<io> io::open_serial(const char* tty, unsigned speed)
 {
 	return make_shared<serial>(tty, speed);	
+}
+
+shared_ptr<io> io::open_telnet(const string& address, unsigned short port)
+{
+	return make_shared<tcp>(address, port);
 }
 
 list<string> io::get_last_lines()
