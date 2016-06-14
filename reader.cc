@@ -146,17 +146,27 @@ class bfc_ram_reader : public parsing_reader
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
 	virtual bool is_ignorable_line(const string& line) override;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
+
+	private:
+	bool m_hint_decimal = false;
 };
 
 void bfc_ram_reader::do_read_chunk(uint32_t offset, uint32_t length)
 {
 	m_intf->runcmd("/read_memory -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
+	m_hint_decimal = false;
 }
 
 bool bfc_ram_reader::is_ignorable_line(const string& line)
 {
 	if (line.size() >= 65) {
-		if (line[8] == ':' || line.substr(48, 3) == " | ") {
+		if (line.substr(8, 2) == ": " && line.substr(48, 3) == " | ") {
+			m_hint_decimal = false;
+			return false;
+		} else if (contains(line, ": ") && contains(line, " | ")) {
+			// if another message is printed by the firmware, the dump
+			// output sometimes switches to an all-decimal format.
+			m_hint_decimal = true;
 			return false;
 		}
 	}
@@ -166,13 +176,27 @@ bool bfc_ram_reader::is_ignorable_line(const string& line)
 
 string bfc_ram_reader::parse_chunk_line(const string& line, uint32_t offset)
 {
-	if (offset != hex_cast<uint32_t>(line.substr(0, 8))) {
-		throw runtime_error("offset mismatch");
-	}
-
 	string linebuf;
-	for (unsigned i = 0; i < 4; ++i) {
-		linebuf += to_buf(htonl(hex_cast<uint32_t>(line.substr((i + 1) * 10, 8))));
+
+	if (!m_hint_decimal) {
+		if (offset != hex_cast<uint32_t>(line.substr(0, 8))) {
+			throw runtime_error("offset mismatch");
+		}
+		for (unsigned i = 0; i < 4; ++i) {
+			linebuf += to_buf(htonl(hex_cast<uint32_t>(line.substr((i + 1) * 10, 8))));
+		}
+	} else {
+		auto beg = line.find(": ");
+		if (offset != lexical_cast<uint32_t>(line.substr(0, beg))) {
+			throw runtime_error("offset mismatch");
+		}
+
+		for (unsigned i = 0; i < 4; ++i) {
+			beg = line.find_first_of("0123456789", beg);
+			auto end = line.find_first_not_of("0123456789", beg);
+			linebuf += to_buf(htonl(lexical_cast<uint32_t>(line.substr(beg, end - beg))));
+			beg = end;
+		}
 	}
 
 	return linebuf;
