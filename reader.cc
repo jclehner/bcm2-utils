@@ -82,6 +82,8 @@ string parsing_reader::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 	uint32_t pos = offset;
 
 	while (chunk.size() < length && m_intf->pending()) {
+		throw_if_interrupted();
+
 		line = trim(m_intf->readln());
 
 		if (is_ignorable_line(line)) {
@@ -534,6 +536,8 @@ void reader::dump(uint32_t offset, uint32_t wbytes, std::ostream& os)
 	do_init(offset, rbytes);
 
 	while (rbytes) {
+		throw_if_interrupted();
+
 		uint32_t n = min(chunk_size(), rbytes);
 		string chunk = read_chunk(offset, n);
 
@@ -543,6 +547,7 @@ void reader::dump(uint32_t offset, uint32_t wbytes, std::ostream& os)
 			throw runtime_error("unexpected chunk length: " + to_string(chunk.size()));
 		}
 
+		throw_if_interrupted();
 		os.write(chunk.c_str(), min(n, wbytes));
 
 		wbytes = (wbytes >= n) ? wbytes - n : 0;

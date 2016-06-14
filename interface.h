@@ -1,6 +1,7 @@
 #ifndef BCM2DUMP_INTERFACE_H
 #define BCM2DUMP_INTERFACE_H
 #include <functional>
+#include <csignal>
 #include <memory>
 #include <string>
 #include <map>
@@ -85,7 +86,19 @@ class reader_writer
 	virtual void set_args(const args& args)
 	{ m_args = args; }
 
+	struct interrupted {};
+
 	protected:
+	static void throw_if_interrupted()
+	{
+		if (is_interrupted()) {
+			throw interrupted();
+		}
+	}
+
+	static bool is_interrupted()
+	{ return s_sigint; }
+
 	virtual void init(uint32_t offset, uint32_t length) {}
 	virtual void cleanup() {}
 
@@ -96,19 +109,8 @@ class reader_writer
 		}
 	}
 
-	void do_cleanup()
-	{
-		if (m_inited) {
-			cleanup();
-			m_inited = false;
-		}
-	}
-
-	void do_init(uint32_t offset, uint32_t length)
-	{
-		init(offset, length);
-		m_inited = true;
-	}
+	void do_cleanup();
+	void do_init(uint32_t offset, uint32_t length);
 
 	template<class T> T arg(const std::string& name)
 	{
@@ -125,8 +127,15 @@ class reader_writer
 	const addrspace::part* m_partition;
 
 	const bcm2_addrspace* m_space = nullptr;
-	bool m_inited = false;
 	args m_args;
+
+	private:
+	static void handle_signal(int signal)
+	{ s_sigint = 1; }
+
+	bool m_inited = false;
+	static volatile sig_atomic_t s_sigint;
+	static unsigned s_count;
 };
 
 }

@@ -156,4 +156,24 @@ interface::sp interface::detect(const io::sp& io)
 	detect_profile(intf);
 	return intf;
 }
+
+unsigned reader_writer::s_count = 0;
+volatile sig_atomic_t reader_writer::s_sigint = 0;
+
+void reader_writer::do_cleanup()
+{
+	if (m_inited) {
+		cleanup();
+		m_inited = false;
+	}
+}
+
+void reader_writer::do_init(uint32_t offset, uint32_t length)
+{
+	init(offset, length);
+	m_inited = true;
+	++s_count;
+	logger::d() << "installing signal handler" << endl;
+	signal(SIGINT, &reader_writer::handle_signal);
+}
 }
