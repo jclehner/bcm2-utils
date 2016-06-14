@@ -248,7 +248,7 @@ class addrspace
 		{ return m_p->size; }
 
 		std::string altname() const
-		{ return m_p->altname; }
+		{ return m_p->altname[0] ? m_p->altname : name(); }
 
 		private:
 		part(const bcm2_partition* p) : m_p(p) {}
