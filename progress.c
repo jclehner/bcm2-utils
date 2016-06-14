@@ -79,7 +79,11 @@ void progress_add(struct progress *p, unsigned n)
 	time_t now = time(NULL);
 	if (now > p->last) {
 		p->speed_now = p->tmp / (now - p->last);
-		p->speed_avg = (p->cur - p->min) / (now - p->beg);
+		if (now > p->beg) {
+			p->speed_avg = (p->cur - p->min) / (now - p->beg);
+		} else {
+			p->speed_avg = p->speed_now;
+		}
 
 		if (p->speed_avg) {
 			gmtime_days((p->max - p->cur) / p->speed_avg, &p->eta_days, &p->eta);
