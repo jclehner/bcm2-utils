@@ -270,6 +270,11 @@ interface::sp interface::detect(const io::sp& io)
 	return intf;
 }
 
+interface::sp interface::create_serial(const string& tty, unsigned speed)
+{
+	return detect(io::open_serial(tty.c_str(), speed));
+}
+
 interface::sp interface::create_telnet(const string& addr, uint16_t port,
 		const string& user, const string& pw, const profile::sp& profile)
 {
