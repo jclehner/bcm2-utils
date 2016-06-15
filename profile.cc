@@ -304,27 +304,29 @@ bool addrspace::check_range(uint32_t offset, uint32_t length, const string& name
 		return true;
 	}
 
-	offset &= ~m_kseg1;
+	if (!(offset() % alignment())) {
+		offset &= ~m_kseg1;
 
-	uint32_t max = min() + m_size - 1;
-	uint32_t last = offset + length - 1;
+		uint32_t max = min() + m_size - 1;
+		uint32_t last = offset + length - 1;
 
-	if (offset >= min() && m_size && offset <= max) {
-		if (!m_size || !length || last <= max) {
-			return true;
+		if (offset >= min() && m_size && offset <= max) {
+			if (!m_size || !length || last <= max) {
+				return true;
+			}
 		}
-	}
 
-	if (!exception) {
-		return false;
-	}
+		if (!exception) {
+			return false;
+		}
 
-	string msg;
+		string msg;
 
-	if (length) {
-		msg = "range " + this->name() + ":0x" + to_hex(offset) + "-0x" + to_hex(last);
-	} else {
-		msg = "offset " + this->name() + ":0x" + to_hex(offset);
+		if (length) {
+			msg = "range " + this->name() + ":0x" + to_hex(offset) + "-0x" + to_hex(last);
+		} else {
+			msg = "offset " + this->name() + ":0x" + to_hex(offset);
+		}
 	}
 
 	throw invalid_argument(m_profile_name + ": " + msg + " invalid " + (!name.empty() ? ("(" + name + ")") : ""));

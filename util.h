@@ -1,5 +1,6 @@
 #ifndef BCM2UTILS_UTIL_H
 #define BCM2UTILS_UTIL_H
+#include <type_traits>
 #include <stdexcept>
 #include <typeinfo>
 #include <iomanip>
@@ -63,6 +64,18 @@ template<class T> std::string to_hex(const T& t, size_t width = sizeof(T) * 2)
 }
 
 std::string to_hex(const std::string& buffer);
+
+template<class T> const T& ensure_alignment(const T& num, size_t alignment, const std::string& name = "")
+{
+	static_assert(std::is_integral<T>::value, "integer type required");
+
+	if (num % alignment) {
+		throw std::invalid_argument("value 0x" + to_hex(num) + " is not aligned to a "
+				+ std::to_string(alignment) + " byte boundary" + (!name.empty() ? " (" + name + ")" : ""));
+	}
+
+	return num;
+}
 
 class logger
 {
