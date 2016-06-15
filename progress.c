@@ -120,7 +120,7 @@ void progress_print(struct progress *p, FILE *fp)
 		time_t diff = time(NULL) - p->beg;
 
 		gmtime_days(diff, &days, &elapsed);
-		fprintf(fp, "      %5ld bytes/s (ELT  ", (p->max - p->min) / diff);
+		fprintf(fp, "      %5ld bytes/s (ELT  ", (p->max - p->min) / (diff ? diff : 1));
 		print_time(fp, days, &elapsed);
 	}
 
