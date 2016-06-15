@@ -666,7 +666,7 @@ void reader::dump(uint32_t offset, uint32_t length, std::ostream& os)
 {
 	auto cleaner = make_cleaner();
 	uint32_t offset_r = align_left(offset, limits_read().alignment);
-	uint32_t length_r = align_right(length, limits_read().min);
+	uint32_t length_r = align_right(length + (offset - offset_r), limits_read().min);
 	uint32_t length_w = length;
 
 	logger::v() << "dump: (0x" << to_hex(offset) << ", " << length << ") -> "
@@ -683,9 +683,9 @@ void reader::dump(uint32_t offset, uint32_t length, std::ostream& os)
 		if (offset_r > (offset + length)) {
 			update_progress(offset + length - 2, 0);
 		} else if (offset_r < offset){
-			update_progress(0, 0);
+			//update_progress(0, 0);
 		} else {
-			update_progress(offset - offset_r, n);
+			//update_progress(offset - offset_r, n);
 		}
 
 		if (chunk.size() != n) {
@@ -751,7 +751,7 @@ void reader::write(uint32_t offset, const string& buf, uint32_t length)
 	limits lim = limits_write();
 
 	uint32_t offset_w = align_left(offset, lim.min);
-	uint32_t length_w = align_right(length, lim.min);
+	uint32_t length_w = align_right(length + (offset - offset_w), lim.min);
 
 	logger::v() << "write: (0x" << to_hex(offset) << ", " << length << ") -> "
 			<< "(0x" << to_hex(offset_w) << ", " << length_w << ")" << endl;
