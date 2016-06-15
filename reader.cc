@@ -111,10 +111,10 @@ string parsing_reader::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 					+ ": " + to_string(chunk.size()) + "/" +to_string(length);
 		if (retries < 2) {
 			// if the dump is still underway, we need to wait for it to finish
-			// before issuing the next command
+			// before issuing the next command. wait for up to 10 seconds.
 
 			for (unsigned i = 0; i < 10; ++i) {
-				if (m_intf->is_active()) {
+				if (m_intf->is_ready(true)) {
 					logger::d() << endl << msg << "; retrying" << endl;
 					on_chunk_retry(offset, length);
 					return read_chunk_impl(offset, length, retries + 1);

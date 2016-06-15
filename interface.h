@@ -25,18 +25,22 @@ class interface
 	virtual void runcmd(const std::string& cmd) = 0;
 	virtual bool runcmd(const std::string& cmd, const std::string& expect, bool stop_on_match = false);
 
-	virtual bool is_active() = 0;
-
 	virtual void set_profile(const profile::sp& profile)
 	{ m_profile = profile; }
 
 	virtual profile_type::sp profile() const
 	{ return m_profile; }
 
+
+	virtual bool is_ready(bool passive = false) = 0;
+
+	virtual bool is_active()
+	{ return is_ready(false); }
+
 	bool is_active(const std::shared_ptr<io>& io)
 	{
 		m_io = io;
-		if (!is_active()) {
+		if (!is_ready()) {
 			m_io.reset();
 			return false;
 		}
