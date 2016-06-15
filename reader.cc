@@ -3,7 +3,6 @@
 #include <fstream>
 #include "bcm2dump.h"
 #include "mipsasm.h"
-#include "writer.h"
 #include "reader.h"
 #include "util.h"
 
@@ -54,15 +53,15 @@ class parsing_reader : public reader
 	public:
 	virtual ~parsing_reader() {}
 
+	unsigned capabilities() const
+	{ return cap_read; }
+
+	protected:
 	virtual string read_chunk(uint32_t offset, uint32_t length) override final
 	{
 		return read_chunk_impl(offset, length, 0);
 	}
 
-	virtual uint32_t chunk_size() const override
-	{ return 2048; }
-
-	protected:
 	virtual string read_chunk_impl(uint32_t offset, uint32_t length, uint32_t retries);
 	// issues a command that displays the requested chunk
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) = 0;
@@ -94,7 +93,7 @@ string parsing_reader::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 				pos += linebuf.size();
 				chunk += linebuf;
 				last = line;
-				update_progress(pos);
+				update_progress(pos, chunk.size());
 			} catch (const exception& e) {
 				string msg = "failed to parse chunk line @" + to_hex(pos) + ": '" + line + "' (" + e.what() + ")";
 				if (retries >= 2) {
@@ -137,12 +136,18 @@ class bfc_ram_reader : public parsing_reader
 	public:
 	virtual ~bfc_ram_reader() {}
 
-	virtual uint32_t length_alignment() const override
-	{ return 16; }
+	virtual limits limits_read() const override
+	{ return limits(4, 16, 8192); }
 
-	virtual uint32_t chunk_size() const override
-	{ return 0x4000; }
+	virtual limits limits_write() const override
+	{ return limits(4, 1, 4); }
 
+	unsigned capabilities() const
+	{ return cap_read | cap_write | cap_exec; }
+
+	protected:
+	virtual bool exec_impl(uint32_t offset) override;
+	virtual bool write_chunk(uint32_t offset, const string& chunk) override;
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
 	virtual bool is_ignorable_line(const string& line) override;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
@@ -151,6 +156,29 @@ class bfc_ram_reader : public parsing_reader
 	bool m_hint_decimal = false;
 	bool m_rooted = true;
 };
+
+bool bfc_ram_reader::exec_impl(uint32_t offset)
+{
+	return m_intf->runcmd("/call func -a 0x" + to_hex(offset), "Calling function 0x");
+};
+
+bool bfc_ram_reader::write_chunk(uint32_t offset, const string& chunk)
+{
+	if (m_rooted) {
+		uint32_t val = chunk.size() == 4 ? ntohl(extract<uint32_t>(chunk)) : chunk[0];
+		return m_intf->runcmd("/write_memory -s " + to_string(chunk.size()) + " 0x" +
+				to_hex(offset) + " 0x" + to_hex(val), "Writing");
+	} else {
+		// diag writemem only supports writing bytes
+		for (char c : chunk) {
+			if (!m_intf->runcmd("/system/diag/writemem 0x" + to_hex(offset) + " 0x" + to_hex(int(c)), "Writing")) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+}
 
 void bfc_ram_reader::do_read_chunk(uint32_t offset, uint32_t length)
 {
@@ -213,27 +241,30 @@ class bfc_flash_reader : public parsing_reader
 	public:
 	virtual ~bfc_flash_reader() {}
 
-	virtual uint32_t chunk_size() const override
-	{ return 8192; }
+	virtual limits limits_read() const override
+	{ return limits(1, 16, 8192); }
+
+	virtual limits limits_write() const override
+	{ return limits(1, 1, 4); }
 
 	protected:
-	virtual void init(uint32_t offset, uint32_t length) override;
+	virtual void init(uint32_t offset, uint32_t length, bool write) override;
 	virtual void cleanup() override;
+
+	virtual bool write_chunk(uint32_t offset, const string& buf) override;
 
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
 	virtual bool is_ignorable_line(const string& line) override;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
 
-	virtual void update_progress(uint32_t offset) override
+	virtual void update_progress(uint32_t offset, uint32_t length, bool init) override
 	{
-		parsing_reader::update_progress(m_partition->offset() + offset);
+		parsing_reader::update_progress(m_partition->offset() + offset, length, true);
 	}
 };
 
-void bfc_flash_reader::init(uint32_t offset, uint32_t length)
+void bfc_flash_reader::init(uint32_t offset, uint32_t length, bool write)
 {
-	logger::d() << __PRETTY_FUNCTION__ << endl;
-
 	if (!m_partition) {
 		throw runtime_error("no partition name specified");
 	}
@@ -267,8 +298,14 @@ void bfc_flash_reader::init(uint32_t offset, uint32_t length)
 
 void bfc_flash_reader::cleanup()
 {
-	logger::d() << __PRETTY_FUNCTION__ << endl;
 	m_intf->runcmd("/flash/close", "driver closed");
+}
+
+bool bfc_flash_reader::write_chunk(uint32_t offset, const std::string& chunk)
+{
+	uint32_t val = chunk.size() == 4 ? ntohl(extract<uint32_t>(chunk)) : chunk[0];
+	return m_intf->runcmd("/flash/write " + to_string(chunk.size()) + " 0x"
+			+ to_hex(offset) + " 0x" + to_hex(val), "value written");
 }
 
 void bfc_flash_reader::do_read_chunk(uint32_t offset, uint32_t length)
@@ -317,30 +354,51 @@ class bootloader_ram_reader : public parsing_reader
 	public:
 	virtual ~bootloader_ram_reader() {}
 
-	virtual uint32_t chunk_size() const override
-	{ return 4; }
+	virtual limits limits_read() const override
+	{ return limits(4, 4, 4); }
 
-	virtual uint32_t length_alignment() const
-	{ return 4; }
+	virtual limits limits_write() const override
+	{ return limits(4, 4, 4); }
 
 	protected:
-	virtual void init(uint32_t offset, uint32_t length) override;
+	virtual void init(uint32_t offset, uint32_t length, bool write) override;
 	virtual void cleanup() override;
+
+	virtual bool write_chunk(uint32_t offset, const string& chunk) override;
+	virtual bool exec_impl(uint32_t offset) override;
 
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
 	virtual bool is_ignorable_line(const string& line) override;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
 };
 
-void bootloader_ram_reader::init(uint32_t offset, uint32_t length)
+void bootloader_ram_reader::init(uint32_t offset, uint32_t length, bool write)
 {
-	m_intf->write("r");
+	m_intf->runcmd("");
+	m_intf->runcmd(write ? "w" : "r");
 }
 
 void bootloader_ram_reader::cleanup()
 {
 	m_intf->writeln();
 	m_intf->writeln();
+}
+
+bool bootloader_ram_reader::write_chunk(uint32_t offset, const string& chunk)
+{
+	try {
+		if (!m_intf->runcmd("w", "Write memory.", true)) {
+			return false;
+		}
+
+		m_intf->writeln(to_hex(offset));
+		uint32_t val = ntohl(extract<uint32_t>(chunk));
+		return m_intf->runcmd(to_hex(val) + "\r\n", "Main Menu");
+	} catch (const exception& e) {
+		// ensure that we're in a sane state
+		m_intf->runcmd("\r\n", "Main Menu");
+		return false;
+	}
 }
 
 void bootloader_ram_reader::do_read_chunk(uint32_t offset, uint32_t length)
@@ -370,16 +428,28 @@ string bootloader_ram_reader::parse_chunk_line(const string& line, uint32_t offs
 	throw runtime_error("unexpected line");
 }
 
+bool bootloader_ram_reader::exec_impl(uint32_t offset)
+{
+	m_intf->runcmd("");
+	m_intf->runcmd("j", "");
+	m_intf->writeln(to_hex(offset));
+	// FIXME
+	return true;
+}
+
 // this defines uint32 dumpcode[]
 #include "dumpcode.h"
 
 class dumpcode_reader : public parsing_reader
 {
 	public:
-	dumpcode_reader(const bcm2_func* func = nullptr) : m_dump_func(func) {}
+	dumpcode_reader(const bcm2_func* func = nullptr) : m_reader_func(func) {}
 
-	virtual uint32_t chunk_size() const
-	{ return 0x4000; }
+	virtual limits limits_read() const override
+	{ return limits(4, 16, 0x4000); }
+
+	virtual limits limits_write() const override
+	{ return limits(0, 0, 0); }
 
 	virtual void set_interface(const interface::sp& intf) override
 	{
@@ -396,15 +466,13 @@ class dumpcode_reader : public parsing_reader
 		} else if (cfg.loadaddr & 0xffff) {
 			throw runtime_error("loadaddr must be aligned to 64k");
 		}
-
-		m_ramw = writer::create(intf, "ram");
-		m_ramr = reader::create(intf, "ram");
+		m_ram = reader::create(intf, "ram");
 	}
 
 	protected:
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override
 	{
-		m_ramw->exec(m_loadaddr + m_entry);
+		m_ram->exec(m_loadaddr + m_entry);
 	}
 
 	virtual bool is_ignorable_line(const string& line) override
@@ -433,34 +501,26 @@ class dumpcode_reader : public parsing_reader
 	}
 
 	private:
-	void on_chunk_retry(uint32_t offset, uint32_t length)
+	virtual bool write_chunk(uint32_t offset, const string& chunk) override
+	{ return false; }
+
+	virtual bool exec_impl(uint32_t offset) override
+	{ return false; }
+
+	void on_chunk_retry(uint32_t offset, uint32_t length) override
 	{
-		if (!arg("codefile").empty()) {
+		if (false) {
 			throw runtime_error("error recovery is not possible with custom dumpcode");
 		}
 
 		patch32(m_code, 0x10, offset);
-		m_ramw->write(m_loadaddr + 0x10, m_code.substr(0x10, 4));
+		m_ram->write(m_loadaddr + 0x10, m_code.substr(0x10, 4));
 
 		patch32(m_code, 0x1c, m_dump_length - (offset - m_dump_offset));
-		m_ramw->write(m_loadaddr + 0x1c, m_code.substr(0x1c, 4));
+		m_ram->write(m_loadaddr + 0x1c, m_code.substr(0x1c, 4));
 	}
 
-	void init_dump_func()
-	{
-		for (size_t i = 0; i < BCM2_INTF_NUM; ++i) {
-			if (m_space->read[i].addr && (m_space->read[i].intf & m_intf->id())) {
-				m_dump_func = &m_space->read[i];
-				return;
-			}
-		}
-
-		if (!m_space->mem) {
-			throw runtime_error("no 'read' function defined for " + string(m_space->name));
-		}
-	}
-
-	void init(uint32_t offset, uint32_t length) override
+	void init(uint32_t offset, uint32_t length, bool write) override
 	{
 		const profile::sp& profile = m_intf->profile();
 		const codecfg& cfg = profile->codecfg(m_intf->id());
@@ -472,11 +532,13 @@ class dumpcode_reader : public parsing_reader
 
 		m_dump_offset = offset;
 		m_dump_length = length;
+		//m_reader_func = m_space.get_read_func(m_intf->id());
 
 		uint32_t kseg1 = profile->kseg1();
 		m_loadaddr = kseg1 | cfg.loadaddr;
 
-		if (arg("codefile").empty()) {
+		// FIXME check whether we have a custom dumpcode file
+		if (true) {
 			m_code = string(reinterpret_cast<const char*>(dumpcode), sizeof(dumpcode));
 			m_entry = 0x4c;
 
@@ -484,18 +546,18 @@ class dumpcode_reader : public parsing_reader
 			patch32(m_code, 0x14, kseg1 | cfg.buffer);
 			patch32(m_code, 0x18, offset);
 			patch32(m_code, 0x1c, length);
-			patch32(m_code, 0x20, chunk_size());
+			patch32(m_code, 0x20, limits_read().max);
 			patch32(m_code, 0x24, kseg1 | cfg.printf);
 
-			if (m_dump_func && m_dump_func->addr) {
-				patch32(m_code, 0x0c, m_dump_func->mode);
-				patch32(m_code, 0x28, kseg1 | m_dump_func->addr);
+			if (m_reader_func->addr) {
+				patch32(m_code, 0x0c, m_reader_func->mode);
+				patch32(m_code, 0x28, kseg1 | m_reader_func->addr);
 
 				for (unsigned i = 0; i < BCM2_PATCH_NUM; ++i) {
 					uint32_t offset = 0x2c + (8 * i);
-					uint32_t addr = m_dump_func->patch[i].addr;
+					uint32_t addr = m_reader_func->patch[i].addr;
 					patch32(m_code, offset, addr ? (kseg1 | addr) : 0);
-					patch32(m_code, offset + 4, addr ? m_dump_func->patch[i].word : 0);
+					patch32(m_code, offset + 4, addr ? m_reader_func->patch[i].word : 0);
 				}
 			}
 
@@ -506,7 +568,7 @@ class dumpcode_reader : public parsing_reader
 
 			m_code.resize(codesize);
 			uint32_t expected = calc_checksum(m_code.substr(m_entry, m_code.size() - 4 - m_entry));
-			uint32_t actual = ntohl(extract<uint32_t>(m_ramr->read(m_loadaddr + m_code.size() - 4, 4)));
+			uint32_t actual = ntohl(extract<uint32_t>(m_ram->read(m_loadaddr + m_code.size() - 4, 4)));
 			bool quick = (expected == actual);
 
 			patch32(m_code, codesize - 4, expected);
@@ -519,7 +581,7 @@ class dumpcode_reader : public parsing_reader
 			}
 
 			for (unsigned pass = 0; pass < 2; ++pass) {
-				string ramcode = m_ramr->read(m_loadaddr, m_code.size());
+				string ramcode = m_ram->read(m_loadaddr, m_code.size());
 				for (uint32_t i = 0; i < m_code.size(); i += 4) {
 					if (!quick && pass == 0 && m_listener) {
 						progress_add(&pg, 4);
@@ -531,7 +593,7 @@ class dumpcode_reader : public parsing_reader
 						if (pass == 1) {
 							throw runtime_error("dump code verification failed at 0x" + to_hex(i + m_loadaddr, 8));
 						}
-						m_ramw->write(m_loadaddr + i, m_code.substr(i, 4));
+						m_ram->write(m_loadaddr + i, m_code.substr(i, 4));
 					}
 				}
 
@@ -549,10 +611,9 @@ class dumpcode_reader : public parsing_reader
 	uint32_t m_dump_offset = 0;
 	uint32_t m_dump_length = 0;
 
-	const bcm2_func* m_dump_func = nullptr;
+	const bcm2_func* m_reader_func = nullptr;
 
-	writer::sp m_ramw;
-	reader::sp m_ramr;
+	reader::sp m_ram;
 };
 
 template<class T> reader::sp create_reader(const interface::sp& intf)
@@ -563,37 +624,80 @@ template<class T> reader::sp create_reader(const interface::sp& intf)
 }
 }
 
-void reader::dump(uint32_t offset, uint32_t wbytes, std::ostream& os)
+volatile sig_atomic_t reader::s_sigint = 0;
+
+void reader::require_capability(unsigned cap)
 {
-	if (offset % offset_alignment()) {
-		throw invalid_argument("offset not aligned to " + to_string(offset_alignment()) + " bytes");
+	if (capabilities() & cap) {
+		return;
 	}
 
-	uint32_t rbytes = align_to(wbytes, length_alignment());
+	string name;
+	switch (cap) {
+	case cap_read:
+		name = "read";
+		break;
+	case cap_write:
+		name = "write";
+		break;
+	case cap_exec:
+		name = "exec";
+		break;
+	default:
+		name = "(unknown)";
+	}
 
-	do_init(offset, rbytes);
+	throw runtime_error("operation requires capability " + name);
+}
 
-	while (rbytes) {
+void reader::exec(uint32_t offset)
+{
+	require_capability(cap_exec);
+	if (!exec_impl(offset)) {
+		throw runtime_error("failed to execute function at offset 0x" + to_hex(offset));
+	}
+}
+
+void reader::dump(uint32_t offset, uint32_t length, std::ostream& os)
+{
+	auto cleaner = make_cleaner();
+	uint32_t offset_r = align_left(offset, limits_read().alignment);
+	uint32_t length_r = align_right(length, limits_read().min);
+	uint32_t length_w = length;
+
+	do_init(offset_r, length_r, false);
+
+	while (length_r) {
 		throw_if_interrupted();
 
-		uint32_t n = min(chunk_size(), rbytes);
-		string chunk = read_chunk(offset, n);
+		uint32_t n = min(length_r, limits_read().max);
+		string chunk = read_chunk(offset_r, n);
 
-		update_progress(offset + n);
+		if (offset_r > (offset + length)) {
+			update_progress(offset + length - 2, 0);
+		} else if (offset_r < offset){
+			update_progress(0, 0);
+		} else {
+			update_progress(offset - offset_r, n);
+		}
 
 		if (chunk.size() != n) {
 			throw runtime_error("unexpected chunk length: " + to_string(chunk.size()));
 		}
 
 		throw_if_interrupted();
-		os.write(chunk.c_str(), min(n, wbytes));
 
-		wbytes = (wbytes >= n) ? wbytes - n : 0;
-		rbytes -= n;
-		offset += n;
+		if (offset_r < offset && (offset_r + n) >= offset) {
+			uint32_t pos = offset - offset_r;
+			os.write(chunk.data() + pos, chunk.size() - pos);
+		} else if (offset_r >= offset && length_w) {
+			os.write(chunk.c_str(), min(n, length_w));
+		}
+
+		length_w = (length_w >= n) ? length_w - n : 0;
+		length_r -= n;
+		offset_r += n;
 	}
-
-	do_cleanup();
 }
 
 void reader::dump(const addrspace::part& partition, ostream& os, uint32_t length)
@@ -607,6 +711,78 @@ string reader::read(uint32_t offset, uint32_t length)
 	ostringstream ostr;
 	dump(offset, length, ostr);
 	return ostr.str();
+}
+
+void reader::write(uint32_t offset, std::istream& is, uint32_t length)
+{
+	if (!length) {
+		auto cur = is.tellg();
+		is.seekg(0, ios_base::end);
+		if (is.tellg() <= cur) {
+			throw runtime_error("failed to determine length of stream");
+		}
+
+		length = is.tellg() - cur;
+		is.seekg(cur, ios_base::beg);
+	}
+
+	string buf;
+	buf.reserve(length);
+	if (is.readsome(&buf[0], length) != length) {
+		throw runtime_error("failed to read " + to_string(length) + " bytes");
+	}
+
+	write(offset, buf);
+}
+
+void reader::write(uint32_t offset, const string& buf, uint32_t length)
+{
+	if (!length) {
+		length = buf.size();
+	}
+	
+	limits lim = limits_write();
+
+	uint32_t offset_w = align_left(offset, lim.min);
+	uint32_t length_w = align_right(length, lim.min);
+
+	logger::v() << "write: (0x" << to_hex(offset) << ", " << length << ") -> "
+			<< "(0x" << to_hex(offset_w) << ", " << length_w << ")" << endl;
+
+	auto cleaner = make_cleaner();
+	do_init(offset_w, length_w, true);
+	update_progress(offset_w, length_w, true);
+
+	string buf_w;
+
+	if (offset_w != offset) {
+		buf_w += read(offset_w, offset - offset_w);
+	}
+
+	buf_w += buf;
+
+	if (length_w != length) {
+		buf_w += read(offset + buf.size(), length_w - length);
+	}
+
+	while (length_w) {
+		uint32_t n = length_w < lim.max ? lim.min : lim.max;
+		if (!write_chunk(offset_w, buf_w.substr(buf_w.size() - length_w, n))) {
+			throw runtime_error("failed to write chunk (0x" + to_hex(offset) + ", " + to_string(n) + ")");
+		}
+
+		if (offset_w < offset) {
+			update_progress(0, 0);
+		} else if (offset_w >= (offset + length)) {
+			// TODO this forces 99.99%, but it's ugly as hell!
+			update_progress(offset + length - 2, 0);
+		} else {
+			update_progress(offset_w, n);
+		}
+
+		offset_w += n;
+		length_w -= n;
+	}
 }
 
 // TODO this should be migrated to something like

@@ -65,10 +65,30 @@ template<class T> std::string to_hex(const T& t, size_t width = sizeof(T) * 2)
 
 std::string to_hex(const std::string& buffer);
 
+template<class T> T align_left(const T& num, size_t alignment)
+{
+	return num - (num % alignment);
+}
+
+template<class T> T align_right(const T& num, size_t alignment)
+{
+	return num + (alignment - (num % alignment));
+}
+
+template<class T> const T& clamp(const T& val, const T& min, const T& max)
+{
+	if (val < min) {
+		return min;
+	} else if (val > max) {
+		return max;
+	} else {
+		return val;
+	}
+
+}
+
 template<class T> const T& ensure_alignment(const T& num, size_t alignment, const std::string& name = "")
 {
-	static_assert(std::is_integral<T>::value, "integer type required");
-
 	if (num % alignment) {
 		throw std::invalid_argument("value 0x" + to_hex(num) + " is not aligned to a "
 				+ std::to_string(alignment) + " byte boundary" + (!name.empty() ? " (" + name + ")" : ""));

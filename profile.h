@@ -290,7 +290,7 @@ class addrspace
 
 	const part& partition(const std::string& name) const;
 
-	func read_func(bcm2_interface intf) const;
+	func get_read_func(bcm2_interface intf) const;
 
 	bool check_offset(uint32_t offset, bool exception = true) const
 	{ return check_range(offset, 0, "", exception); }
