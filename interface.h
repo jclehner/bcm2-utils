@@ -57,6 +57,9 @@ class interface
 	{ return m_io->pending(); }
 
 	static std::shared_ptr<interface> detect(const std::shared_ptr<io>& io);
+	static interface::sp create_serial(const std::string& tty, unsigned baudrate);
+	static interface::sp create_telnet(const std::string& addr, uint16_t port,
+			const std::string& user, const std::string& pw, const profile::sp& profile);
 
 	virtual bcm2_interface id() const = 0;
 

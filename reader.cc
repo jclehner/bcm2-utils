@@ -101,7 +101,7 @@ string parsing_reader::read_chunk_impl(uint32_t offset, uint32_t length, uint32_
 					throw runtime_error(msg);
 				}
 
-				logger::d() << msg << endl;
+				logger::d() << endl << msg << endl;
 				break;
 			}
 		}
@@ -149,11 +149,17 @@ class bfc_ram_reader : public parsing_reader
 
 	private:
 	bool m_hint_decimal = false;
+	bool m_rooted = true;
 };
 
 void bfc_ram_reader::do_read_chunk(uint32_t offset, uint32_t length)
 {
-	m_intf->runcmd("/read_memory -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
+	if (m_rooted) {
+		m_intf->runcmd("/read_memory -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
+	} else {
+		m_intf->runcmd("/system/diag readmem -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
+	}
+
 	m_hint_decimal = false;
 }
 

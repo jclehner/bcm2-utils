@@ -12,6 +12,13 @@ bool is_prompt(const string& str, const string& prompt)
 	return str.find(prompt + ">") == 0 || str.find(prompt + "/") == 0;
 }
 
+class telnet
+{
+	public:
+	virtual ~telnet() {}
+	virtual bool login(const string& user, const string& pw) = 0;
+};
+
 class bfc : public interface
 {
 	public:
@@ -23,7 +30,6 @@ class bfc : public interface
 	virtual bcm2_interface id() const override
 	{ return BCM2_INTF_BFC; }
 
-	protected:
 	virtual void runcmd(const string& cmd) override
 	{ writeln(cmd); }
 };
@@ -61,7 +67,6 @@ class bootloader : public interface
 	virtual bcm2_interface id() const override
 	{ return BCM2_INTF_BLDR; }
 
-	protected:
 	virtual void runcmd(const string& cmd) override;
 };
 
@@ -95,7 +100,7 @@ void bootloader::runcmd(const string& cmd)
 	m_io->write(cmd);
 }
 
-class bfc_telnet : public bfc
+class bfc_telnet : public bfc, public telnet
 {
 	public:
 	static unsigned constexpr invalid = 0;
@@ -103,11 +108,18 @@ class bfc_telnet : public bfc
 	static unsigned constexpr authenticated = 2;
 	static unsigned constexpr rooted = 3;
 
+	virtual ~bfc_telnet()
+	{
+		if (m_status >= authenticated) {
+			runcmd("exit");
+		}
+	}
+
 	virtual void runcmd(const string& cmd) override;
-
 	virtual bool is_active() override;
+	bool login(const string& user, const string& pass) override;
 
-	int status() const
+	unsigned status() const
 	{ return m_status; }
 
 	private:
@@ -125,6 +137,11 @@ bool bfc_telnet::is_active()
 		if (contains(line, "Telnet")) {
 			m_status = connected;
 		}
+
+		if (m_status == connected && (contains(line, "refused")
+				|| contains(line, "logged and reported"))) {
+			throw runtime_error("connection refused");
+		}
 	}
 
 	return m_status >= connected;
@@ -137,6 +154,53 @@ void bfc_telnet::runcmd(const string& cmd)
 	}
 
 	bfc::runcmd(cmd);
+}
+
+bool bfc_telnet::login(const string& user, const string& pass)
+{
+	while (pending()) {
+		if (contains(readln(), "Login:")) {
+			break;
+		}
+	}
+
+	writeln(user);
+	while (pending()) {
+		if (contains(readln(), "Password:")) {
+			break;
+		}
+	}
+
+	writeln(pass);
+	while (pending()) {
+		string line = readln();
+
+		if (contains(line, "Invalid login")) {
+			break;
+		} else if (contains(line, "Console>")) {
+			m_status = authenticated;
+		} else if (contains(line, "CM>")) {
+			m_status = rooted;
+		}
+	}
+
+	if (m_status == authenticated) {
+		runcmd("su");
+		writeln("brcm");
+		runcmd("cd /");
+		while (pending()) {
+			if (contains(readln(), "CM>")) {
+				m_status = rooted;
+			}
+		}
+	}
+
+	if (m_status == authenticated) {
+		logger::w() << "login succeeded, but root failed. some functions might not work" << endl;
+	}
+
+	return m_status >= authenticated;
+
 }
 
 interface::sp detect_interface(const io::sp &io)
@@ -203,6 +267,26 @@ interface::sp interface::detect(const io::sp& io)
 {
 	interface::sp intf = detect_interface(io);
 	detect_profile(intf);
+	return intf;
+}
+
+interface::sp interface::create_telnet(const string& addr, uint16_t port,
+		const string& user, const string& pw, const profile::sp& profile)
+{
+	io::sp io = io::open_telnet(addr, port);
+	interface::sp intf = detect_interface(io);
+	intf->set_profile(profile);
+
+	// this is UGLY, but it should never fail
+	telnet* t = dynamic_cast<telnet*>(intf.get());
+	if (t) {
+		if (!t->login(user, pw)) {
+			throw runtime_error("telnet login failed");
+		}
+	} else {
+		logger::w() << "detected non-telnet interface" << endl;
+	}
+
 	return intf;
 }
 

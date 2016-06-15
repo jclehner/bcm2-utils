@@ -170,6 +170,8 @@ class telnet : public tcp
 	public:
 	telnet(const string& addr, uint16_t port) : tcp(addr, port) {}
 	virtual ~telnet() { close(); }
+	virtual void write(const string& str) override;
+	virtual void writeln(const string& str) override;
 	virtual int getc() override;
 
 	protected:
@@ -312,6 +314,31 @@ void tcp::write(const string& str)
 	if (send(m_fd, str.data(), str.size(), MSG_NOSIGNAL) != str.size()) {
 		throw system_error(errno, system_category(), "send");
 	}
+	#ifdef DEBUG
+	add_line("'" + trim(str) + "'", false);
+	#endif
+}
+
+void telnet::write(const string& str)
+{
+	string::size_type i = str.find('\xff');
+	if (i != string::npos) {
+		string modstr = str;
+		do {
+			modstr.insert(i, 1, '\xff');
+			i = str.find('\xff', i + 1);
+		} while (i != string::npos);
+
+		tcp::write(modstr);
+	} else {
+		tcp::write(str);
+	}
+}
+
+void telnet::writeln(const string& str)
+{
+	tcp::writeln(str);
+	readln();
 }
 
 int telnet::getc()

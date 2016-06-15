@@ -345,8 +345,8 @@ vector<profile::sp> profile::s_profiles;
 
 profile::sp profile::get(const string& name)
 {
-	for (auto p : s_profiles) {
-		if (p->name() == name) {
+	for (auto p : list()) {
+		if (!strcasecmp(p->name().c_str(), name.c_str())) {
 			return p;
 		}
 	}
