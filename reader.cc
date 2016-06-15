@@ -374,8 +374,12 @@ class bootloader_ram_reader : public parsing_reader
 
 void bootloader_ram_reader::init(uint32_t offset, uint32_t length, bool write)
 {
-	m_intf->runcmd("");
-	m_intf->runcmd(write ? "w" : "r");
+	if (write) {
+		m_intf->runcmd("");
+		m_intf->runcmd("w");
+	} else {
+		m_intf->runcmd("r");
+	}
 }
 
 void bootloader_ram_reader::cleanup()
@@ -466,7 +470,7 @@ class dumpcode_reader : public parsing_reader
 		} else if (cfg.loadaddr & 0xffff) {
 			throw runtime_error("loadaddr must be aligned to 64k");
 		}
-		m_ram = reader::create(intf, "ram");
+		m_ram = reader::create(intf, "ram", true);
 	}
 
 	protected:
@@ -549,7 +553,7 @@ class dumpcode_reader : public parsing_reader
 			patch32(m_code, 0x20, limits_read().max);
 			patch32(m_code, 0x24, kseg1 | cfg.printf);
 
-			if (m_reader_func->addr) {
+			if (m_reader_func && m_reader_func->addr) {
 				patch32(m_code, 0x0c, m_reader_func->mode);
 				patch32(m_code, 0x28, kseg1 | m_reader_func->addr);
 
@@ -664,6 +668,9 @@ void reader::dump(uint32_t offset, uint32_t length, std::ostream& os)
 	uint32_t offset_r = align_left(offset, limits_read().alignment);
 	uint32_t length_r = align_right(length, limits_read().min);
 	uint32_t length_w = length;
+
+	logger::v() << "dump: (0x" << to_hex(offset) << ", " << length << ") -> "
+			<< "(0x" << to_hex(offset_r) << ", " << length_r << ")" << endl;
 
 	do_init(offset_r, length_r, false);
 

@@ -72,7 +72,8 @@ template<class T> T align_left(const T& num, size_t alignment)
 
 template<class T> T align_right(const T& num, size_t alignment)
 {
-	return num + (alignment - (num % alignment));
+	T rem = num % alignment;
+	return num + (rem ? alignment - rem : 0);
 }
 
 template<class T> const T& clamp(const T& val, const T& min, const T& max)

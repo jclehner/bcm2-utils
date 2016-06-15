@@ -225,13 +225,14 @@ interface::sp detect_interface(const io::sp &io)
 
 void detect_profile(const interface::sp& intf)
 {
-	reader::sp ram = reader::create(intf, "ram");
+	reader::sp ram = reader::create(intf, "ram", true);
 
 	for (auto p : profile::list()) {
 		for (auto magic : p->magics()) {
 			string data = magic->data;
 			if (ram->read(magic->addr, data.size()) == data) {
 				intf->set_profile(p);
+				logger::i() << "detected profile " << p->name() << endl;
 				return;
 			}
 		}
