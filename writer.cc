@@ -48,7 +48,7 @@ class bfc_ram_writer : public writer
 	public:
 	virtual ~bfc_ram_writer() {}
 
-	virtual uint32_t min_size() const override
+	virtual uint32_t length_alignment_w() const override
 	{ return 1; }
 
 	protected:
@@ -70,7 +70,7 @@ class bfc_flash_writer : public writer
 	public:
 	virtual ~bfc_flash_writer() {}
 
-	virtual uint32_t min_size() const override
+	virtual uint32_t length_alignment_w() const override
 	{ return 1; }
 
 	protected:
@@ -127,12 +127,12 @@ void writer::write(uint32_t offset, std::istream& is, uint32_t length)
 void writer::write(uint32_t offset, const string& buf)
 {
 	uint32_t length = buf.size();
-	if (length % min_size()) {
-		throw invalid_argument("length must be aligned to " + to_string(min_size()) + " bytes");
+	if (length % length_alignment_w()) {
+		throw invalid_argument("length must be aligned to " + to_string(length_alignment_w()) + " bytes");
 	}
 
 	// 2 byte values can only be written at a 2 byte aligned offset, and so forth
-	uint32_t alignment = max(length, min_size());
+	uint32_t alignment = max(length, length_alignment_w());
 	if (offset % alignment) {
 		throw invalid_argument("offset must be aligned to " + to_string(alignment) + " bytes");
 	}
@@ -140,7 +140,7 @@ void writer::write(uint32_t offset, const string& buf)
 	uint32_t remaining = length;
 
 	while (remaining) {
-		uint32_t n = length < max_size() ? min_size() : max_size();
+		uint32_t n = length < chunk_size_w() ? length_alignment_w() : chunk_size_w();
 		if (!write_chunk(offset, buf.substr(buf.size() - remaining, n))) {
 			throw runtime_error("failed to write chunk (@" + to_hex(offset) + ", " + to_string(n) + ")");
 		}

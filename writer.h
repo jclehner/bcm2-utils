@@ -12,10 +12,10 @@ class writer : public reader_writer
 	public:
 	typedef std::shared_ptr<writer> sp;
 
-	virtual uint32_t min_size() const
+	virtual uint32_t length_alignment_w() const
 	{ return 4; }
 
-	virtual uint32_t max_size() const
+	virtual uint32_t chunk_size_w() const
 	{ return 4; }
 
 	void write(uint32_t offset, std::istream& is, uint32_t length = 0);
