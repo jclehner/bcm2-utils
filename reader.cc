@@ -5,6 +5,7 @@
 #include "mipsasm.h"
 #include "reader.h"
 #include "util.h"
+#include "ps.h"
 
 using namespace std;
 
@@ -580,14 +581,14 @@ class dumpcode_reader : public parsing_reader
 			progress pg;
 			progress_init(&pg, m_loadaddr, m_code.size());
 
-			if (m_listener && !quick) {
+			if (m_prog_l && !quick) {
 				printf("updating dump code at 0x%08x (%u b)\n", m_loadaddr, codesize);
 			}
 
 			for (unsigned pass = 0; pass < 2; ++pass) {
 				string ramcode = m_ram->read(m_loadaddr, m_code.size());
 				for (uint32_t i = 0; i < m_code.size(); i += 4) {
-					if (!quick && pass == 0 && m_listener) {
+					if (!quick && pass == 0 && m_prog_l) {
 						progress_add(&pg, 4);
 						printf("\r ");
 						progress_print(&pg, stdout);
@@ -601,7 +602,7 @@ class dumpcode_reader : public parsing_reader
 					}
 				}
 
-				if (!quick && pass == 0 && m_listener) {
+				if (!quick && pass == 0 && m_prog_l) {
 					printf("\n");
 				}
 			}
@@ -669,10 +670,11 @@ void reader::dump(uint32_t offset, uint32_t length, std::ostream& os)
 	uint32_t length_r = align_right(length + (offset - offset_r), limits_read().min);
 	uint32_t length_w = length;
 
-	logger::v() << "dump: (0x" << to_hex(offset) << ", " << length << ") -> "
-			<< "(0x" << to_hex(offset_r) << ", " << length_r << ")" << endl;
-
 	do_init(offset_r, length_r, false);
+	update_progress(offset_r, length_r, true);
+
+	string hdrbuf;
+	bool show_hdr = true;
 
 	while (length_r) {
 		throw_if_interrupted();
@@ -694,11 +696,32 @@ void reader::dump(uint32_t offset, uint32_t length, std::ostream& os)
 
 		throw_if_interrupted();
 
+		string chunk_w;
+
 		if (offset_r < offset && (offset_r + n) >= offset) {
 			uint32_t pos = offset - offset_r;
-			os.write(chunk.data() + pos, chunk.size() - pos);
+			chunk_w = string(chunk.c_str() + pos, chunk.size() - pos);
+			//os.write(chunk.data() + pos, chunk.size() - pos);
 		} else if (offset_r >= offset && length_w) {
-			os.write(chunk.c_str(), min(n, length_w));
+			chunk_w = string(chunk.c_str(), min(n, length_w));
+		}
+
+		os.write(chunk_w.data(), chunk_w.size());
+
+		if (show_hdr) {
+			if (hdrbuf.size() < sizeof(ps_header)) {
+				hdrbuf += chunk_w;
+			}
+
+			if (hdrbuf.size() >= sizeof(ps_header)) {
+				ps_header hdr(hdrbuf);
+
+				if (hdr.hcs_valid()) {
+					image_detected(offset, hdr);
+				}
+
+				show_hdr = false;
+			}
 		}
 
 		length_w = (length_w >= n) ? length_w - n : 0;
@@ -791,6 +814,20 @@ void reader::write(uint32_t offset, const string& buf, uint32_t length)
 		length_w -= n;
 	}
 }
+
+#if 0
+bool reader::imgscan(uint32_t offset, uint32_t length, uint32_t step, ps_header& hdr)
+{
+	update_progress(offset, length, true);
+
+	for (uint32_t pos = offset; pos < (offset + length); pos += step) {
+		hdr.parse(read(pos, sizeof(ps_header::raw)));
+		if (hdr.hcs_valid()) {
+			return true;
+		}
+	}
+}
+#endif
 
 // TODO this should be migrated to something like
 // interface::create_reader(const string& type)

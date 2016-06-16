@@ -4,6 +4,7 @@
 #include <string>
 #include "interface.h"
 #include "profile.h"
+#include "ps.h"
 
 namespace bcm2dump {
 class reader //: public reader_writer
@@ -14,6 +15,7 @@ class reader //: public reader_writer
 	static unsigned constexpr cap_exec = (1 << 2);
 
 	typedef std::function<void(uint32_t, uint32_t, bool)> progress_listener;
+	typedef std::function<void(uint32_t, const ps_header&)> image_listener;
 	typedef std::shared_ptr<reader> sp;
 	struct interrupted : public std::exception {};
 
@@ -45,10 +47,15 @@ class reader //: public reader_writer
 
 	void exec(uint32_t offset);
 
+	//bool imgscan(uint32_t offset, uint32_t length, uint32_t steps, ps_header& hdr);
+
 	static sp create(const interface::sp& interface, const std::string& type, bool no_dumpcode = false);
 
-	virtual void set_progress_listener(const progress_listener& listener = progress_listener())
-	{ m_listener = listener; }
+	virtual void set_progress_listener(const progress_listener& l = progress_listener())
+	{ m_prog_l = l; }
+
+	virtual void set_image_listener(const image_listener& l = image_listener())
+	{ m_img_l = l; }
 
 	virtual void set_partition(const addrspace::part& partition)
 	{ m_partition = &partition; }
@@ -101,13 +108,21 @@ class reader //: public reader_writer
 
 	virtual void update_progress(uint32_t offset, uint32_t length, bool init = false)
 	{
-		if (m_listener) {
-			m_listener(offset, length, init);
+		if (m_prog_l) {
+			m_prog_l(offset, length, init);
+		}
+	}
+
+	virtual void image_detected(uint32_t offset, const ps_header& hdr)
+	{
+		if (m_img_l) {
+			m_img_l(offset, hdr);
 		}
 	}
 
 	interface::sp m_intf;
-	progress_listener m_listener;
+	progress_listener m_prog_l;
+	image_listener m_img_l;
 	const addrspace::part* m_partition = nullptr;
 	addrspace m_space;
 

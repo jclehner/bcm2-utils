@@ -8,7 +8,7 @@ bcm2cfg_OBJ = common.o nonvol.o profile.o bcm2cfg.o
 bcm2dump_OBJ = common.o code.o bootloader.o \
 			   mipsasm.o progress.o profile.o \
 			   serial.o bcm2dump.o cm.o
-iotest_OBJ = io.o reader.o interface.o \
+iotest_OBJ = io.o reader.o interface.o ps.o \
 	util.o progress.o mipsasm.o iotest.o profile.o profiledef.o
 
 .PHONY: all clean

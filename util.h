@@ -1,6 +1,7 @@
 #ifndef BCM2UTILS_UTIL_H
 #define BCM2UTILS_UTIL_H
 #include <type_traits>
+#include <arpa/inet.h>
 #include <stdexcept>
 #include <typeinfo>
 #include <iomanip>
@@ -85,7 +86,6 @@ template<class T> const T& clamp(const T& val, const T& min, const T& max)
 	} else {
 		return val;
 	}
-
 }
 
 template<class T> const T& ensure_alignment(const T& num, size_t alignment, const std::string& name = "")
@@ -97,6 +97,10 @@ template<class T> const T& ensure_alignment(const T& num, size_t alignment, cons
 
 	return num;
 }
+
+uint16_t crc16_ccitt(const void* buf, size_t size);
+inline uint16_t crc16_ccitt(const std::string& buf)
+{ return crc16_ccitt(buf.data(), buf.size()); }
 
 class logger
 {
