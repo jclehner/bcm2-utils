@@ -5,29 +5,23 @@ CXXFLAGS ?= $(CFLAGS) -std=c++14 -Wnon-virtual-dtor
 PREFIX ?= /usr/local
 
 bcm2cfg_OBJ = common.o nonvol.o profile.o bcm2cfg.o
-bcm2dump_OBJ = common.o code.o bootloader.o \
-			   mipsasm.o progress.o profile.o \
-			   serial.o bcm2dump.o cm.o
-iotest_OBJ = io.o reader.o interface.o ps.o \
-	util.o progress.o mipsasm.o iotest.o profile.o profiledef.o
+bcm2dump_OBJ = io.o reader.o interface.o ps.o bcm2dump.o \
+	util.o progress.o mipsasm.o profile.o profiledef.o
 
 .PHONY: all clean
 
-all: bcm2cfg bcm2dump
+all: bcm2dump #bcm2cfg
 
 bcm2cfg: $(bcm2cfg_OBJ) nonvol.h
 	$(CXX) $(CXXFLAGS) $(bcm2cfg_OBJ) -o bcm2cfg -lssl -lcrypto
 
 bcm2dump: $(bcm2dump_OBJ) bcm2dump.h
-	$(CC) $(CFLAGS) $(bcm2dump_OBJ) -o bcm2dump
+	$(CXX) $(CXXFLAGS) $(bcm2dump_OBJ) -o bcm2dump
 
-iotest: $(iotest_OBJ)
-	$(CXX) $(CXXFLAGS) $(iotest_OBJ) -o iotest
-
-%.o: %.c
+%.o: %.c %.h
 	$(CC) -c $(CFLAGS) $< -o $@
 
-%.o: %.cc
+%.o: %.cc %.h
 	$(CXX) -c $(CXXFLAGS) $< -o $@
 
 clean:
