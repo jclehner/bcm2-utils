@@ -137,24 +137,28 @@ class bfc_telnet : public bfc, public telnet
 
 bool bfc_telnet::is_ready(bool passive)
 {
-	if (!passive) {
-		writeln();
-	}
-
-	while (pending()) {
-		string line = readln();
-
-		if (contains(line, "Telnet")) {
-			m_status = connected;
+	if (m_status < authenticated) {
+		if (!passive) {
+			writeln();
 		}
 
-		if (m_status == connected && (contains(line, "refused")
-				|| contains(line, "logged and reported"))) {
-			throw runtime_error("connection refused");
-		}
-	}
+		while (pending()) {
+			string line = readln();
 
-	return m_status >= connected;
+			if (contains(line, "Telnet")) {
+				m_status = connected;
+			}
+
+			if (m_status == connected && (contains(line, "refused")
+					|| contains(line, "logged and reported"))) {
+				throw runtime_error("connection refused");
+			}
+		}
+
+		return m_status >= connected;
+	} else {
+		return bfc::is_ready(passive);
+	}
 }
 
 void bfc_telnet::runcmd(const string& cmd)
@@ -286,6 +290,11 @@ interface::sp interface::detect(const io::sp& io)
 interface::sp interface::create_serial(const string& tty, unsigned speed)
 {
 	return detect(io::open_serial(tty.c_str(), speed));
+}
+
+interface::sp interface::create_tcp(const string& addr, uint16_t port)
+{
+	return detect(io::open_tcp(addr, port));
 }
 
 interface::sp interface::create_telnet(const string& addr, uint16_t port,
