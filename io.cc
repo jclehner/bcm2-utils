@@ -163,6 +163,7 @@ class fdio : public io
 	{ ::close(m_fd); }
 
 	virtual int getc() override;
+	virtual ssize_t read1(char &c);
 
 	int m_fd;
 };
@@ -184,6 +185,9 @@ class tcp : public fdio
 	virtual void write(const string& str) override;
 	virtual void writeln(const string& str) override
 	{ write(str + "\r\n"); }
+
+	protected:
+	virtual ssize_t read1(char& c) override;
 };
 
 class telnet : public tcp
@@ -234,14 +238,19 @@ bool fdio::pending(unsigned timeout)
 int fdio::getc()
 {
 	char c;
-	ssize_t ret = read(m_fd, &c, 1);
-	if (ret == 0) {
+	ssize_t ret = read1(c);
+	if (ret == 1) {
+		return c & 0xff;
+	} else if (errno == EWOULDBLOCK || errno == EAGAIN) {
 		return eof;
-	} else if (ret != 1) {
-		throw system_error(errno, system_category(), "read");
+	} else {
+		throw system_error(errno, system_category(), "read1");
 	}
+}
 
-	return c & 0xff;
+ssize_t fdio::read1(char& c)
+{
+	return read(m_fd, &c, 1);
 }
 
 void fdio::write(const string& str)
@@ -355,6 +364,11 @@ void tcp::write(const string& str)
 	#ifdef DEBUG
 	add_line("'" + trim(str) + "'", false);
 	#endif
+}
+
+ssize_t tcp::read1(char& c)
+{
+	return recv(m_fd, &c, 1, MSG_DONTWAIT);
 }
 
 void telnet::write(const string& str)
