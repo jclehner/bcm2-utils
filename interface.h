@@ -64,6 +64,7 @@ class interface
 	static interface::sp create_serial(const std::string& tty, unsigned baudrate);
 	static interface::sp create_telnet(const std::string& addr, uint16_t port,
 			const std::string& user, const std::string& pw);
+	static interface::sp create_tcp(const std::string& addr, uint16_t port);
 
 	virtual bcm2_interface id() const = 0;
 

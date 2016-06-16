@@ -419,9 +419,9 @@ shared_ptr<io> io::open_serial(const char* tty, unsigned speed)
 	return make_shared<serial>(tty, speed);	
 }
 
-shared_ptr<io> io::open_telnet(const string& address, unsigned short port)
+shared_ptr<io> io::open_tcp(const string& address, unsigned short port, bool is_telnet)
 {
-	return make_shared<telnet>(address, port);
+	return is_telnet ? make_shared<telnet>(address, port) : make_shared<tcp>(address, port);
 }
 
 list<string> io::get_last_lines()

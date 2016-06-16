@@ -294,13 +294,13 @@ interface::sp interface::create_serial(const string& tty, unsigned speed)
 
 interface::sp interface::create_tcp(const string& addr, uint16_t port)
 {
-	return detect(io::open_tcp(addr, port));
+	return detect(io::open_tcp(addr, port, false));
 }
 
 interface::sp interface::create_telnet(const string& addr, uint16_t port,
 		const string& user, const string& pw)
 {
-	io::sp io = io::open_telnet(addr, port);
+	io::sp io = io::open_tcp(addr, port, true);
 	interface::sp intf = detect_interface(io);
 
 	// this is UGLY, but it should never fail
