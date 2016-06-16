@@ -73,7 +73,7 @@ int connect_nonblock(int fd, sockaddr* addr, socklen_t len)
 		FD_SET(fd, &wset);
 
 		timeval tv;
-		tv.tv_sec = 5;
+		tv.tv_sec = 1;
 		tv.tv_usec = 0;
 
 		err = select(fd + 1, &rset, &wset, NULL, &tv);
