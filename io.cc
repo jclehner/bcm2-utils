@@ -82,8 +82,6 @@ int connect_nonblock(int fd, sockaddr* addr, socklen_t len)
 				errno = ETIMEDOUT;
 			}
 
-			perror("select");
-
 			return -1;
 		}
 
@@ -103,6 +101,29 @@ int connect_nonblock(int fd, sockaddr* addr, socklen_t len)
 	}
 
 	return 0;
+}
+
+void set_port(sockaddr* sa, uint16_t port)
+{
+	if (sa->sa_family == AF_INET) {
+		reinterpret_cast<sockaddr_in*>(sa)->sin_port = htons(port);
+	} else if (sa->sa_family == AF_INET6) {
+		reinterpret_cast<sockaddr_in6*>(sa)->sin6_port = htons(port);
+	}
+}
+
+string addr_to_string(sockaddr* sa)
+{
+	char buf[INET6_ADDRSTRLEN];
+	memset(buf, 0, sizeof(buf));
+
+	if (sa->sa_family == AF_INET) {
+		inet_ntop(AF_INET, &reinterpret_cast<sockaddr_in*>(sa)->sin_addr, buf, sizeof(buf));
+	} else {
+		inet_ntop(AF_INET6, &reinterpret_cast<sockaddr_in6*>(sa)->sin6_addr, buf, sizeof(buf));
+	}
+
+	return buf;
 }
 
 unsigned to_termspeed(unsigned speed)
@@ -285,15 +306,9 @@ serial::serial(const char* tty, unsigned speed)
 
 tcp::tcp(const string& addr, uint16_t port)
 {
-	m_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (m_fd < 0) {
-		throw system_error(errno, system_category(), "socket");
-	}
-
 	addrinfo hints = { 0 };
-	hints.ai_family = AF_INET;
+	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
 
 	addrinfo* result;
 	int error = getaddrinfo(addr.c_str(), nullptr, &hints, &result);
@@ -302,24 +317,33 @@ tcp::tcp(const string& addr, uint16_t port)
 	}
 
 	error = 0;
+
 	for (addrinfo* rp = result; rp; rp = rp->ai_next) {
-		sockaddr_in* addr = reinterpret_cast<sockaddr_in*>(rp->ai_addr);
-		addr->sin_port = htons(port);
+		if (rp->ai_family != AF_INET && rp->ai_family != AF_INET6) {
+			continue;
+		}
 
-		logger::v() << "trying " << inet_ntoa(addr->sin_addr) << endl;
-
-		if (connect_nonblock(m_fd, rp->ai_addr, rp->ai_addrlen) == 0) {
-			error = 0;
-			break;
+		m_fd = socket(rp->ai_family, rp->ai_socktype, 0);
+		if (m_fd >= 0) {
+			set_port(rp->ai_addr, port);
+			if (connect_nonblock(m_fd, rp->ai_addr, rp->ai_addrlen) == 0) {
+				error = 0;
+				break;
+			} else {
+				::close(m_fd);
+				error = errno;
+				logger::v() << addr_to_string(rp->ai_addr) << ": " << strerror(errno) << endl;
+			}
 		} else {
 			error = errno;
+			logger::d() << addr_to_string(rp->ai_addr) << ": socket: " << strerror(errno) << endl;
 		}
 	}
 
 	freeaddrinfo(result);
 
 	if (error) {
-		throw system_error(error, system_category(), "connect");
+		throw system_error(error, system_category());
 	}
 }
 
