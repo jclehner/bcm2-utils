@@ -289,11 +289,10 @@ interface::sp interface::create_serial(const string& tty, unsigned speed)
 }
 
 interface::sp interface::create_telnet(const string& addr, uint16_t port,
-		const string& user, const string& pw, const profile::sp& profile)
+		const string& user, const string& pw)
 {
 	io::sp io = io::open_telnet(addr, port);
 	interface::sp intf = detect_interface(io);
-	intf->set_profile(profile);
 
 	// this is UGLY, but it should never fail
 	telnet* t = dynamic_cast<telnet*>(intf.get());
@@ -304,6 +303,8 @@ interface::sp interface::create_telnet(const string& addr, uint16_t port,
 	} else {
 		logger::w() << "detected non-telnet interface" << endl;
 	}
+
+	detect_profile(intf);
 
 	return intf;
 }

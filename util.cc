@@ -4,7 +4,6 @@ using namespace std;
 
 namespace bcm2dump {
 namespace {
-
 string& unescape(string& str, char delim)
 {
 	string::size_type i = 0;
