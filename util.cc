@@ -3,6 +3,51 @@
 using namespace std;
 
 namespace bcm2dump {
+namespace {
+
+string& unescape(string& str, char delim)
+{
+	string::size_type i = 0;
+	while ((i = str.find('\\', i)) != string::npos) {
+		if ((i + 1) >= str.size()) {
+			throw invalid_argument("stray backslash in '" + str + "'");
+		} else if (str[i + 1] == '\\' || str[i + 1] == delim) {
+			str.erase(i, 1);
+			i += 1;
+		} else {
+			throw invalid_argument("invalid escape sequence in '" + str + "'");
+		}
+	}
+
+	return str;
+}
+
+void push_back(vector<string>& strings, string str, char delim, bool empties)
+{
+	if (empties || !str.empty()) {
+		strings.push_back(unescape(str, delim));
+	}
+}
+
+bool is_unescaped(const string& str, string::size_type pos)
+{
+	if (!pos) {
+		return true;
+	}
+
+	bool ret = false;
+
+	if (pos >= 1) {
+		ret = str[pos - 1] != '\\';
+	}
+
+	if (pos >= 2 && !ret) {
+		ret = str[pos - 2] == '\\';
+	}
+
+	return ret;
+}
+}
 
 string trim(string str)
 {
@@ -23,18 +68,29 @@ string trim(string str)
 	return str.substr(i);
 }
 
-vector<string> split(const string& str, char delim, bool empties = false)
+vector<string> split(const string& str, char delim, bool empties)
 {
-	istringstream iss(str);
+	string::size_type beg = 0, end = str.find(delim);
 	vector<string> subs;
 
-	for (string sub; getline(iss, sub, delim);) {
-		if (!sub.empty() || empties) {
-			subs.push_back(sub);
+	while (end != string::npos) {
+		if (is_unescaped(str, end)) {
+			push_back(subs, str.substr(beg, end - beg), delim, empties);
+			beg = end + 1;
+		}
+
+		end = str.find(delim, end + 1);
+
+		if (end == string::npos) {
+			push_back(subs, str.substr(beg, str.size()), delim, empties);
 		}
 	}
 
-	return split;
+	if (subs.empty() && !str.empty()) {
+		push_back(subs, str, delim, empties);
+	}
+
+	return subs;
 }
 
 string to_hex(const std::string& buffer)
