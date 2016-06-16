@@ -66,36 +66,17 @@ template<class T> std::string to_hex(const T& t, size_t width = sizeof(T) * 2)
 
 std::string to_hex(const std::string& buffer);
 
+// return the closest number lower than num that matches the requested alignment
 template<class T> T align_left(const T& num, size_t alignment)
 {
 	return num - (num % alignment);
 }
 
+// return the closest number higher than num that matches the requested alignment
 template<class T> T align_right(const T& num, size_t alignment)
 {
 	T rem = num % alignment;
 	return num + (rem ? alignment - rem : 0);
-}
-
-template<class T> const T& clamp(const T& val, const T& min, const T& max)
-{
-	if (val < min) {
-		return min;
-	} else if (val > max) {
-		return max;
-	} else {
-		return val;
-	}
-}
-
-template<class T> const T& ensure_alignment(const T& num, size_t alignment, const std::string& name = "")
-{
-	if (num % alignment) {
-		throw std::invalid_argument("value 0x" + to_hex(num) + " is not aligned to a "
-				+ std::to_string(alignment) + " byte boundary" + (!name.empty() ? " (" + name + ")" : ""));
-	}
-
-	return num;
 }
 
 uint16_t crc16_ccitt(const void* buf, size_t size);
