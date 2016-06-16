@@ -25,7 +25,8 @@ class io
 	virtual bool pending(unsigned timeout = 100) = 0;
 
 	static sp open_serial(const char* tty, unsigned speed);
-	static sp open_tcp(const std::string& address, uint16_t port, bool telnet);
+	static sp open_telnet(const std::string& address, uint16_t port);
+	static sp open_tcp(const std::string& address, uint16_t port);
 
 	static std::list<std::string> get_last_lines();
 };

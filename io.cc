@@ -172,10 +172,24 @@ class telnet : public tcp
 	virtual ~telnet() { close(); }
 	virtual void write(const string& str) override;
 	virtual void writeln(const string& str) override;
-	virtual int getc() override;
 
 	protected:
+	virtual int getc() override;
 	virtual void close() override;
+
+	private:
+	void handle_op_opt(int op, int opt);
+	void send_op_opt(int op, int opt);
+
+	static int constexpr opt_binary = 0;
+	static int constexpr opt_echo = 1;
+	static int constexpr opt_suppres_ga = 3;
+	static int constexpr opt_remote_flow_ctrl = 33;
+
+	static int constexpr op_will = 251;
+	static int constexpr op_do = 252;
+	static int constexpr op_wont = 253;
+	static int constexpr op_dont = 254;
 };
 
 bool fdio::pending(unsigned timeout)
@@ -206,7 +220,7 @@ int fdio::getc()
 		throw system_error(errno, system_category(), "read");
 	}
 
-	return c;
+	return c & 0xff;
 }
 
 void fdio::write(const string& str)
@@ -292,7 +306,7 @@ tcp::tcp(const string& addr, uint16_t port)
 		sockaddr_in* addr = reinterpret_cast<sockaddr_in*>(rp->ai_addr);
 		addr->sin_port = htons(port);
 
-		logger::d() << "trying " << inet_ntoa(addr->sin_addr) << endl;
+		logger::v() << "trying " << inet_ntoa(addr->sin_addr) << endl;
 
 		if (connect_nonblock(m_fd, rp->ai_addr, rp->ai_addrlen) == 0) {
 			error = 0;
@@ -346,26 +360,54 @@ int telnet::getc()
 	int c = tcp::getc();
 	if (c == 0xff) {
 		c = tcp::getc();
-		switch (c) {
-		case 246:  // are you there?
-			// yes i am
-			write(string("\x00", 1));
-			break;
-		case 244:
-			close();
-			return eof;
-		default:
-			return ign;
+		if (c < 0xff) {
+			int opt = tcp::getc();
 
-		}
-
-		if (c > 0 && c < 0xff) {
-			logger::v() << endl << "telnet cmd " << c << endl;
+			if (c >= op_will && c <= op_dont) {
+				logger::d() << "telnet: handling command " << c << "," << opt << endl;
+				handle_op_opt(c, opt);
+			} else {
+				logger::d() << "telnet: not handling command " << c << "," << opt << endl;
+			}
 			return ign;
 		}
 	}
 
 	return c;
+}
+
+// the bfc telnet server sends the following
+// telnet commands when connecting:
+//
+//   ff fd 21 = DO,remote-flow-ctrl
+//   ff fb 03 = WILL,supress-go-ahead
+//   ff fb 01 = WILL,ECHO
+//
+// currently, we only allow supress-go-ahead
+// and echo, and try to fend off everything else
+//
+
+void telnet::handle_op_opt(int op, int opt)
+{
+	if (op == op_will) {
+		if (opt == opt_suppres_ga || opt == opt_echo) {
+			send_op_opt(op_do, opt);
+		} else {
+			send_op_opt(op_dont, opt);
+		}
+	} else if (op == op_do) {
+		send_op_opt(op_wont, opt);
+	} else if (opt == op_wont) {
+		send_op_opt(op_dont, opt);
+	} else if (opt == op_dont) {
+		send_op_opt(op_wont, opt);
+	}
+}
+
+void telnet::send_op_opt(int op, int opt)
+{
+	logger::d() << endl << "telnet: sending " << op << "," << opt << endl;
+	tcp::write(string("\xff") + char(op) + char(opt));
 }
 
 void telnet::close()
@@ -419,9 +461,14 @@ shared_ptr<io> io::open_serial(const char* tty, unsigned speed)
 	return make_shared<serial>(tty, speed);	
 }
 
-shared_ptr<io> io::open_tcp(const string& address, unsigned short port, bool is_telnet)
+shared_ptr<io> io::open_telnet(const string& address, unsigned short port)
 {
-	return is_telnet ? make_shared<telnet>(address, port) : make_shared<tcp>(address, port);
+	return make_shared<telnet>(address, port);
+}
+
+shared_ptr<io> io::open_tcp(const string& address, unsigned short port)
+{
+	return make_shared<tcp>(address, port);
 }
 
 list<string> io::get_last_lines()
