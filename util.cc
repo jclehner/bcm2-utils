@@ -23,6 +23,20 @@ string trim(string str)
 	return str.substr(i);
 }
 
+vector<string> split(const string& str, char delim, bool empties = false)
+{
+	istringstream iss(str);
+	vector<string> subs;
+
+	for (string sub; getline(iss, sub, delim);) {
+		if (!sub.empty() || empties) {
+			subs.push_back(sub);
+		}
+	}
+
+	return split;
+}
+
 string to_hex(const std::string& buffer)
 {
 	string ret;

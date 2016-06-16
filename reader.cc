@@ -494,12 +494,12 @@ class dumpcode_reader : public parsing_reader
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override
 	{
 		string linebuf;
-		string::size_type beg = 1;
 
-		for (unsigned i = 0; i < 4; ++i) {
-			string valstr = line.substr(beg, line.find(':', beg + 1) - beg);
-			linebuf += to_buf(htonl(hex_cast<uint32_t>(valstr)));
-			beg += valstr.size() + 1;
+		auto values = split(line, ':');
+		if (values.size() == 4) {
+			for (string val : values) {
+				linebuf += to_buf(htonl(hex_cast<uint32_t>(val)));
+			}
 		}
 
 		return linebuf;

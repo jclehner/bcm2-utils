@@ -8,11 +8,13 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <vector>
 #include <string>
 
 namespace bcm2dump {
 
 std::string trim(std::string str);
+std::vector<std::string> split(const std::string& str, char delim, bool empties = true);
 
 inline bool contains(const std::string& haystack, const std::string& needle)
 {
