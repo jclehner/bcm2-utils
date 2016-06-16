@@ -370,7 +370,6 @@ int telnet::getc()
 
 void telnet::close()
 {
-	write("\xff\xf1");
 	tcp::close();
 }
 }
