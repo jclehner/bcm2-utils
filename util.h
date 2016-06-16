@@ -126,7 +126,13 @@ class logger
 	static severity s_loglevel;
 };
 
+class getaddrinfo_category : public std::error_category
+{
+	virtual const char* name() const noexcept override
+	{ return "getaddrinfo_category"; };
 
+	virtual std::string message(int condition) const override;
+};
 }
 
 #endif

@@ -1,3 +1,4 @@
+#include <netdb.h>
 #include "profile.h"
 #include "util.h"
 using namespace std;
@@ -137,6 +138,10 @@ ostream& logger::log(severity s)
 
 }
 
+string getaddrinfo_category::message(int condition) const
+{
+	return gai_strerror(condition);
+}
 
 
 }

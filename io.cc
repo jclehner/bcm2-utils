@@ -313,7 +313,7 @@ tcp::tcp(const string& addr, uint16_t port)
 	addrinfo* result;
 	int error = getaddrinfo(addr.c_str(), nullptr, &hints, &result);
 	if (error) {
-		throw system_error(error, system_category(), "getaddrinfo");
+		throw system_error(error, getaddrinfo_category(), "getaddrinfo");
 	}
 
 	error = 0;
