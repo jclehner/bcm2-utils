@@ -43,7 +43,7 @@ class parsing_reader : public reader
 	public:
 	virtual ~parsing_reader() {}
 
-	unsigned capabilities() const
+	unsigned capabilities() const override
 	{ return cap_read; }
 
 	protected:
@@ -132,7 +132,7 @@ class bfc_ram_reader : public parsing_reader
 	virtual limits limits_write() const override
 	{ return limits(4, 1, 4); }
 
-	unsigned capabilities() const
+	unsigned capabilities() const override
 	{ return cap_read | cap_write | cap_exec; }
 
 	protected:

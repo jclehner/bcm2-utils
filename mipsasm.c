@@ -95,7 +95,7 @@ int mipsasm_resolve_labels(uint32_t *code, uint32_t *size, uint32_t offset)
 		}
 
 		uint32_t instr = labels[imm];
-		if (instr == SIZE_MAX) {
+		if (instr == UINT32_MAX) {
 			fprintf(stderr, "%s: %02x: branch refers to undefined label %u\n",
 					__func__, i, imm);
 			return 1;
