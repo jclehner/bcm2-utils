@@ -280,20 +280,20 @@ void serial::writeln(const string& str)
 
 serial::serial(const char* tty, unsigned speed)
 {
-	int tspeed = to_termspeed(speed);
-	if (!tspeed) {
-		throw user_error("invalid baud rate: " + to_string(speed));
-	}
-
 	m_fd = open(tty, O_RDWR | O_NOCTTY | O_SYNC);
 	if (m_fd < 0) {
-		throw system_error(errno, system_category(), string("open: ") + tty);
+		throw system_error(errno, system_category(), string(errno != ENOENT ? "open: " : "") + tty);
 	}
 
 	termios cf;
 	memset(&cf, 0, sizeof(cf));
 	if (tcgetattr(m_fd, &cf) != 0) {
 		throw system_error(errno, system_category(), "tcgetattr");
+	}
+
+	int tspeed = to_termspeed(speed);
+	if (!tspeed) {
+		throw user_error("invalid baud rate: " + to_string(speed));
 	}
 
 	if (cfsetispeed(&cf, tspeed) < 0 || cfsetospeed(&cf, tspeed) < 0) {
@@ -315,19 +315,10 @@ serial::serial(const char* tty, unsigned speed)
 
 tcp::tcp(const string& addr, uint16_t port)
 {
-	addrinfo hints = { 0 };
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
+	tcpaddrs addrs = tcpaddrs::resolve(addr, tcpaddrs::flag_throw);
 
-	addrinfo* result;
-	int error = getaddrinfo(addr.c_str(), nullptr, &hints, &result);
-	if (error) {
-		throw system_error(error, getaddrinfo_category(), "getaddrinfo");
-	}
-
-	error = 0;
-
-	for (addrinfo* rp = result; rp; rp = rp->ai_next) {
+	int error = 0;
+	for (addrinfo* rp = addrs.get(); rp; rp = addrs.next()) {
 		if (rp->ai_family != AF_INET && rp->ai_family != AF_INET6) {
 			continue;
 		}
@@ -348,8 +339,6 @@ tcp::tcp(const string& addr, uint16_t port)
 			logger::d() << addr_to_string(rp->ai_addr) << ": socket: " << strerror(errno) << endl;
 		}
 	}
-
-	freeaddrinfo(result);
 
 	if (error) {
 		throw system_error(error, system_category());

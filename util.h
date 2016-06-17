@@ -2,10 +2,13 @@
 #define BCM2UTILS_UTIL_H
 #include <type_traits>
 #include <arpa/inet.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #include <stdexcept>
 #include <typeinfo>
-#include <iomanip>
 #include <iostream>
+#include <iomanip>
+#include <netdb.h>
 #include <fstream>
 #include <sstream>
 #include <vector>
@@ -132,6 +135,44 @@ class getaddrinfo_category : public std::error_category
 	{ return "getaddrinfo_category"; };
 
 	virtual std::string message(int condition) const override;
+};
+
+class tcpaddrs
+{
+	public:
+	static constexpr int flag_ipv4_only = 1;
+	static constexpr int flag_throw = 2;
+
+	tcpaddrs(const tcpaddrs& other) = default;
+	tcpaddrs(tcpaddrs&& other) = default;
+
+	~tcpaddrs()
+	{
+		if (m_result) {
+			freeaddrinfo(m_result);
+		}
+	}
+
+	void rewind()
+	{ m_iter = m_result; }
+
+	bool empty() const
+	{ return !m_result; }
+
+	addrinfo* get()
+	{ return m_iter; }
+
+	addrinfo* next()
+	{ return m_iter ? (m_iter = m_iter->ai_next) : nullptr; }
+
+	static tcpaddrs resolve(const std::string& node, int flags = 0);
+
+	private:
+	tcpaddrs(addrinfo* result) : m_result(result), m_iter(result) {}
+
+	addrinfo* m_result = nullptr;
+	addrinfo* m_iter = nullptr;
+
 };
 }
 

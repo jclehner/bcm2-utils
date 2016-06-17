@@ -1,4 +1,3 @@
-#include <sys/stat.h>
 #include <iostream>
 #include <fstream>
 #include "interface.h"
@@ -9,94 +8,7 @@ using namespace std;
 using namespace bcm2dump;
 
 namespace {
-
-bool stat(const string& filename, struct stat st)
-{
-	if (::stat(filename.c_str(), &st) != 0 && errno != ENOENT) {
-		throw system_error(errno, system_category(), "stat('" + filename + "')");
-	}
-
-	return errno != ENOENT;
 }
-
-interface::sp create_serial(const vector<string>& tokens)
-{
-	try {
-		if (tokens.size() <= 2) {
-			unsigned speed = tokens.size() == 2 ? lexical_cast<unsigned>(tokens[1]) : 115200;
-			return interface::create_serial(tokens[0], speed);
-		}
-	} catch (const bad_lexical_cast& e) {
-		// eat
-	}
-
-	throw invalid_argument("invalid serial interface specification");
-}
-
-interface::sp create_telnet(const vector<string>& tokens)
-{
-	try {
-		if (tokens.size() == 3 || tokens.size() == 4) {
-			uint16_t port = (tokens.size() == 4) ? lexical_cast<uint16_t>(tokens[3]) : 23;
-			return interface::create_telnet(tokens[0], port, tokens[1], tokens[2]);
-		}
-	} catch (const bad_lexical_cast& e) {
-
-	}
-
-	throw invalid_argument("invalid telnet interface specification");
-}
-
-interface::sp create_tcp(const vector<string>& tokens)
-{
-	try {
-		if (tokens.size() == 2) {
-			return interface::create_tcp(tokens[0], lexical_cast<uint16_t>(tokens[1]));
-		}
-	} catch (const bad_lexical_cast& e) {
-
-	}
-
-	throw invalid_argument("invalid tcp interface specification");
-}
-
-interface::sp create_interface(const string& arg)
-{
-	auto tokens = split(arg, ',');
-
-	if (!tokens.empty()) {
-		if (tokens[0] == "serial") {
-			tokens.erase(tokens.begin());
-		}
-
-		if (!tokens.empty()) {
-			struct stat st;
-			if (stat(tokens[0], st)) {
-				return create_serial(tokens);
-			}
-
-			bool telnet = tokens.size() == 3;
-
-			if (tokens[0] == "tcp") {
-				telnet = false;
-				tokens.erase(tokens.begin());
-			} else if (tokens[0] == "telnet") {
-				tokens.erase(tokens.begin());
-			}
-
-			if (telnet) {
-				return create_telnet(tokens);
-			} else {
-				return create_tcp(tokens);
-			}
-		}
-	}
-
-	throw invalid_argument("invalid interface specification");
-}
-}
-
-
 
 int main(int argc, char** argv)
 {
@@ -106,21 +18,22 @@ int main(int argc, char** argv)
 		cerr << "usage: bcm2dump <interface> <addrspace> <partition> <outfile>" << endl;
 		cerr << endl;
 		cerr << "interface specifications: " << endl;
-		cerr << "  /dev/ttyUSB0              serial console with default baud rate" << endl;
-		cerr << "  /dev/ttyUSB0,115200       serial console, 115200 baud" << endl;
-		cerr << "  192.168.0.1,2323          raw tcp connection to 192.168.0.1, port 2323" << endl;
-		cerr << "  192.168.0.1,foo,bar       telnet connection to 192.168.0.1, user 'foo', pw 'bar', port 23" << endl;
-		cerr << "  192.168.0.1,foo,bar,233   same as above, but with port 233" << endl;
-		cerr << "  192.168.0.1,foo,b\\,      telnet connection, user 'foo', pw 'b,'" << endl;
-		cerr << "  192.168.0.1,foo,b\\\\,3  telnet connection, user 'foo', pw 'b\\', port 3" << endl;
-
+		cerr << "  serial:/dev/ttyUSB0             serial console with default baud rate" << endl;
+		cerr << "  serial:/dev/ttyUSB0,115200      serial console, 115200 baud" << endl;
+		cerr << "  tcp:192.168.0.1,2323            raw tcp connection to 192.168.0.1, port 2323" << endl;
+		cerr << "  telnet: 192.168.0.1,foo,bar     telnet connection to 192.168.0.1, user 'foo', pw 'bar', port 23" << endl;
+		cerr << "  telnet:192.168.0.1,foo,bar,233  same as above, but with port 233" << endl;
+		cerr << "  telnet:192.168.0.1,foo,b\\,     telnet connection, user 'foo', pw 'b,'" << endl;
+		cerr << "  telnet:192.168.0.1,foo,b\\\\,3  telnet connection, user 'foo', pw 'b\\', port 3" << endl;
+		cerr << endl;
+		cerr << "the type prefixes can usually be omitted" << endl;
 		return 1;
 	}
 
 	try {
 		logger::loglevel(logger::DEBUG);
 
-		auto intf = create_interface(argv[1]);
+		auto intf = interface::create(argv[1]);
 
 #if 0
 #if 0

@@ -1,3 +1,6 @@
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <netdb.h>
 #include "interface.h"
 #include "reader.h"
 using namespace std;
@@ -10,6 +13,17 @@ typedef runtime_error user_error;
 bool is_prompt(const string& str, const string& prompt)
 {
 	return str.find(prompt + ">") == 0 || str.find(prompt + "/") == 0;
+}
+
+bool is_char_device(const string& filename)
+{
+	struct stat st;
+	errno = 0;
+	if (::stat(filename.c_str(), &st) != 0 && errno != ENOENT) {
+		throw system_error(errno, system_category(), "stat('" + filename + "')");
+	}
+
+	return !errno ? S_ISCHR(st.st_mode) : false;
 }
 
 class telnet
@@ -287,35 +301,59 @@ interface::sp interface::detect(const io::sp& io)
 	return intf;
 }
 
-interface::sp interface::create_serial(const string& tty, unsigned speed)
+interface::sp interface::create(const string& spec)
 {
-	return detect(io::open_serial(tty.c_str(), speed));
-}
-
-interface::sp interface::create_tcp(const string& addr, uint16_t port)
-{
-	return detect(io::open_tcp(addr, port));
-}
-
-interface::sp interface::create_telnet(const string& addr, uint16_t port,
-		const string& user, const string& pw)
-{
-	io::sp io = io::open_telnet(addr, port);
-	interface::sp intf = detect_interface(io);
-
-	// this is UGLY, but it should never fail
-	telnet* t = dynamic_cast<telnet*>(intf.get());
-	if (t) {
-		if (!t->login(user, pw)) {
-			throw runtime_error("telnet login failed");
-		}
-	} else {
-		logger::w() << "detected non-telnet interface" << endl;
+	string type;
+	vector<string> tokens = split(spec, ':', false);
+	if (tokens.size() == 2) {
+		type = tokens[0];
+		tokens.erase(tokens.begin());
 	}
 
-	detect_profile(intf);
+	tokens = split(tokens[0], ',', true);
 
-	return intf;
+	if (type.empty()) {
+		if (tokens.size() == 1 || (tokens.size() == 2 && is_char_device(tokens[1]))) {
+			type = "serial";
+		} else if (tokens.size() == 2 && !tcpaddrs::resolve(tokens[0]).empty()) {
+			type = "tcp";
+		} else if (tokens.size() == 3 || tokens.size() == 4) {
+			type = "telnet";
+		} else {
+			throw invalid_argument("ambiguous interface: '" + spec + '"');
+		}
+	}
+
+	try {
+		if (type == "serial") {
+			unsigned speed = tokens.size() == 2 ? lexical_cast<unsigned>(tokens[1]) : 115200;
+			return detect(io::open_serial(tokens[0].c_str(), speed));
+		} else if (type == "tcp") {
+			return detect(io::open_tcp(tokens[0], lexical_cast<uint16_t>(tokens[1])));
+		} else if (type == "telnet") {
+			uint16_t port = tokens.size() == 4 ? lexical_cast<uint16_t>(tokens[3]) : 23;
+			interface::sp intf = detect_interface(io::open_telnet(tokens[0], port));
+
+			// this is UGLY, but it should never fail
+			telnet* t = dynamic_cast<telnet*>(intf.get());
+			if (t) {
+				if (!t->login(tokens[1], tokens[2])) {
+					throw runtime_error("telnet login failed");
+				}
+			} else {
+				logger::w() << "detected non-telnet interface" << endl;
+			}
+
+			detect_profile(intf);
+			return intf;
+		}
+	} catch (const bad_lexical_cast& e) {
+		throw invalid_argument("invalid " + type + " interface: " + e.what());
+	} catch (const exception& e) {
+		throw invalid_argument(type + ": " + e.what());
+	}
+
+	throw invalid_argument("invalid interface: '" + spec + '"');
 }
 
 unsigned reader_writer::s_count = 0;
