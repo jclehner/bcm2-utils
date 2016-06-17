@@ -315,10 +315,23 @@ serial::serial(const char* tty, unsigned speed)
 
 tcp::tcp(const string& addr, uint16_t port)
 {
-	tcpaddrs addrs = tcpaddrs::resolve(addr, tcpaddrs::flag_throw);
+	addrinfo hints = { 0 };
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
 
-	int error = 0;
-	for (addrinfo* rp = addrs.get(); rp; rp = addrs.next()) {
+	addrinfo* result = nullptr;
+	int error = getaddrinfo(addr.c_str(), nullptr, &hints, &result);
+	if (error != EAI_NONAME) {
+		if (error == EAI_NONAME) {
+			throw system_error(errno, getaddrinfo_category(), addr);
+		} else if (error != EAI_SYSTEM) {
+			throw system_error(error, getaddrinfo_category(), "getaddrinfo");
+		} else {
+			throw system_error(errno, system_category(), "getaddrinfo");
+		}
+	}
+
+	for (addrinfo* rp = result; rp; rp = rp->ai_next) {
 		if (rp->ai_family != AF_INET && rp->ai_family != AF_INET6) {
 			continue;
 		}
@@ -339,6 +352,8 @@ tcp::tcp(const string& addr, uint16_t port)
 			logger::d() << addr_to_string(rp->ai_addr) << ": socket: " << strerror(errno) << endl;
 		}
 	}
+
+	freeaddrinfo(result);
 
 	if (error) {
 		throw system_error(error, system_category());

@@ -26,7 +26,7 @@ int main(int argc, char** argv)
 		cerr << "  telnet:192.168.0.1,foo,b\\,     telnet connection, user 'foo', pw 'b,'" << endl;
 		cerr << "  telnet:192.168.0.1,foo,b\\\\,3  telnet connection, user 'foo', pw 'b\\', port 3" << endl;
 		cerr << endl;
-		cerr << "the type prefixes can usually be omitted" << endl;
+		cerr << "the type prefixes can often be omitted" << endl;
 		return 1;
 	}
 

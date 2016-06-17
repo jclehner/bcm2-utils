@@ -313,9 +313,9 @@ interface::sp interface::create(const string& spec)
 	tokens = split(tokens[0], ',', true);
 
 	if (type.empty()) {
-		if (tokens.size() == 1 || (tokens.size() == 2 && is_char_device(tokens[1]))) {
+		if (tokens.size() == 1 || (tokens.size() == 2 && is_char_device(tokens[0]))) {
 			type = "serial";
-		} else if (tokens.size() == 2 && !tcpaddrs::resolve(tokens[0]).empty()) {
+		} else if (tokens.size() == 2 && !is_char_device(tokens[0])) {
 			type = "tcp";
 		} else if (tokens.size() == 3 || tokens.size() == 4) {
 			type = "telnet";

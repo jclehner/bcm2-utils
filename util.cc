@@ -141,27 +141,4 @@ string getaddrinfo_category::message(int condition) const
 {
 	return gai_strerror(condition);
 }
-
-tcpaddrs tcpaddrs::resolve(const string& node, int flags)
-{
-	addrinfo hints = { 0 };
-	hints.ai_family = (flags & flag_ipv4_only) ? AF_INET : AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-
-	addrinfo* result = nullptr;
-	int error = getaddrinfo(node.c_str(), nullptr, &hints, &result);
-	if (error != EAI_NONAME) {
-		if (error != EAI_SYSTEM) {
-			throw system_error(error, getaddrinfo_category(), "getaddrinfo");
-		} else {
-			throw system_error(errno, system_category(), "getaddrinfo");
-		}
-	} else if (flags & flag_throw) {
-		throw system_error(error, getaddrinfo_category(), node);
-	}
-
-	return tcpaddrs(result);
-}
-
-
 }
