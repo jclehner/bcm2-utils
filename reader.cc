@@ -36,17 +36,6 @@ template<class T> T align_to(const T& num, const T& alignment)
 	return num;
 }
 
-uint32_t calc_checksum(const string& buf)
-{
-	uint32_t checksum = 0xdeadbeef;
-
-	for (char c : buf) {
-		checksum ^= (c * 0xffffff);
-	}
-
-	return checksum;
-}
-
 // reader implementation an interactive text-based
 // user interface
 class parsing_reader : public reader
@@ -572,7 +561,7 @@ class dumpcode_reader : public parsing_reader
 			}
 
 			m_code.resize(codesize);
-			uint32_t expected = calc_checksum(m_code.substr(m_entry, m_code.size() - 4 - m_entry));
+			uint32_t expected = 0xc0de0000 | crc16_ccitt(m_code.substr(m_entry, m_code.size() - 4 - m_entry));
 			uint32_t actual = ntohl(extract<uint32_t>(m_ram->read(m_loadaddr + m_code.size() - 4, 4)));
 			bool quick = (expected == actual);
 
