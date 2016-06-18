@@ -13,6 +13,7 @@ class rwx //: public rwx_writer
 	static unsigned constexpr cap_read = (1 << 0);
 	static unsigned constexpr cap_write = (1 << 1);
 	static unsigned constexpr cap_exec = (1 << 2);
+	static unsigned constexpr cap_special = (1 << 3);
 	static unsigned constexpr cap_rw = cap_read | cap_write;
 	static unsigned constexpr cap_rwx = cap_rw | cap_exec;
 
@@ -24,7 +25,7 @@ class rwx //: public rwx_writer
 	struct limits
 	{
 		public:
-		limits(uint32_t alignment, uint32_t min, uint32_t max)
+		limits(uint32_t alignment = 0, uint32_t min = 0, uint32_t max = 0)
 		: alignment(alignment), min(min), max(max) {}
 
 		const uint32_t alignment;
@@ -52,6 +53,7 @@ class rwx //: public rwx_writer
 	//bool imgscan(uint32_t offset, uint32_t length, uint32_t steps, ps_header& hdr);
 
 	static sp create(const interface::sp& interface, const std::string& type, bool safe = true);
+	static sp create_special(const interface::sp& intf, const std::string& type);
 
 	virtual void set_progress_listener(const progress_listener& l = progress_listener())
 	{ m_prog_l = l; }
@@ -95,6 +97,9 @@ class rwx //: public rwx_writer
 			m_inited = false;
 		}
 	}
+
+	void read_special(uint32_t offset, uint32_t length, std::ostream& os);
+	virtual std::string read_special(uint32_t offset, uint32_t length) = 0;
 
 	virtual std::string read_chunk(uint32_t offset, uint32_t length) = 0;
 	// chunk length is guaranteed to be either min_length_write() or max_length_write()

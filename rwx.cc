@@ -54,6 +54,8 @@ class parsing_rwx : public rwx
 		return read_chunk_impl(offset, length, 0);
 	}
 
+	virtual string read_special(uint32_t offset, uint32_t length) override;
+
 	virtual unsigned chunk_timeout(uint32_t offset, uint32_t length) const
 	{ return 0; }
 
@@ -68,6 +70,20 @@ class parsing_rwx : public rwx
 	virtual void on_chunk_retry(uint32_t offset, uint32_t length) {}
 };
 
+string parsing_rwx::read_special(uint32_t offset, uint32_t length)
+{
+	require_capability(cap_special);
+
+	string buf = read_chunk(0, 0);
+	if (offset >= buf.size()) {
+		return "";
+	} else if (!length) {
+		return buf.substr(offset);
+	} else {
+		return buf.substr(offset, min(buf.size(), string::size_type(length)));
+	}
+}
+
 string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t retries)
 {
 	do_read_chunk(offset, length);
@@ -78,7 +94,7 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 	unsigned timeout = chunk_timeout(offset, length);
 
 	do {
-		while (chunk.size() < length && m_intf->pending()) {
+		while ((!length || chunk.size() < length) && m_intf->pending()) {
 			throw_if_interrupted();
 
 			line = trim(m_intf->readln());
@@ -108,7 +124,7 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 		}
 	} while (timeout && elapsed_millis(start) < timeout);
 
-	if (chunk.size() != length) {
+	if (length && (chunk.size() != length)) {
 		string msg = "read incomplete chunk 0x" + to_hex(offset)
 					+ ": " + to_string(chunk.size()) + "/" +to_string(length);
 		if (retries < 2) {
@@ -457,7 +473,7 @@ class dumpcode_rwx : public parsing_rwx
 	{ return limits(4, 16, 0x4000); }
 
 	virtual limits limits_write() const override
-	{ return limits(0, 0, 0); }
+	{ return limits(); }
 
 	virtual void set_interface(const interface::sp& intf) override
 	{
@@ -649,13 +665,73 @@ rwx::sp create_dumpcode_rwx(const interface::sp& intf, const addrspace& space)
 	ret->set_addrspace(space);
 	return ret;
 }
+
+class bfc_cmcfg : public parsing_rwx
+{
+	public:
+	virtual ~bfc_cmcfg() {}
+
+	virtual limits limits_read() const override
+	{ return limits(1); }
+
+	virtual limits limits_write() const override
+	{ return limits(); }
+
+	unsigned capabilities() const override
+	{ return cap_read | cap_special; }
+
+	protected:
+	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
+	virtual bool is_ignorable_line(const string& line) override;
+	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
+
+	virtual string read_special(uint32_t offset, uint32_t length) override
+	{ return parsing_rwx::read_special(offset, length) + "\xff"; }
+
+	private:
+	bool m_hint_decimal = false;
+	bool m_rooted = true;
+};
+
+void bfc_cmcfg::do_read_chunk(uint32_t offset, uint32_t length)
+{
+	m_intf->runcmd("/docsis_ctl/cfg_hex_show");
+}
+
+bool bfc_cmcfg::is_ignorable_line(const string& line)
+{
+	//bool ret = line.size() != 75 || line.substr(55, 4) != "  | ";
+	bool ret = line.size() < 58 || line.size() > 73 || line.substr(53, 4) != "  | ";
+	return ret;
+}
+
+string bfc_cmcfg::parse_chunk_line(const string& line, uint32_t offset)
+{
+	string linebuf;
+	for (unsigned i = 0; i < 16; ++i) {
+		unsigned offset = 2 * (i / 4) + 3 * i;
+		if (offset > line.size() || offset + 2 > line.size()) {
+			break;
+		}
+
+		try {
+			linebuf += hex_cast<int>(line.substr(offset, 2));
+		} catch (const bad_lexical_cast& e) {
+			if (line.size() == 73) {
+				throw e;
+			}
+		}
+	}
+
+	return linebuf;
+}
 }
 
 volatile sig_atomic_t rwx::s_sigint = 0;
 
 void rwx::require_capability(unsigned cap)
 {
-	if (capabilities() & cap) {
+	if ((capabilities() & cap) == cap) {
 		return;
 	}
 
@@ -674,7 +750,7 @@ void rwx::require_capability(unsigned cap)
 		name = "(unknown)";
 	}
 
-	throw runtime_error("operation requires capability " + name);
+	throw runtime_error("operation requires capability " + name + ((cap & cap_special) ? " special" : ""));
 }
 
 void rwx::exec(uint32_t offset)
@@ -687,7 +763,17 @@ void rwx::exec(uint32_t offset)
 
 void rwx::dump(uint32_t offset, uint32_t length, std::ostream& os)
 {
+	require_capability(cap_read);
+
 	auto cleaner = make_cleaner();
+
+	if (capabilities() & cap_special) {
+		do_init(0, 0, false);
+		update_progress(0, 0, false);
+		read_special(offset, length, os);
+		return;
+	}
+
 	uint32_t offset_r = align_left(offset, limits_read().alignment);
 	uint32_t length_r = align_right(length + (offset - offset_r), limits_read().min);
 	uint32_t length_w = length;
@@ -835,6 +921,12 @@ void rwx::write(uint32_t offset, const string& buf, uint32_t length)
 	}
 }
 
+void rwx::read_special(uint32_t offset, uint32_t length, ostream& os)
+{
+	string buf = read_special(offset, length);
+	os.write(buf.data(), buf.size());
+}
+
 #if 0
 bool rwx::imgscan(uint32_t offset, uint32_t length, uint32_t step, ps_header& hdr)
 {
@@ -870,20 +962,34 @@ rwx::sp rwx::create(const interface::sp& intf, const string& type, bool safe)
 			} else {
 				return create_dumpcode_rwx(intf, space);
 			}
-		} else if (type == "flash") {
+		} else {
 			return create_dumpcode_rwx(intf, space);
 		}
 	} else if (intf->name() == "bfc") {
+		safe = true;
 		if (safe) {
 			if (space.is_mem()) {
 				return create_rwx<bfc_ram>(intf, space);
-			} else if (type == "flash") {
+			} else {
 				return create_rwx<bfc_flash>(intf, space);
 			}
 		}
 	}
 
-	throw invalid_argument("no such rwx: " + intf->name() + "-" + type + ((safe ? "" : "un") + string("safe")));
+	throw invalid_argument("no such rwx: " + intf->name() + "," + type + ((safe ? "" : ",un") + string("safe")));
+}
+
+rwx::sp rwx::create_special(const interface::sp& intf, const string& type)
+{
+	if (intf->name() == "bfc") {
+		if (type == "cmcfg") {
+			auto rwx = make_shared<bfc_cmcfg>();
+			rwx->set_interface(intf);
+			return rwx;
+		}
+	}
+
+	throw invalid_argument("no such special rwx: " + intf->name() + "," + type);
 }
 }
 

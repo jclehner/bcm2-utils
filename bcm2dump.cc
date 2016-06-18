@@ -34,7 +34,13 @@ int main(int argc, char** argv)
 		logger::loglevel(logger::DEBUG);
 
 		auto intf = interface::create(argv[1]);
-		auto rwx = rwx::create(intf, argv[2], argv[2] == "ram"s && argv[3] == "dumpcode"s);
+		rwx::sp rwx;
+
+		if (argv[2] != "special"s) {
+			rwx = rwx::create(intf, argv[2], argv[2] == "ram"s && argv[3] == "dumpcode"s);
+		} else {
+			rwx = rwx::create_special(intf, argv[3]);
+		}
 		progress pg;
 
 		rwx->set_progress_listener([&pg, &argv] (uint32_t offset, uint32_t length, bool init) {
@@ -58,10 +64,14 @@ int main(int argc, char** argv)
 			return 1;
 		}
 
-		if (argv[3] != "dumpcode"s) {
-			rwx->dump(argv[3], of);
+		if (argv[2] != "special"s) {
+			if (argv[3] != "dumpcode"s) {
+				rwx->dump(argv[3], of);
+			} else {
+				rwx->dump(intf->profile()->codecfg(intf->id()).loadaddr | intf->profile()->kseg1(), 512, of);
+			}
 		} else {
-			rwx->dump(intf->profile()->codecfg(intf->id()).loadaddr | intf->profile()->kseg1(), 512, of);
+			rwx->dump(0, 0, of);
 		}
 		cout << endl;
 	} catch (const rwx::interrupted& e) {
