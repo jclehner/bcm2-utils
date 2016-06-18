@@ -355,24 +355,4 @@ interface::sp interface::create(const string& spec)
 
 	throw invalid_argument("invalid interface: '" + spec + '"');
 }
-
-unsigned rwx_writer::s_count = 0;
-volatile sig_atomic_t rwx_writer::s_sigint = 0;
-
-void rwx_writer::do_cleanup()
-{
-	if (m_inited) {
-		cleanup();
-		m_inited = false;
-	}
-}
-
-void rwx_writer::do_init(uint32_t offset, uint32_t length)
-{
-	init(offset, length);
-	m_inited = true;
-	++s_count;
-	logger::d() << "installing signal handler" << endl;
-	signal(SIGINT, &rwx_writer::handle_signal);
-}
 }

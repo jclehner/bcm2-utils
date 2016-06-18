@@ -83,6 +83,9 @@ int main(int argc, char** argv)
 
 		rwx->dump(part, of);
 		cout << endl;
+	} catch (const rwx::interrupted& e) {
+		cerr << endl << "interrupted" << endl;
+		return 1;
 	} catch (const exception& e) {
 		cerr << endl;
 		cerr << "**************************" << endl;
@@ -95,9 +98,6 @@ int main(int argc, char** argv)
 		}
 
 		cerr << endl;
-		return 1;
-	} catch (const rwx::interrupted& e) {
-		cerr << endl << "interrupted" << endl;
 		return 1;
 	}
 
