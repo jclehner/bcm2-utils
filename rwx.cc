@@ -533,7 +533,7 @@ class dumpcode_rwx : public parsing_rwx
 		if (offset != m_dump_offset || !m_read_func.addr()) {
 			return parsing_rwx::chunk_timeout(offset, length);
 		} else {
-			return 120 * 1000;
+			return 60 * 1000;
 		}
 	}
 
@@ -567,7 +567,7 @@ class dumpcode_rwx : public parsing_rwx
 			patch32(m_code, 0x24, kseg1 | cfg.printf);
 
 			if (m_read_func.addr()) {
-				patch32(m_code, 0x0c, m_read_func.retv());
+				patch32(m_code, 0x0c, m_read_func.args());
 				patch32(m_code, 0x28, kseg1 | m_read_func.addr());
 
 				unsigned i = 0;
