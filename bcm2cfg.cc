@@ -33,9 +33,9 @@
 #include <string>
 #include <string>
 #include "profile.h"
-#include "common.h"
 #include "nonvol.h"
 using namespace std;
+using namespace bcm2dump;
 
 namespace {
 class error : public runtime_error
@@ -96,7 +96,7 @@ class settings
 		free_groups();
 	}
 
-	void set_profile(const bcm2_profile *profile)
+	void set_profile(const profile::sp& profile)
 	{
 		m_profile = profile;
 		if (profile) {
@@ -275,20 +275,20 @@ class settings
 		return m_groups;
 	}
 
-	const bcm2_profile* get_profile() const
+	const profile::sp& get_profile() const
 	{
 		return m_profile;
 	}
 
-	const char* get_profile_name() const
+	string get_profile_name() const
 	{
-		return m_profile ? m_profile->name : nullptr;
+		return m_profile ? m_profile->name() : "";
 	}
 
 	private:
 	string profile_id() const
 	{
-		return string("profile '") + m_profile->name + (m_auto_profile ? "' (auto)" : "'");
+		return string("profile '") + m_profile->name() + (m_auto_profile ? "' (auto)" : "'");
 	}
 
 	void check_file()
@@ -296,9 +296,8 @@ class settings
 		char md5[16];
 
 		if (!m_profile) {
-			m_profile = bcm2_profiles;
-			for (; m_profile->name[0]; ++m_profile) {
-
+			for (auto p : profile::list()) {
+				m_profile = p;
 				file_buf_md5(md5);
 
 				if (!memcmp(md5, m_fbuf.c_str(), 16)) {
@@ -308,8 +307,8 @@ class settings
 				}
 			}
 
-			if (!m_profile->name[0]) {
-				m_profile = nullptr;
+			if (!m_auto_profile) {
+				m_profile.reset();
 			}
 		} else {
 			file_buf_md5(md5);
@@ -319,23 +318,13 @@ class settings
 		m_encrypted = (m_fbuf.substr(16, 74) != c_header_magic);
 	}
 
-	void derive_key(const bcm2_profile *profile)
+	void derive_key(const profile::sp& profile)
 	{
 		if (!profile) {
 			throw user_error("password-based encryption needs a profile");
 		}
 
-		if (!profile->cfg_keyfun) {
-			throw user_error(string("profile '") + m_profile->name +
-					"' does not support password-based encryption");
-		}
-
-		m_key.resize(32);
-		auto key = reinterpret_cast<unsigned char*>(&m_key[0]);
-
-		if (!m_profile->cfg_keyfun(m_password.c_str(), key)) {
-			throw error(string("profile ") + m_profile->name + ": cfg_keyfun failed\n");
-		}
+		m_key = profile->derive_key(m_password);
 	}
 
 	void check_header()
@@ -364,19 +353,18 @@ class settings
 		MD5_Init(&c);
 		MD5_Update(&c, &m_fbuf[16], m_fbuf.size() - 16);
 
-		if (m_profile->cfg_md5key) {
-			string key = parse_hex(m_profile->cfg_md5key);
+		string key = m_profile->md5_key();
+		if (!key.empty()) {
 			MD5_Update(&c, key.c_str(), key.size());
 		}
 
 		MD5_Final(reinterpret_cast<unsigned char*>(md5), &c);
 	}
 
-	bool decrypt_with_profile(const bcm2_profile* profile)
+	bool decrypt_with_profile(const profile::sp& profile)
 	{
 		if (m_key.empty()) {
-
-			if (!m_password.empty() && profile->cfg_keyfun) {
+			if (!m_password.empty()) {
 				derive_key(profile);
 				decrypt_with_current_key();
 				check_header();
@@ -386,9 +374,9 @@ class settings
 				}
 			}
 
-			for (size_t i = 0; profile->cfg_defkeys[i][0]; ++i) {
+			for (auto key : profile->default_keys()) {
 				try {
-					set_key(profile->cfg_defkeys[i], true);
+					set_key(key, false);
 				} catch (const user_error& e) {
 					cerr << "warning: " << profile_id() << ": " << e.what() << endl;
 					continue;
@@ -414,15 +402,14 @@ class settings
 			// incomplete. in that case, give it another go, and look for a 
 			// valid header magic after encryption
 			if (!m_profile) {
-				m_profile = bcm2_profiles;
-				for (; m_profile->name[0]; ++m_profile) {
-					if (decrypt_with_profile(m_profile)) {
+				for (auto p : profile::list()) {
+					if (decrypt_with_profile(p)) {
 						break;
 					}
 				}
 
 				if (!m_magic_valid) {
-					m_profile = nullptr;
+					m_profile.reset();
 				}
 			} else {
 				decrypt_with_profile(m_profile);
@@ -517,7 +504,7 @@ class settings
 		write(offset, htons(val));
 	}
 
-	const bcm2_profile *m_profile = nullptr;
+	profile::sp m_profile;
 	bcm2_nv_group *m_groups = nullptr;
 	size_t m_unparsed;
 	string m_fbuf;
@@ -662,6 +649,13 @@ void dump_settings(const settings& gws)
 	}
 
 }
+
+void list_all_profiles()
+{
+	for (auto p : profile::list()) {
+		p->print_to_stdout();
+	}
+}
 }
 
 int do_main(int argc, char **argv)
@@ -678,9 +672,8 @@ int do_main(int argc, char **argv)
 	settings gws;
 
 	string infile, outfile;
-	bcm2_profile *profile = NULL;
+	profile::sp profile;
 	bool noverify = false;
-	int verbosity = 0;
 
 	int c;
 
@@ -710,17 +703,15 @@ int do_main(int argc, char **argv)
 				outfile = optarg;
 				break;
 			case 'L':
-			case 'O':
-			case 'P':
+				list_all_profiles();
+				break;
 			case 'v':
-				if (!handle_common_opt(c, optarg, &verbosity, &profile)) {
-					return 1;
-				}
-
-				if (profile) {
-					gws.set_profile(profile);
-				}
-
+			case 'O':
+				// ignore for now
+				break;
+			case 'P':
+				profile = profile::get(optarg);
+				gws.set_profile(profile);
 				break;
 			case 'z':
 				gws.set_padding();
@@ -834,9 +825,9 @@ int do_main(int argc, char **argv)
 				return 1;
 			}
 
-			const char *defkey = gws.get_profile()->cfg_defkeys[0];
-			if (defkey && defkey[0]) {
-				gws.set_key(defkey, true);
+			auto keys = gws.get_profile()->default_keys();
+			if (!keys.empty()) {
+				gws.set_key(keys[0], false);
 			}
 		}
 
