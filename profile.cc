@@ -30,11 +30,15 @@ namespace {
 
 string from_hex(const string& hex)
 {
-	if (!hex.empty() && hex.size() % 2 == 0) {
+	if (hex.empty()) {
+		return "";
+	}
+
+	if (hex.size() % 2 == 0) {
 		string buf;
 		for (string::size_type i = 0; i < hex.size(); i += 2) {
 			try {
-				buf += lexical_cast<int>(hex.substr(i, 2));
+				buf += lexical_cast<int>(hex.substr(i, 2), 16);
 			} catch (const bad_lexical_cast& e) {
 				break;
 			}
