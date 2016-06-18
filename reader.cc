@@ -364,10 +364,7 @@ class bootloader_ram_reader : public parsing_reader
 
 void bootloader_ram_reader::init(uint32_t offset, uint32_t length, bool write)
 {
-	if (write) {
-		m_intf->runcmd("");
-		m_intf->runcmd("w");
-	} else {
+	if (!write) {
 		m_intf->runcmd("r");
 	}
 }
@@ -381,6 +378,8 @@ void bootloader_ram_reader::cleanup()
 bool bootloader_ram_reader::write_chunk(uint32_t offset, const string& chunk)
 {
 	try {
+		m_intf->writeln();
+
 		if (!m_intf->runcmd("w", "Write memory.", true)) {
 			return false;
 		}
