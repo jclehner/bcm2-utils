@@ -347,6 +347,17 @@ const addrspace::part& addrspace::partition(const string& name) const
 	throw invalid_argument(m_profile_name + ": " + this->name() + ": no such partition: " + name);
 }
 
+func addrspace::get_read_func(bcm2_interface intf) const
+{
+	for (auto f : m_read_funcs) {
+		if (f.intf() & intf) {
+			return f;
+		}
+	}
+
+	return func();
+}
+
 vector<profile::sp> profile::s_profiles;
 
 profile::sp profile::get(const string& name)
@@ -407,5 +418,4 @@ void profile::print_to_stdout(bool verbose) const
 		}
 	}
 }
-
 }

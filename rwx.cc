@@ -54,6 +54,9 @@ class parsing_rwx : public rwx
 		return read_chunk_impl(offset, length, 0);
 	}
 
+	virtual unsigned chunk_timeout(uint32_t offset, uint32_t length) const
+	{ return 0; }
+
 	virtual string read_chunk_impl(uint32_t offset, uint32_t length, uint32_t retries);
 	// issues a command that displays the requested chunk
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) = 0;
@@ -71,32 +74,39 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 
 	string line, linebuf, chunk, last;
 	uint32_t pos = offset;
+	clock_t start = clock();
+	unsigned timeout = chunk_timeout(offset, length);
 
-	while (chunk.size() < length && m_intf->pending()) {
-		throw_if_interrupted();
+	do {
+		while (chunk.size() < length && m_intf->pending()) {
+			throw_if_interrupted();
 
-		line = trim(m_intf->readln());
+			line = trim(m_intf->readln());
 
-		if (is_ignorable_line(line)) {
-			continue;
-		} else {
-			try {
-				string linebuf = parse_chunk_line(line, pos);
-				pos += linebuf.size();
-				chunk += linebuf;
-				last = line;
-				update_progress(pos, chunk.size());
-			} catch (const exception& e) {
-				string msg = "failed to parse chunk line @" + to_hex(pos) + ": '" + line + "' (" + e.what() + ")";
-				if (retries >= 2) {
-					throw runtime_error(msg);
+			if (is_ignorable_line(line)) {
+				continue;
+			} else {
+				// no need for the timeout anymore, because we have the chunk line
+				timeout = 0;
+
+				try {
+					string linebuf = parse_chunk_line(line, pos);
+					pos += linebuf.size();
+					chunk += linebuf;
+					last = line;
+					update_progress(pos, chunk.size());
+				} catch (const exception& e) {
+					string msg = "failed to parse chunk line @" + to_hex(pos) + ": '" + line + "' (" + e.what() + ")";
+					if (retries >= 2) {
+						throw runtime_error(msg);
+					}
+
+					logger::d() << endl << msg << endl;
+					break;
 				}
-
-				logger::d() << endl << msg << endl;
-				break;
 			}
 		}
-	}
+	} while (timeout && elapsed_millis(start) < timeout);
 
 	if (chunk.size() != length) {
 		string msg = "read incomplete chunk 0x" + to_hex(offset)
@@ -135,7 +145,7 @@ class bfc_ram : public parsing_rwx
 	{ return limits(4, 1, 4); }
 
 	unsigned capabilities() const override
-	{ return cap_read | cap_write | cap_exec; }
+	{ return cap_rwx; }
 
 	protected:
 	virtual bool exec_impl(uint32_t offset) override;
@@ -352,6 +362,9 @@ class bootloader_ram : public parsing_rwx
 	virtual limits limits_write() const override
 	{ return limits(4, 4, 4); }
 
+	virtual unsigned capabilities() const override
+	{ return cap_rwx; }
+
 	protected:
 	virtual void init(uint32_t offset, uint32_t length, bool write) override;
 	virtual void cleanup() override;
@@ -438,7 +451,7 @@ bool bootloader_ram::exec_impl(uint32_t offset)
 class dumpcode_rwx : public parsing_rwx
 {
 	public:
-	dumpcode_rwx(const bcm2_func* func = nullptr) : m_rwx_func(func) {}
+	dumpcode_rwx(const func& func = func()) : m_read_func(func) {}
 
 	virtual limits limits_read() const override
 	{ return limits(4, 16, 0x4000); }
@@ -461,7 +474,7 @@ class dumpcode_rwx : public parsing_rwx
 		} else if (cfg.loadaddr & 0xffff) {
 			throw runtime_error("loadaddr must be aligned to 64k");
 		}
-		m_ram = rwx::create(intf, "ram", true);
+		m_ram = rwx::create(intf, "ram");
 	}
 
 	protected:
@@ -485,7 +498,7 @@ class dumpcode_rwx : public parsing_rwx
 	{
 		string linebuf;
 
-		auto values = split(line, ':');
+		auto values = split(line.substr(1), ':');
 		if (values.size() == 4) {
 			for (string val : values) {
 				linebuf += to_buf(htonl(hex_cast<uint32_t>(val)));
@@ -495,7 +508,7 @@ class dumpcode_rwx : public parsing_rwx
 		return linebuf;
 	}
 
-	private:
+	protected:
 	virtual bool write_chunk(uint32_t offset, const string& chunk) override
 	{ return false; }
 
@@ -513,6 +526,15 @@ class dumpcode_rwx : public parsing_rwx
 
 		patch32(m_code, 0x1c, m_dump_length - (offset - m_dump_offset));
 		m_ram->write(m_loadaddr + 0x1c, m_code.substr(0x1c, 4));
+	}
+
+	unsigned chunk_timeout(uint32_t offset, uint32_t length) const override
+	{
+		if (offset != m_dump_offset || !m_read_func.addr()) {
+			return parsing_rwx::chunk_timeout(offset, length);
+		} else {
+			return 120 * 1000;
+		}
 	}
 
 	void init(uint32_t offset, uint32_t length, bool write) override
@@ -544,15 +566,16 @@ class dumpcode_rwx : public parsing_rwx
 			patch32(m_code, 0x20, limits_read().max);
 			patch32(m_code, 0x24, kseg1 | cfg.printf);
 
-			if (m_rwx_func && m_rwx_func->addr) {
-				patch32(m_code, 0x0c, m_rwx_func->mode);
-				patch32(m_code, 0x28, kseg1 | m_rwx_func->addr);
+			if (m_read_func.addr()) {
+				patch32(m_code, 0x0c, m_read_func.retv());
+				patch32(m_code, 0x28, kseg1 | m_read_func.addr());
 
-				for (unsigned i = 0; i < BCM2_PATCH_NUM; ++i) {
-					uint32_t offset = 0x2c + (8 * i);
-					uint32_t addr = m_rwx_func->patch[i].addr;
+				unsigned i = 0;
+				for (auto patch : m_read_func.patches()) {
+					uint32_t offset = 0x2c + (8 * i++);
+					uint32_t addr = patch->addr;
 					patch32(m_code, offset, addr ? (kseg1 | addr) : 0);
-					patch32(m_code, offset + 4, addr ? m_rwx_func->patch[i].word : 0);
+					patch32(m_code, offset + 4, addr ? patch->word : 0);
 				}
 			}
 
@@ -606,15 +629,24 @@ class dumpcode_rwx : public parsing_rwx
 	uint32_t m_dump_offset = 0;
 	uint32_t m_dump_length = 0;
 
-	const bcm2_func* m_rwx_func = nullptr;
+	func m_read_func;
 
 	rwx::sp m_ram;
 };
 
-template<class T> rwx::sp create_rwx(const interface::sp& intf)
+template<class T> rwx::sp create_rwx(const interface::sp& intf, const addrspace& space)
 {
-	rwx::sp ret = make_shared<T>();
+	auto ret = make_shared<T>();
 	ret->set_interface(intf);
+	ret->set_addrspace(space);
+	return ret;
+}
+
+rwx::sp create_dumpcode_rwx(const interface::sp& intf, const addrspace& space)
+{
+	rwx::sp ret = make_shared<dumpcode_rwx>(space.get_read_func(intf->id()));
+	ret->set_interface(intf);
+	ret->set_addrspace(space);
 	return ret;
 }
 }
@@ -720,10 +752,11 @@ void rwx::dump(uint32_t offset, uint32_t length, std::ostream& os)
 	}
 }
 
-void rwx::dump(const addrspace::part& partition, ostream& os, uint32_t length)
+void rwx::dump(const string& partition, ostream& os, uint32_t length)
 {
-	set_partition(partition);
-	dump(partition.offset(), !length ? partition.size() : length, os);
+	addrspace::part p = m_space.partition(partition);
+	set_partition(p);
+	dump(p.offset(), !length ? p.size() : length, os);
 }
 
 string rwx::read(uint32_t offset, uint32_t length)
@@ -765,9 +798,6 @@ void rwx::write(uint32_t offset, const string& buf, uint32_t length)
 
 	uint32_t offset_w = align_left(offset, lim.min);
 	uint32_t length_w = align_right(length + (offset - offset_w), lim.min);
-
-	logger::v() << "write: (0x" << to_hex(offset) << ", " << length << ") -> "
-			<< "(0x" << to_hex(offset_w) << ", " << length_w << ")" << endl;
 
 	auto cleaner = make_cleaner();
 	do_init(offset_w, length_w, true);
@@ -821,27 +851,39 @@ bool rwx::imgscan(uint32_t offset, uint32_t length, uint32_t step, ps_header& hd
 
 // TODO this should be migrated to something like
 // interface::create_rwx(const string& type)
-rwx::sp rwx::create(const interface::sp& intf, const string& type, bool no_dumpcode)
+rwx::sp rwx::create(const interface::sp& intf, const string& type, bool safe)
 {
+	addrspace space;
+	if (intf->profile()) {
+		space = intf->profile()->space(type, intf->id());
+	} else if (type == "ram") {
+		space = profile::get("generic")->ram();
+		safe = true;
+	} else {
+		throw invalid_argument("cannot create non-ram rwx object without a profile");
+	}
+
 	if (intf->name() == "bootloader") {
-		if (type == "ram") {
-			if (no_dumpcode) {
-				return create_rwx<bootloader_ram>(intf);
+		if (space.is_mem()) {
+			if (safe) {
+				return create_rwx<bootloader_ram>(intf, space);
 			} else {
-				return create_rwx<dumpcode_rwx>(intf);
+				return create_dumpcode_rwx(intf, space);
 			}
 		} else if (type == "flash") {
-			// TODO
+			return create_dumpcode_rwx(intf, space);
 		}
 	} else if (intf->name() == "bfc") {
-		if (type == "ram") {
-			return create_rwx<bfc_ram>(intf);
-		} else if (type == "flash") {
-			return create_rwx<bfc_flash>(intf);
+		if (safe) {
+			if (space.is_mem()) {
+				return create_rwx<bfc_ram>(intf, space);
+			} else if (type == "flash") {
+				return create_rwx<bfc_flash>(intf, space);
+			}
 		}
 	}
 
-	throw invalid_argument("no such rwx: " + intf->name() + "-" + type);
+	throw invalid_argument("no such rwx: " + intf->name() + "-" + type + ((safe ? "" : "un") + string("safe")));
 }
 }
 

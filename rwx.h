@@ -13,6 +13,8 @@ class rwx //: public rwx_writer
 	static unsigned constexpr cap_read = (1 << 0);
 	static unsigned constexpr cap_write = (1 << 1);
 	static unsigned constexpr cap_exec = (1 << 2);
+	static unsigned constexpr cap_rw = cap_read | cap_write;
+	static unsigned constexpr cap_rwx = cap_rw | cap_exec;
 
 	typedef std::function<void(uint32_t, uint32_t, bool)> progress_listener;
 	typedef std::function<void(uint32_t, const ps_header&)> image_listener;
@@ -38,7 +40,7 @@ class rwx //: public rwx_writer
 	virtual unsigned capabilities() const
 	{ return cap_read; }
 
-	void dump(const addrspace::part& partition, std::ostream& os, uint32_t length = 0);
+	void dump(const std::string& partition, std::ostream& os, uint32_t length = 0);
 	void dump(uint32_t offset, uint32_t length, std::ostream& os);
 	std::string read(uint32_t offset, uint32_t length);
 
@@ -49,7 +51,7 @@ class rwx //: public rwx_writer
 
 	//bool imgscan(uint32_t offset, uint32_t length, uint32_t steps, ps_header& hdr);
 
-	static sp create(const interface::sp& interface, const std::string& type, bool no_dumpcode = false);
+	static sp create(const interface::sp& interface, const std::string& type, bool safe = true);
 
 	virtual void set_progress_listener(const progress_listener& l = progress_listener())
 	{ m_prog_l = l; }
@@ -74,6 +76,9 @@ class rwx //: public rwx_writer
 
 	virtual void init(uint32_t offset, uint32_t length, bool write) {}
 	virtual void cleanup() {}
+
+	bool is_inited() const
+	{ return m_inited; }
 
 	void do_init(uint32_t offset, uint32_t length, bool write)
 	{

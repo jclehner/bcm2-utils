@@ -34,45 +34,22 @@ int main(int argc, char** argv)
 		logger::loglevel(logger::DEBUG);
 
 		auto intf = interface::create(argv[1]);
-
-#if 0
-#if 0
-		auto profile = profile::get("TC7200");
-		auto intf = interface::create_telnet("192.168.0.1", 23, "foobar", "foobar", profile);
-#else
-		auto intf = interface::create_serial(argv[1], 115200);
-#endif
-#endif
-
-		const addrspace& space = intf->profile()->space(argv[2], intf->id());
-		rwx::sp rwx;
-
-		// TODO move this to rwx::create
-		if (space.is_mem()) {
-			rwx = rwx::create(intf, "ram");
-		} else {
-			rwx = rwx::create(intf, "flash");
-		}
-
-		const addrspace::part& part = space.partition(argv[3]);
-
+		auto rwx = rwx::create(intf, argv[2], false);
 		progress pg;
-		progress_init(&pg, part.offset(), part.size());
-		
-		rwx->set_image_listener([] (uint32_t offset, const ps_header& hdr) {
-			printf("  %s  (%u b)\n", hdr.filename().c_str(), hdr.length());
-		});
 
 		rwx->set_progress_listener([&pg, &argv] (uint32_t offset, uint32_t length, bool init) {
-			static bool first = true;
-			if (first) {
+			if (init) {
+				progress_init(&pg, offset, length);
 				printf("dumping %s:0x%08x-0x%08x\n", argv[2], pg.min, pg.max);
-				first = false;
 			}
 
 			printf("\r ");
 			progress_set(&pg, offset);
 			progress_print(&pg, stdout);
+		});
+
+		rwx->set_image_listener([] (uint32_t offset, const ps_header& hdr) {
+			printf("  %s  (%u b)\n", hdr.filename().c_str(), hdr.length());
 		});
 
 		ofstream of(argv[4]);
@@ -81,7 +58,7 @@ int main(int argc, char** argv)
 			return 1;
 		}
 
-		rwx->dump(part, of);
+		rwx->dump(argv[3], of);
 		cout << endl;
 	} catch (const rwx::interrupted& e) {
 		cerr << endl << "interrupted" << endl;

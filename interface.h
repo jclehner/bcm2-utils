@@ -13,7 +13,6 @@ namespace bcm2dump {
 
 class interface
 {
-	friend class rwx_writer;
 	typedef bcm2dump::profile profile_type;
 
 	public:

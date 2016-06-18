@@ -201,7 +201,7 @@ namespace bcm2dump {
 class func
 {
 	public:
-	func(uint32_t addr, uint32_t args = 0, uint32_t intf = 0, uint32_t retv = 0)
+	func(uint32_t addr = 0, uint32_t args = 0, uint32_t intf = 0, uint32_t retv = 0)
 	: m_addr(addr), m_args(args), m_intf(intf), m_retv(retv) {}
 
 	uint32_t addr() const
