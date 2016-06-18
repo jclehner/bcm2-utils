@@ -2,7 +2,7 @@
 #include <fstream>
 #include "interface.h"
 #include "bcm2dump.h"
-#include "reader.h"
+#include "rwx.h"
 #include "io.h"
 using namespace std;
 using namespace bcm2dump;
@@ -45,13 +45,13 @@ int main(int argc, char** argv)
 #endif
 
 		const addrspace& space = intf->profile()->space(argv[2], intf->id());
-		reader::sp reader;
+		rwx::sp rwx;
 
-		// TODO move this to reader::create
+		// TODO move this to rwx::create
 		if (space.is_mem()) {
-			reader = reader::create(intf, "ram");
+			rwx = rwx::create(intf, "ram");
 		} else {
-			reader = reader::create(intf, "flash");
+			rwx = rwx::create(intf, "flash");
 		}
 
 		const addrspace::part& part = space.partition(argv[3]);
@@ -59,11 +59,11 @@ int main(int argc, char** argv)
 		progress pg;
 		progress_init(&pg, part.offset(), part.size());
 		
-		reader->set_image_listener([] (uint32_t offset, const ps_header& hdr) {
+		rwx->set_image_listener([] (uint32_t offset, const ps_header& hdr) {
 			printf("  %s  (%u b)\n", hdr.filename().c_str(), hdr.length());
 		});
 
-		reader->set_progress_listener([&pg, &argv] (uint32_t offset, uint32_t length, bool init) {
+		rwx->set_progress_listener([&pg, &argv] (uint32_t offset, uint32_t length, bool init) {
 			static bool first = true;
 			if (first) {
 				printf("dumping %s:0x%08x-0x%08x\n", argv[2], pg.min, pg.max);
@@ -81,7 +81,7 @@ int main(int argc, char** argv)
 			return 1;
 		}
 
-		reader->dump(part, of);
+		rwx->dump(part, of);
 		cout << endl;
 	} catch (const exception& e) {
 		cerr << endl;
@@ -96,7 +96,7 @@ int main(int argc, char** argv)
 
 		cerr << endl;
 		return 1;
-	} catch (const reader_writer::interrupted& e) {
+	} catch (const rwx::interrupted& e) {
 		cerr << endl << "interrupted" << endl;
 		return 1;
 	}
@@ -105,7 +105,7 @@ int main(int argc, char** argv)
 	const uint32_t offset = 0x85f00000;
 	const uint32_t bytes = 128;
 
-	reader::sp d = reader::create(intf, "ram");
+	rwx::sp d = rwx::create(intf, "ram");
 	writer::sp w = writer::create(intf, "ram");
 
 	srand(time(NULL));

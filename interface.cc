@@ -2,7 +2,7 @@
 #include <sys/stat.h>
 #include <netdb.h>
 #include "interface.h"
-#include "reader.h"
+#include "rwx.h"
 using namespace std;
 
 namespace bcm2dump {
@@ -255,7 +255,7 @@ interface::sp detect_interface(const io::sp &io)
 
 void detect_profile(const interface::sp& intf)
 {
-	reader::sp ram = reader::create(intf, "ram", true);
+	rwx::sp ram = rwx::create(intf, "ram", true);
 
 	for (auto p : profile::list()) {
 		for (auto magic : p->magics()) {
@@ -356,10 +356,10 @@ interface::sp interface::create(const string& spec)
 	throw invalid_argument("invalid interface: '" + spec + '"');
 }
 
-unsigned reader_writer::s_count = 0;
-volatile sig_atomic_t reader_writer::s_sigint = 0;
+unsigned rwx_writer::s_count = 0;
+volatile sig_atomic_t rwx_writer::s_sigint = 0;
 
-void reader_writer::do_cleanup()
+void rwx_writer::do_cleanup()
 {
 	if (m_inited) {
 		cleanup();
@@ -367,12 +367,12 @@ void reader_writer::do_cleanup()
 	}
 }
 
-void reader_writer::do_init(uint32_t offset, uint32_t length)
+void rwx_writer::do_init(uint32_t offset, uint32_t length)
 {
 	init(offset, length);
 	m_inited = true;
 	++s_count;
 	logger::d() << "installing signal handler" << endl;
-	signal(SIGINT, &reader_writer::handle_signal);
+	signal(SIGINT, &rwx_writer::handle_signal);
 }
 }

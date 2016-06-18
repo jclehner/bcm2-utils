@@ -7,7 +7,7 @@
 #include "ps.h"
 
 namespace bcm2dump {
-class reader //: public reader_writer
+class rwx //: public rwx_writer
 {
 	public:
 	static unsigned constexpr cap_read = (1 << 0);
@@ -16,7 +16,7 @@ class reader //: public reader_writer
 
 	typedef std::function<void(uint32_t, uint32_t, bool)> progress_listener;
 	typedef std::function<void(uint32_t, const ps_header&)> image_listener;
-	typedef std::shared_ptr<reader> sp;
+	typedef std::shared_ptr<rwx> sp;
 	struct interrupted : public std::exception {};
 
 	struct limits
@@ -30,7 +30,7 @@ class reader //: public reader_writer
 		const uint32_t max;
 	};
 
-	virtual ~reader() {}
+	virtual ~rwx() {}
 
 	virtual limits limits_read() const = 0;
 	virtual limits limits_write() const = 0;
@@ -130,16 +130,16 @@ class reader //: public reader_writer
 	class scoped_cleaner
 	{
 		public:
-		scoped_cleaner(reader *reader) : m_reader(reader) {}
+		scoped_cleaner(rwx *rwx) : m_rwx(rwx) {}
 		~scoped_cleaner()
 		{
-			if (m_reader) {
-				m_reader->do_cleanup();
+			if (m_rwx) {
+				m_rwx->do_cleanup();
 			}
 		}
 
 		private:
-		reader *m_reader;
+		rwx *m_rwx;
 	};
 
 	scoped_cleaner make_cleaner()
