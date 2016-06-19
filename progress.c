@@ -51,9 +51,9 @@ void progress_init(struct progress *p, unsigned min, unsigned len)
 
 	p->beg = p->last = time(NULL);
 	p->percentage = 0.0;
-	p->cur = min;
+	p->tmp = p->cur = min;
 	p->min = min;
-	p->max = min - 1 + len;
+	p->max = len ? (min - 1 + len) : min;
 }
 
 void progress_set(struct progress *p, unsigned n)
@@ -70,7 +70,7 @@ void progress_add(struct progress *p, unsigned n)
 	p->tmp += n;
 	p->cur += n;
 
-	if (p->cur > p->max) {
+	if (p->max && (p->cur > p->max)) {
 		p->cur = p->max;
 	} else if (p->cur < p->min) {
 		p->cur = p->min;
@@ -95,23 +95,25 @@ void progress_add(struct progress *p, unsigned n)
 		p->tmp = 0;
 	}
 
-	float cur = p->cur - p->min;
-	float max = p->max - p->min;
+	if (p->max) {
+		float cur = p->cur - p->min;
+		float max = p->max - p->min;
 
-	p->percentage = 100.0f * cur / max;
+		p->percentage = 100.0f * cur / max;
+	} else {
+		p->percentage = -1.0f;
+	}
 }
 
 void progress_print(struct progress *p, FILE *fp)
 {
-#if 0
-	unsigned speed = p->cur < p->max ? p->speed_now : p->speed_avg;
-	fprintf(fp, "%6.2f%% (0x%08x) %4d bytes/s ", p->percentage, p->cur, speed);
-#else
-	//fprintf(fp, "%6.2f%% (0x%08x) %5d|%5d bytes/s ", p->percentage, p->cur, p->speed_now, p->speed_avg);
-#endif
-	fprintf(fp, "%6.2f%% (0x%08x) ", p->percentage, p->cur);
+	if (p->percentage >= 0.0f) {
+		fprintf(fp, "%6.2f%% (0x%08x) ", p->percentage, p->cur);
+	} else {
+		fprintf(fp, "---.--%% (0x%08x) ", p->cur);
+	}
 
-	if (p->cur < p->max) {
+	if (!p->cur < p->max) {
 		fprintf(fp, "%5d|%5d bytes/s (ETA  ", p->speed_now, p->speed_avg);
 		print_time(fp, p->eta_days, &p->eta);
 	} else {
@@ -120,7 +122,9 @@ void progress_print(struct progress *p, FILE *fp)
 		time_t diff = time(NULL) - p->beg;
 
 		gmtime_days(diff, &days, &elapsed);
-		fprintf(fp, "      %5ld bytes/s (ELT  ", (p->max - p->min) / (diff ? diff : 1));
+
+		long speed = (p->max - p->min) / (diff ? diff : 1);
+		fprintf(fp, "      %5ld bytes/s (ELT  ", speed ? speed : p->speed_now);
 		print_time(fp, days, &elapsed);
 	}
 

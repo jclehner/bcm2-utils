@@ -769,7 +769,7 @@ void rwx::dump(uint32_t offset, uint32_t length, std::ostream& os)
 
 	if (capabilities() & cap_special) {
 		do_init(0, 0, false);
-		update_progress(0, 0, false);
+		update_progress(0, 0, true);
 		read_special(offset, length, os);
 		return;
 	}
