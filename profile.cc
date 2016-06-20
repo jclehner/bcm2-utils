@@ -306,15 +306,16 @@ bool addrspace::check_range(uint32_t offset, uint32_t length, const string& name
 	// ignore memory address of 0
 	if (!offset && is_ram()) {
 		return true;
+	} else if (!min() && !size()) {
+		return true;
 	}
 
 	uint32_t last = offset + length - 1;
 
 	if (!(offset % alignment())) {
-		offset &= ~m_kseg1;
-
+		uint32_t offset_c = offset & ~m_kseg1;
 		uint32_t max = min() + m_size - 1;
-		if (offset >= min() && m_size && offset <= max) {
+		if (offset_c >= min() && m_size && offset_c <= max) {
 			if (!m_size || !length || last <= max) {
 				return true;
 			}
@@ -333,7 +334,7 @@ bool addrspace::check_range(uint32_t offset, uint32_t length, const string& name
 		msg = "offset " + this->name() + ":0x" + to_hex(offset);
 	}
 
-	throw invalid_argument(m_profile_name + ": " + msg + " invalid " + (!name.empty() ? ("(" + name + ")") : ""));
+	throw invalid_argument(m_profile_name + ": invalid " + msg + (!name.empty() ? ("(" + name + ")") : ""));
 }
 
 const addrspace::part& addrspace::partition(const string& name) const

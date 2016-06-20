@@ -36,6 +36,31 @@ template<class T> T align_to(const T& num, const T& alignment)
 	return num;
 }
 
+uint32_t parse_num(const string& str)
+{
+	uint32_t mult = 1;
+	uint32_t base = 10;
+
+	if (!str.empty()) {
+		if (str.size() > 2 && str.substr(0, 2) == "0x") {
+			base = 16;
+		} else {
+			switch (str.back()) {
+			case 'k':
+			case 'K':
+				mult = 1024;
+				break;
+			case 'm':
+			case 'M':
+				mult = 1024 * 1024;
+				break;
+			}
+		}
+	}
+
+	return lexical_cast<uint32_t>(str, base) * mult;
+}
+
 // rwx base class for a command line interface where you
 // enter a command which in turn displays a (hex) dump of the
 // data. for now, all rwx implementations are based on this
@@ -277,7 +302,7 @@ class bfc_flash : public parsing_rwx
 
 	virtual void update_progress(uint32_t offset, uint32_t length, bool init) override
 	{
-		parsing_rwx::update_progress(m_partition->offset() + offset, length, true);
+		parsing_rwx::update_progress(m_partition->offset() + offset, length, init);
 	}
 };
 
@@ -772,6 +797,8 @@ void rwx::dump(uint32_t offset, uint32_t length, std::ostream& os)
 		update_progress(0, 0, true);
 		read_special(offset, length, os);
 		return;
+	} else {
+		m_space.check_range(offset, length);
 	}
 
 	uint32_t offset_r = align_left(offset, limits_read().alignment);
@@ -838,11 +865,31 @@ void rwx::dump(uint32_t offset, uint32_t length, std::ostream& os)
 	}
 }
 
-void rwx::dump(const string& partition, ostream& os, uint32_t length)
+void rwx::dump(const std::string& spec, std::ostream& os)
 {
-	addrspace::part p = m_space.partition(partition);
-	set_partition(p);
-	dump(p.offset(), !length ? p.size() : length, os);
+	vector<string> tokens = split(spec, ',');
+
+	uint32_t offset = 0;
+	uint32_t length = 0;
+
+	try {
+		offset = parse_num(tokens[0]);
+		if (tokens.size() < 2) {
+			throw invalid_argument("must specify dump length");
+		}
+		length = parse_num(tokens[1]);
+	} catch (const bad_lexical_cast& e) {
+		if (offset) {
+			throw e;
+		}
+
+		addrspace::part p = m_space.partition(tokens[0]);
+		set_partition(p);
+		offset = p.offset();
+		length = tokens.size() >= 2 ? parse_num(tokens[1]) : p.size();
+	}
+
+	return dump(offset, length, os);
 }
 
 string rwx::read(uint32_t offset, uint32_t length)
@@ -880,6 +927,8 @@ void rwx::write(uint32_t offset, const string& buf, uint32_t length)
 		length = buf.size();
 	}
 	
+	m_space.check_range(offset, length);
+
 	limits lim = limits_write();
 
 	uint32_t offset_w = align_left(offset, lim.min);
@@ -926,20 +975,6 @@ void rwx::read_special(uint32_t offset, uint32_t length, ostream& os)
 	string buf = read_special(offset, length);
 	os.write(buf.data(), buf.size());
 }
-
-#if 0
-bool rwx::imgscan(uint32_t offset, uint32_t length, uint32_t step, ps_header& hdr)
-{
-	update_progress(offset, length, true);
-
-	for (uint32_t pos = offset; pos < (offset + length); pos += step) {
-		hdr.parse(read(pos, sizeof(ps_header::raw)));
-		if (hdr.hcs_valid()) {
-			return true;
-		}
-	}
-}
-#endif
 
 // TODO this should be migrated to something like
 // interface::create_rwx(const string& type)

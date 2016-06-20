@@ -41,9 +41,10 @@ class rwx //: public rwx_writer
 	virtual unsigned capabilities() const
 	{ return cap_read; }
 
-	void dump(const std::string& partition, std::ostream& os, uint32_t length = 0);
+	void dump(const std::string& spec, std::ostream& os);
 	void dump(uint32_t offset, uint32_t length, std::ostream& os);
 	std::string read(uint32_t offset, uint32_t length);
+
 
 	void write(uint32_t offset, std::istream& is, uint32_t length = 0);
 	void write(uint32_t offset, const std::string& buf, uint32_t length = 0);
