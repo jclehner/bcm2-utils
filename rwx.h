@@ -33,7 +33,8 @@ class rwx //: public rwx_writer
 		const uint32_t max;
 	};
 
-	virtual ~rwx() {}
+	rwx();
+	virtual ~rwx();
 
 	virtual limits limits_read() const = 0;
 	virtual limits limits_write() const = 0;
@@ -162,6 +163,8 @@ class rwx //: public rwx_writer
 
 	bool m_inited = false;
 
+	static unsigned s_count;
+	static sighandler_t s_sighandler_orig;
 	static volatile sig_atomic_t s_sigint;
 };
 
