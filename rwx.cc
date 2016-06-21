@@ -797,7 +797,7 @@ void rwx::require_capability(unsigned cap)
 	}
 
 	string name;
-	switch (cap) {
+	switch (cap & cap_rwx) {
 	case cap_read:
 		name = "read";
 		break;
