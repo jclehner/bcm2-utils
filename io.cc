@@ -157,6 +157,7 @@ class fdio : public io
 
 	virtual bool pending(unsigned timeout) override;
 	virtual void write(const string& str) override;
+	virtual string read(size_t length, bool partial = true) override;
 
 	protected:
 	virtual void close()
@@ -185,6 +186,7 @@ class tcp : public fdio
 	virtual void write(const string& str) override;
 	virtual void writeln(const string& str) override
 	{ write(str + "\r\n"); }
+	virtual string read(size_t length, bool partial = true) override;
 
 	protected:
 	virtual ssize_t read1(char& c) override;
@@ -250,12 +252,24 @@ int fdio::getc()
 
 ssize_t fdio::read1(char& c)
 {
-	return read(m_fd, &c, 1);
+	return ::read(m_fd, &c, 1);
+}
+
+string fdio::read(size_t length, bool all)
+{
+	string buf(length, '\0');
+	ssize_t read = ::read(m_fd, &buf[0], length);
+	if (read < 0 || (all && read < length)) {
+		throw system_error(errno, system_category(), "read");
+	}
+
+	buf.resize(read);
+	return buf;
 }
 
 void fdio::write(const string& str)
 {
-	if (::write(m_fd, str.c_str(), str.size()) != str.size()) {
+	if (::write(m_fd, str.data(), str.size()) != str.size()) {
 		throw system_error(errno, system_category(), "write");
 	}
 #ifdef DEBUG
@@ -373,6 +387,18 @@ void tcp::write(const string& str)
 ssize_t tcp::read1(char& c)
 {
 	return recv(m_fd, &c, 1, MSG_DONTWAIT);
+}
+
+string tcp::read(size_t length, bool all)
+{
+	string buf(length, '\0');
+	ssize_t read = recv(m_fd, &buf[0], length, MSG_DONTWAIT);
+	if (read < 0 || (all && read < length)) {
+		throw system_error(errno, system_category(), "read");
+	}
+
+	buf.resize(read);
+	return buf;
 }
 
 void telnet::write(const string& str)

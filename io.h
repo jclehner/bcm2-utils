@@ -19,6 +19,7 @@ class io
 
 	virtual int getc() = 0;
 	virtual std::string readln(unsigned timeout = 0);
+	virtual std::string read(size_t length, bool partial = true) = 0;
 	virtual void writeln(const std::string& buf = "") = 0;
 	virtual void write(const std::string& buf) = 0;
 
