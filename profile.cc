@@ -310,10 +310,11 @@ bool addrspace::check_range(uint32_t offset, uint32_t length, const string& name
 		return true;
 	}
 
-	uint32_t last = offset + length - 1;
+
 
 	if (!(offset % alignment())) {
 		uint32_t offset_c = offset & ~m_kseg1;
+		uint32_t last = offset_c + length - 1;
 		uint32_t max = min() + m_size - 1;
 		if (offset_c >= min() && m_size && offset_c <= max) {
 			if (!m_size || !length || last <= max) {
@@ -329,7 +330,7 @@ bool addrspace::check_range(uint32_t offset, uint32_t length, const string& name
 	string msg;
 
 	if (length) {
-		msg = "range " + this->name() + ":0x" + to_hex(offset) + "-0x" + to_hex(last);
+		msg = "range " + this->name() + ":0x" + to_hex(offset) + "-0x" + to_hex(offset + length - 1);
 	} else {
 		msg = "offset " + this->name() + ":0x" + to_hex(offset);
 	}
