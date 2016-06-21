@@ -7,6 +7,8 @@
 #include "rwx.h"
 #include "ps.h"
 
+#define BFC_FLASH_READ_DIRECT
+
 using namespace std;
 
 namespace bcm2dump {
@@ -285,7 +287,7 @@ class bfc_flash : public parsing_rwx
 	virtual ~bfc_flash() {}
 
 	virtual limits limits_read() const override
-	{ return limits(1, 16, 8192); }
+	{ return limits(1, 16, 512); }
 
 	virtual limits limits_write() const override
 	{ return limits(1, 1, 4); }
@@ -323,7 +325,7 @@ void bfc_flash::init(uint32_t offset, uint32_t length, bool write)
 			if (contains(line, "opened twice")) {
 				retry = true;
 				opened = false;
-			} else if (contains(line, "driver opened") || contains(line, "NandFlashRead")) {
+			} else if (contains(line, "driver opened")) {
 				opened = true;
 			}
 		}
@@ -331,8 +333,10 @@ void bfc_flash::init(uint32_t offset, uint32_t length, bool write)
 		if (opened) {
 			break;
 		} else if (retry && pass == 0) {
-			logger::d() << "closing flash driver before reopening" << endl;
+			logger::d() << "reinitializing flash driver before reopening" << endl;
 			cleanup();
+			m_intf->runcmd("/flash/deinit");
+			m_intf->runcmd("/flash/init");
 		} else {
 			throw runtime_error("failed to open partition " + m_partition->name());
 		}
@@ -358,19 +362,29 @@ void bfc_flash::do_read_chunk(uint32_t offset, uint32_t length)
 		throw runtime_error("offset 0x" + to_hex(offset) + " is less than partition offset");
 	}
 
-	// because readDirect expects an offset *within* the partition
 	offset -= m_partition->offset();
-
+#ifdef BFC_FLASH_READ_DIRECT
 	m_intf->runcmd("/flash/readDirect " + to_string(length) + " " + to_string(offset));
+#else
+	m_intf->runcmd("/flash/read 4 " + to_string(length) + " " + to_string(offset));
+#endif
 }
 
 bool bfc_flash::is_ignorable_line(const string& line)
 {
+#ifdef BFC_FLASH_READ_DIRECT
 	if (line.size() >= 53) {
 		if (line.substr(11, 3) == "   " && line.substr(25, 3) == "   ") {
 			return false;
 		}
 	}	
+#else
+	if (line.size() >= 36) {
+		if (line[8] == ' ' && line[17] == ' ' && line[26] == ' ') {
+			return false;
+		}
+	}
+#endif
 
 	return true;
 }
@@ -379,6 +393,7 @@ string bfc_flash::parse_chunk_line(const string& line, uint32_t offset)
 {
 	string linebuf;
 
+#ifdef BFC_FLASH_READ_DIRECT
 	for (unsigned i = 0; i < 16; ++i) {
 		// don't change this to uint8_t
 		uint32_t val = hex_cast<uint32_t>(line.substr(i * 3 + (i / 4) * 2, 2));
@@ -388,6 +403,11 @@ string bfc_flash::parse_chunk_line(const string& line, uint32_t offset)
 
 		linebuf += char(val);
 	}
+#else
+	for (size_t i = 0; i < line.size(); i += 9) {
+		linebuf += to_buf(htonl(hex_cast<uint32_t>(line.substr(i, 8))));
+	}
+#endif
 
 	return linebuf;
 }
