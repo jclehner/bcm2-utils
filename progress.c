@@ -113,7 +113,7 @@ void progress_print(struct progress *p, FILE *fp)
 		fprintf(fp, "---.--%% (0x%08x) ", p->cur);
 	}
 
-	if (!p->cur < p->max) {
+	if (p->cur < p->max) {
 		fprintf(fp, "%5d|%5d bytes/s (ETA  ", p->speed_now, p->speed_avg);
 		print_time(fp, p->eta_days, &p->eta);
 	} else {
