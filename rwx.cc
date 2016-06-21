@@ -309,7 +309,7 @@ class bfc_flash : public parsing_rwx
 void bfc_flash::init(uint32_t offset, uint32_t length, bool write)
 {
 	if (!m_partition) {
-		throw runtime_error("no partition name specified");
+		throw runtime_error("no partition name argument");
 	}
 
 	for (unsigned pass = 0; pass < 2; ++pass) {
@@ -875,7 +875,7 @@ void rwx::dump(const std::string& spec, std::ostream& os)
 	try {
 		offset = parse_num(tokens[0]);
 		if (tokens.size() < 2) {
-			throw invalid_argument("must specify dump length");
+			throw invalid_argument("missing size argument");
 		}
 		length = parse_num(tokens[1]);
 	} catch (const bad_lexical_cast& e) {

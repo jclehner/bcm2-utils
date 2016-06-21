@@ -14,7 +14,7 @@ int main(int argc, char** argv)
 {
 	ios_base::sync_with_stdio();
 
-	if (argc != 5) {
+	if (argc != 5 && argc != 3) {
 		cerr << "usage: bcm2dump <interface> <addrspace> <partition> <outfile>" << endl;
 		cerr << endl;
 		cerr << "interface specifications: " << endl;
@@ -31,12 +31,17 @@ int main(int argc, char** argv)
 	}
 
 	try {
-		logger::loglevel(logger::DEBUG);
+		logger::loglevel(logger::TRACE);
 
 		auto intf = interface::create(argv[1]);
 		rwx::sp rwx;
 
-		if (argv[2] != "special"s) {
+		if (argv[2] == "info"s) {
+			if (intf->profile()) {
+				intf->profile()->print_to_stdout();
+			}
+			return 0;
+		} else if (argv[2] != "special"s) {
 			rwx = rwx::create(intf, argv[2], argv[2] == "ram"s && argv[3] == "dumpcode"s);
 		} else {
 			rwx = rwx::create_special(intf, argv[3]);
