@@ -310,8 +310,6 @@ bool addrspace::check_range(uint32_t offset, uint32_t length, const string& name
 		return true;
 	}
 
-
-
 	if (!(offset % alignment())) {
 		uint32_t offset_c = offset & ~m_kseg1;
 		uint32_t last = offset_c + length - 1;

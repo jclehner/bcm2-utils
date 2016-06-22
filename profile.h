@@ -240,6 +240,8 @@ class addrspace
 		public:
 		friend class addrspace;
 
+		part() : m_p(nullptr) {}
+
 		std::string name() const
 		{ return m_p ? m_p->name : ""; }
 

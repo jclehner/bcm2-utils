@@ -64,7 +64,7 @@ class rwx //: public rwx_writer
 	{ m_img_l = l; }
 
 	virtual void set_partition(const addrspace::part& partition)
-	{ m_partition = &partition; }
+	{ m_partition = partition; }
 
 	virtual void set_interface(const interface::sp& intf)
 	{ m_intf = intf; }
@@ -135,7 +135,7 @@ class rwx //: public rwx_writer
 	interface::sp m_intf;
 	progress_listener m_prog_l;
 	image_listener m_img_l;
-	const addrspace::part* m_partition = nullptr;
+	addrspace::part m_partition;
 	addrspace m_space;
 
 

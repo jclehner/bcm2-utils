@@ -304,18 +304,18 @@ class bfc_flash : public parsing_rwx
 
 	virtual void update_progress(uint32_t offset, uint32_t length, bool init) override
 	{
-		parsing_rwx::update_progress(m_partition->offset() + offset, length, init);
+		parsing_rwx::update_progress(m_partition.offset() + offset, length, init);
 	}
 };
 
 void bfc_flash::init(uint32_t offset, uint32_t length, bool write)
 {
-	if (!m_partition) {
+	if (m_partition.name().empty()) {
 		throw runtime_error("no partition name argument");
 	}
 
 	for (unsigned pass = 0; pass < 2; ++pass) {
-		m_intf->runcmd("/flash/open " + m_partition->altname());
+		m_intf->runcmd("/flash/open " + m_partition.altname());
 
 		bool opened = false;
 		bool retry = false;
@@ -338,7 +338,7 @@ void bfc_flash::init(uint32_t offset, uint32_t length, bool write)
 			m_intf->runcmd("/flash/deinit");
 			m_intf->runcmd("/flash/init");
 		} else {
-			throw runtime_error("failed to open partition " + m_partition->name());
+			throw runtime_error("failed to open partition " + m_partition.name());
 		}
 	}
 }
@@ -357,12 +357,12 @@ bool bfc_flash::write_chunk(uint32_t offset, const std::string& chunk)
 
 void bfc_flash::do_read_chunk(uint32_t offset, uint32_t length)
 {
-	if (offset < m_partition->offset()) {
+	if (offset < m_partition.offset()) {
 		// just to be safe. this should never happen
 		throw runtime_error("offset 0x" + to_hex(offset) + " is less than partition offset");
 	}
 
-	offset -= m_partition->offset();
+	offset -= m_partition.offset();
 #ifdef BFC_FLASH_READ_DIRECT
 	m_intf->runcmd("/flash/readDirect " + to_string(length) + " " + to_string(offset));
 #else
@@ -919,7 +919,7 @@ void rwx::dump(const std::string& spec, std::ostream& os)
 			throw e;
 		}
 
-		addrspace::part p = m_space.partition(tokens[0]);
+		const addrspace::part& p = m_space.partition(tokens[0]);
 		set_partition(p);
 		offset = p.offset();
 		length = tokens.size() >= 2 ? parse_num(tokens[1]) : p.size();
