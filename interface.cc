@@ -320,7 +320,7 @@ interface::sp interface::create(const string& spec)
 		} else if (tokens.size() == 3 || tokens.size() == 4) {
 			type = "telnet";
 		} else {
-			throw invalid_argument("ambiguous interface: '" + spec + '"');
+			throw invalid_argument("ambiguous interface: '" + spec + "'; use <type>: prefix (serial/tcp/telnet)");
 		}
 	}
 

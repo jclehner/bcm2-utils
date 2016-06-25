@@ -8,7 +8,12 @@
 using namespace std;
 using namespace bcm2dump;
 
+#ifndef VERSION
+#define VERSION "v(unknown)"
+#endif
+
 namespace {
+
 void usage(bool help = false)
 {
 	ostream& os = logger::i();
@@ -53,26 +58,33 @@ void usage(bool help = false)
 		os << "\n    Print this information and exit.\n";
 	}
 	os << endl;
-	os << "Interface: " << endl;
-	os << "  serial:/dev/ttyUSB0             Serial console with default baud rate" << endl;
-	os << "  serial:/dev/ttyUSB0,115200      Serial console, 115200 baud" << endl;
-	os << "  tcp:192.168.0.1,2323            Raw TCP connection to 192.168.0.1, port 2323" << endl;
-	os << "  telnet:192.168.0.1,foo,bar      Telnet connection to 192.168.0.1, user 'foo'," << endl;
-	os << "                                  password 'bar', default port (23)" << endl;
-	os << "  telnet:192.168.0.1,foo,bar,233  Same as above, port 233" << endl;
+	os << "Interfaces: " << endl;
+	os << "  /dev/ttyUSB0             Serial console with default baud rate" << endl;
+	os << "  /dev/ttyUSB0,115200      Serial console, 115200 baud" << endl;
+	os << "  192.168.0.1,2323         Raw TCP connection to 192.168.0.1, port 2323" << endl;
+	os << "  192.168.0.1,foo,bar      Telnet, server 192.168.0.1, user 'foo', password 'bar'" << endl;
+	os << "  192.168.0.1,foo,bar,233  Same as above, port 233" << endl;
 	os << endl;
-	os << "Type prefixes ('serial:', 'tcp:', etc.) can usually be omitted." << endl;
+	os << "bcm2dump " << VERSION << " Copyright (C) 2016 Joseph C. Lehner" << endl;
+	os << "Licensed under the GNU GPLv3; source code is available at" << endl;
+	os << "https://github.com/jclehner/bcm2utils" << endl;
+	os << endl;
 }
 
 int do_dump(int argc, char** argv, bool safe)
 {
-	auto intf = interface::create(argv[0]);
+	if (argc != 5) {
+		usage(false);
+		return 1;
+	}
+
+	auto intf = interface::create(argv[1]);
 	rwx::sp rwx;
 
-	if (argv[1] != "special"s) {
-		rwx = rwx::create(intf, argv[1], safe);
+	if (argv[2] != "special"s) {
+		rwx = rwx::create(intf, argv[2], safe);
 	} else {
-		rwx = rwx::create_special(intf, argv[2]);
+		rwx = rwx::create_special(intf, argv[3]);
 	}
 
 	progress pg;
@@ -94,14 +106,14 @@ int do_dump(int argc, char** argv, bool safe)
 		});
 	}
 
-	ofstream of(argv[3]);
+	ofstream of(argv[4]);
 	if (!of.good()) {
-		throw runtime_error("failed to open "s + argv[3]);
+		throw runtime_error("failed to open "s + argv[4]);
 	}
 
-	if (argv[1] != "special"s) {
-		if (argv[2] != "dumpcode"s) {
-			rwx->dump(argv[2], of);
+	if (argv[2] != "special"s) {
+		if (argv[3] != "dumpcode"s) {
+			rwx->dump(argv[3], of);
 		} else {
 			rwx->dump(intf->profile()->codecfg(intf->id()).loadaddr | intf->profile()->kseg1(), 512, of);
 		}
@@ -114,7 +126,12 @@ int do_dump(int argc, char** argv, bool safe)
 
 int do_info(int argc, char** argv)
 {
-	auto intf = interface::create(argv[0]);
+	if (argc != 2) {
+		usage(false);
+		return 1;
+	}
+
+	auto intf = interface::create(argv[1]);
 	if (intf->profile()) {
 		intf->profile()->print_to_stdout();
 	}
@@ -130,6 +147,7 @@ int main(int argc, char** argv)
 	int loglevel = logger::info;
 	int opt;
 
+	optind = 0;
 	opterr = 0;
 
 	while ((opt = getopt(argc, argv, "hsARFqvP:")) != -1) {
@@ -138,10 +156,10 @@ int main(int argc, char** argv)
 			safe = true;
 			break;
 		case 'v':
-			loglevel = min(loglevel - 1, logger::trace);
+			loglevel = max(loglevel - 1, logger::trace);
 			break;
 		case 'q':
-			loglevel = max(loglevel + 1, logger::err);
+			loglevel = min(loglevel + 1, logger::err);
 			break;
 		case 'A':
 		case 'F':
@@ -158,9 +176,9 @@ int main(int argc, char** argv)
 		}
 	}
 
-	string cmd = argv[optind];
-	if (cmd == "help") {
-		usage(true);
+	string cmd = optind < argc ? argv[optind] : "";
+	if (cmd.empty() || cmd == "help") {
+		usage(!cmd.empty());
 		return 0;
 	}
 
@@ -183,19 +201,18 @@ int main(int argc, char** argv)
 		return 1;
 	} catch (const exception& e) {
 		logger::e() << endl;
-		logger::e() << "**************************" << endl;
 		logger::e() << "error: " << e.what() << endl;
 
 		auto lines = io::get_last_lines();
 		if (!lines.empty()) {
-			logger::v() << endl;
-			logger::v() << "context:" << endl;
+			logger::d() << endl;
+			logger::d() << "context:" << endl;
 
 			for (string line : io::get_last_lines()) {
-				logger::v() << "  " << line << endl;
+				logger::d() << "  " << line << endl;
 			}
 
-			logger::v() << endl;
+			logger::d() << endl;
 		}
 		return 1;
 	}
