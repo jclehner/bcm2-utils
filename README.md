@@ -1,4 +1,4 @@
-**WARNING** This readme refers to the old [legacy](https://github.com/jclehner/bcm2-utils/tree/legacy) branch.
+**WARNING** Parts of this readme still refer to the old [legacy](https://github.com/jclehner/bcm2-utils/tree/legacy) branch.
 
 
 # bcm2-utils
@@ -24,8 +24,29 @@ to change. Bug reports are always welcome.
 ## bcm2dump
 
 This utility can be used to dump firmware or other flash contents.
-`bcm2dump` requires either an unlocked bootloader, or a working 
-firmware shell (`CM>` prompt).
+`bcm2dump` requires either an unlocked bootloader (serial connection),
+or a working firmware shell (`CM>` prompt; serial and telnet supported).
+
+Read/write speed varies, depending on the interface and source. The following
+tables give a broad overview. "Fast" methods write machine code to the device,
+which is then executed. Serial speeds are based on a baud-rate of `115200`.
+
+###### Read speeds
+
+|                        | ram        | ram (fast) | flash        | flash (fast) |
+|-----------------------:|-----------:|-----------:|-------------:|-------------:|
+| **bootloader (serial)**|   500  B/s |  4.4 KB/s  |     N/A      |    4.4 KB/s  |
+| **firmware (serial)**  |   2.5 KB/s |    N/A     |    2.8 KB/s  |      N/A     |
+| **firmware (telnet)**  |    48 KB/s |    N/A     |     60 KB/s  |      N/A     |
+
+###### Write speeds
+
+|                        | ram        | ram (fast) | flash        | flash (fast) |
+|-----------------------:|-----------:|-----------:|-------------:|-------------:|
+| **bootloader (serial)**|    16 B/s  |    N/A     |     N/A      |      N/A     |
+| **firmware (serial)**  |     8 B/s  |    N/A     |     ? B/s    |      N/A     |
+| **firmware (telnet)**  |     ? B/s  |    N/A     |     ? B/s    |      N/A     |
+
 
 Firmware images are usually in Broadcom's ProgramStore format. Utilities for
 extraction and compression are available from Broadcom (and GPLv3'd!):
