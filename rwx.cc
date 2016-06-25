@@ -306,6 +306,9 @@ class bfc_flash : public parsing_rwx
 	{
 		parsing_rwx::update_progress(m_partition.offset() + offset, length, init);
 	}
+
+	private:
+	uint32_t to_partition_offset(uint32_t offset);
 };
 
 void bfc_flash::init(uint32_t offset, uint32_t length, bool write)
@@ -351,12 +354,7 @@ void bfc_flash::cleanup()
 
 bool bfc_flash::write_chunk(uint32_t offset, const std::string& chunk)
 {
-	if (offset < m_partition.offset()) {
-		// just to be safe. this should never happen
-		throw runtime_error("offset 0x" + to_hex(offset) + " is less than partition offset");
-	}
-
-	offset -= m_partition.offset();
+	offset = to_partition_offset(offset);
 	uint32_t val = chunk.size() == 4 ? ntohl(extract<uint32_t>(chunk)) : chunk[0];
 	return m_intf->runcmd("/flash/write " + to_string(chunk.size()) + " 0x"
 			+ to_hex(offset) + " 0x" + to_hex(val), "successfully written");
@@ -364,12 +362,7 @@ bool bfc_flash::write_chunk(uint32_t offset, const std::string& chunk)
 
 void bfc_flash::do_read_chunk(uint32_t offset, uint32_t length)
 {
-	if (offset < m_partition.offset()) {
-		// just to be safe. this should never happen
-		throw runtime_error("offset 0x" + to_hex(offset) + " is less than partition offset");
-	}
-
-	offset -= m_partition.offset();
+	offset = to_partition_offset(offset);
 #ifdef BFC_FLASH_READ_DIRECT
 	m_intf->runcmd("/flash/readDirect " + to_string(length) + " " + to_string(offset));
 #else
@@ -417,6 +410,16 @@ string bfc_flash::parse_chunk_line(const string& line, uint32_t offset)
 #endif
 
 	return linebuf;
+}
+
+uint32_t bfc_flash::to_partition_offset(uint32_t offset)
+{
+	if (offset < m_partition.offset()) {
+		// just to be safe. this should never happen
+		throw runtime_error("offset 0x" + to_hex(offset) + " is less than partition offset");
+	}
+
+	return offset - m_partition.offset();
 }
 
 class bootloader_ram : public parsing_rwx
