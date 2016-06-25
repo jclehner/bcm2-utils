@@ -108,7 +108,7 @@ int do_dump(int argc, char** argv, bool safe)
 
 	ofstream of(argv[4]);
 	if (!of.good()) {
-		throw runtime_error("failed to open "s + argv[4]);
+		throw runtime_error("failed to open "s + argv[4] + " for writing");
 	}
 
 	if (argv[2] != "special"s) {
@@ -121,6 +121,40 @@ int do_dump(int argc, char** argv, bool safe)
 		rwx->dump(0, 0, of);
 	}
 	logger::i() << endl;
+	return 0;
+}
+
+int do_write(int argc, char** argv, bool safe)
+{
+	if (argc != 5) {
+		usage(false);
+		return 1;
+	}
+
+	auto intf = interface::create(argv[1]);
+	auto rwx = rwx::create(intf, argv[2], true);
+
+	progress pg;
+
+	if (logger::loglevel() <= logger::info) {
+		rwx->set_progress_listener([&pg, &argv] (uint32_t offset, uint32_t length, bool init) {
+			if (init) {
+				progress_init(&pg, offset, length);
+				printf("writing %s:0x%08x-0x%08x\n", argv[2], pg.min, pg.max);
+			}
+
+			printf("\r ");
+			progress_set(&pg, offset);
+			progress_print(&pg, stdout);
+		});
+	}
+
+	ifstream in(argv[4]);
+	if (!in.good()) {
+		throw runtime_error("failed to open "s + argv[4] + " for reading");
+	}
+
+	rwx->write(argv[3], in);
 	return 0;
 }
 
@@ -192,6 +226,8 @@ int main(int argc, char** argv)
 			return do_info(argc, argv);
 		} else if (cmd == "dump") {
 			return do_dump(argc, argv, safe);
+		} else if (cmd == "write") {
+			return do_write(argc, argv, safe);
 		} else {
 			logger::e() << "command not implemented: " << cmd << endl;
 			return 1;

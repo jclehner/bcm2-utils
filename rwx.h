@@ -47,6 +47,7 @@ class rwx //: public rwx_writer
 	std::string read(uint32_t offset, uint32_t length);
 
 
+	void write(const std::string& spec, std::istream& is);
 	void write(uint32_t offset, std::istream& is, uint32_t length = 0);
 	void write(uint32_t offset, const std::string& buf, uint32_t length = 0);
 

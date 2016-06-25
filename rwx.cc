@@ -335,8 +335,9 @@ void bfc_flash::init(uint32_t offset, uint32_t length, bool write)
 		} else if (retry && pass == 0) {
 			logger::d() << "reinitializing flash driver before reopening" << endl;
 			cleanup();
-			m_intf->runcmd("/flash/deinit");
-			m_intf->runcmd("/flash/init");
+			m_intf->runcmd("/flash/deinit", "Deinitializing");
+			m_intf->runcmd("/flash/init", "Initializing");
+			sleep(1);
 		} else {
 			throw runtime_error("failed to open partition " + m_partition.name());
 		}
@@ -350,9 +351,15 @@ void bfc_flash::cleanup()
 
 bool bfc_flash::write_chunk(uint32_t offset, const std::string& chunk)
 {
+	if (offset < m_partition.offset()) {
+		// just to be safe. this should never happen
+		throw runtime_error("offset 0x" + to_hex(offset) + " is less than partition offset");
+	}
+
+	offset -= m_partition.offset();
 	uint32_t val = chunk.size() == 4 ? ntohl(extract<uint32_t>(chunk)) : chunk[0];
 	return m_intf->runcmd("/flash/write " + to_string(chunk.size()) + " 0x"
-			+ to_hex(offset) + " 0x" + to_hex(val), "value written");
+			+ to_hex(offset) + " 0x" + to_hex(val), "successfully written");
 }
 
 void bfc_flash::do_read_chunk(uint32_t offset, uint32_t length)
@@ -902,9 +909,12 @@ void rwx::dump(uint32_t offset, uint32_t length, std::ostream& os)
 	}
 }
 
-void rwx::dump(const std::string& spec, std::ostream& os)
+void rwx::dump(const string& spec, ostream& os)
 {
 	vector<string> tokens = split(spec, ',');
+	if (tokens.empty() || tokens.size() > 2) {
+		throw invalid_argument("invalid argument: '" + spec + "'");
+	}
 
 	uint32_t offset = 0;
 	uint32_t length = 0;
@@ -936,7 +946,34 @@ string rwx::read(uint32_t offset, uint32_t length)
 	return ostr.str();
 }
 
-void rwx::write(uint32_t offset, std::istream& is, uint32_t length)
+void rwx::write(const string& spec, istream& is)
+{
+	vector<string> tokens = split(spec, ',');
+	if (tokens.empty() || tokens.size() > 2) {
+		throw invalid_argument("invalid argument: '" + spec + "'");
+	}
+
+	uint32_t offset = 0;
+	uint32_t length = 0;
+
+	if (!tokens.empty()) {
+		try {
+			offset = parse_num(tokens[0]);
+		} catch (const bad_lexical_cast& e) {
+			const addrspace::part& p = m_space.partition(tokens[0]);
+			set_partition(p);
+			offset = p.offset();
+		}
+	}
+
+	if (tokens.size() == 2) {
+		length = parse_num(tokens[1]);
+	}
+
+	write(offset, is, length);
+}
+
+void rwx::write(uint32_t offset, istream& is, uint32_t length)
 {
 	if (!length) {
 		auto cur = is.tellg();
@@ -950,7 +987,7 @@ void rwx::write(uint32_t offset, std::istream& is, uint32_t length)
 	}
 
 	string buf;
-	buf.reserve(length);
+	buf.resize(length);
 	if (is.readsome(&buf[0], length) != length) {
 		throw runtime_error("failed to read " + to_string(length) + " bytes");
 	}
