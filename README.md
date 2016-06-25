@@ -43,9 +43,9 @@ which is then executed. Serial speeds are based on a baud-rate of `115200`.
 
 |                        | ram        | ram (fast) | flash        | flash (fast) |
 |-----------------------:|-----------:|-----------:|-------------:|-------------:|
-| **bootloader (serial)**|    16 B/s  |    N/A     |     N/A      |      N/A     |
-| **firmware (serial)**  |     8 B/s  |    N/A     |     ? B/s    |      N/A     |
-| **firmware (telnet)**  |     ? B/s  |    N/A     |     ? B/s    |      N/A     |
+| **bootloader (serial)**|     12 B/s |    N/A     |     N/A      |      N/A     |
+| **firmware (serial)**  |     12 B/s |    N/A     |       12 B/s |      N/A     |
+| **firmware (telnet)**  |      ? B/s |    N/A     |        ? B/s |      N/A     |
 
 
 Firmware images are usually in Broadcom's ProgramStore format. Utilities for
