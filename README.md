@@ -1,3 +1,6 @@
+**WARNING** This readme refers to the old [legacy](https://github.com/jclehner/bcm2-utils/tree/legacy) branch.
+
+
 # bcm2-utils
 
 **Util**ities for **B**road**c**o**m**-based **c**able **m**odems.
