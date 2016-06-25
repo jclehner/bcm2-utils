@@ -124,13 +124,20 @@ uint16_t crc16_ccitt(const void* buf, size_t size)
 }
 
 ofstream logger::s_bucket;
-logger::severity logger::s_loglevel = logger::INFO;
+int logger::s_loglevel = logger::info;
 
-ostream& logger::log(severity s)
+constexpr int logger::trace;
+constexpr int logger::debug;
+constexpr int logger::verbose;
+constexpr int logger::info;
+constexpr int logger::warn;
+constexpr int logger::err;
+
+ostream& logger::log(int severity)
 {
-	if (s < s_loglevel) {
+	if (severity < s_loglevel) {
 		return s_bucket;
-	} else if (s >= WARN) {
+	} else if (severity >= warn) {
 		return cerr;
 	} else {
 		return cout;

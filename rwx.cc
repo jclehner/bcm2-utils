@@ -512,7 +512,8 @@ bool bootloader_ram::exec_impl(uint32_t offset)
 class dumpcode_rwx : public parsing_rwx
 {
 	public:
-	dumpcode_rwx(const func& func = func()) : m_read_func(func) {}
+	dumpcode_rwx() {}
+	dumpcode_rwx(const func& func) : m_read_func(func) {}
 
 	virtual limits limits_read() const override
 	{ return limits(4, 16, 0x4000); }

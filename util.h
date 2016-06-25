@@ -96,42 +96,42 @@ inline unsigned elapsed_millis(std::clock_t start, std::clock_t end = std::clock
 class logger
 {
 	public:
-	enum severity
-	{
-		TRACE = 0,
-		DEBUG = 1,
-		VERBOSE = 2,
-		INFO = 3,
-		WARN = 4,
-		ERR = 5
-	};
+	static constexpr int trace = 0;
+	static constexpr int debug = 1;
+	static constexpr int verbose = 2;
+	static constexpr int info = 3;
+	static constexpr int warn = 4;
+	static constexpr int err = 5;
 
-	static std::ostream& log(severity s);
+	static std::ostream& log(int severity);
 
 	static std::ostream& t()
-	{ return log(TRACE); }
+	{ return log(trace); }
 
 	static std::ostream& v()
-	{ return log(VERBOSE); }
+	{ return log(verbose); }
 
 	static std::ostream& d()
-	{ return log(DEBUG); }
+	{ return log(debug); }
 
 	static std::ostream& i()
-	{ return log(INFO); }
+	{ return log(info); }
 
 	static std::ostream& w()
-	{ return log(WARN); }
+	{ return log(warn); }
 
 	static std::ostream& e()
-	{ return log(ERR); }
+	{ return log(err); }
 
-	static void loglevel(severity s)
-	{ s_loglevel = s; }
+	static void loglevel(int level)
+	{ s_loglevel = level; }
+
+	static int loglevel()
+	{ return s_loglevel; }
 
 	private:
 	static std::ofstream s_bucket;
-	static severity s_loglevel;
+	static int s_loglevel;
 };
 
 class getaddrinfo_category : public std::error_category
