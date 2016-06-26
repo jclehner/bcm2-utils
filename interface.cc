@@ -187,14 +187,16 @@ void bfc_telnet::runcmd(const string& cmd)
 bool bfc_telnet::login(const string& user, const string& pass)
 {
 	while (pending()) {
-		if (contains(readln(), "Login:")) {
+		string line = readln();
+		if (contains(line, "Login:") || contains(line, "login:")) {
 			break;
 		}
 	}
 
 	writeln(user);
 	while (pending()) {
-		if (contains(readln(), "Password:")) {
+		string line = readln();
+		if (contains(line, "Password:") || contains(line, "password:")) {
 			break;
 		}
 	}
@@ -210,7 +212,7 @@ bool bfc_telnet::login(const string& user, const string& pass)
 		} else if (contains(line, "CM>")) {
 			m_status = rooted;
 		} else {
-			logger::v() << "login: " << line << endl;
+			logger::d() << "login: " << line << endl;
 		}
 	}
 
