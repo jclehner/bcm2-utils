@@ -141,6 +141,10 @@ class bfc_telnet : public bfc, public telnet
 	unsigned status() const
 	{ return m_status; }
 
+	protected:
+	virtual uint32_t timeout() const override
+	{ return 300; }
+
 	private:
 	unsigned m_status = invalid;
 };

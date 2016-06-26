@@ -54,10 +54,10 @@ class interface
 	{ m_io->write(str); }
 
 	virtual std::string readln(unsigned timeout = 0) const
-	{ return m_io->readln(timeout ? timeout : 500); }
+	{ return m_io->readln(timeout ? timeout : this->timeout()); }
 
 	virtual bool pending(unsigned timeout = 0) const
-	{ return m_io->pending(timeout ? timeout : 500); }
+	{ return m_io->pending(timeout ? timeout : this->timeout()); }
 
 	static std::shared_ptr<interface> detect(const std::shared_ptr<io>& io);
 	static interface::sp create(const std::string& spec);
@@ -65,6 +65,9 @@ class interface
 	virtual bcm2_interface id() const = 0;
 
 	protected:
+	virtual uint32_t timeout() const
+	{ return 10; }
+
 	std::shared_ptr<io> m_io;
 	profile::sp m_profile;
 };
