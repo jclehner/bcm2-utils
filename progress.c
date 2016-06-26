@@ -49,9 +49,11 @@ void progress_init(struct progress *p, unsigned min, unsigned len)
 {
 	memset(p, 0, sizeof(*p));
 
+	p->speed_now = p->speed_avg = 0;
 	p->beg = p->last = time(NULL);
 	p->percentage = 0.0;
-	p->tmp = p->cur = min;
+	p->tmp = 0;
+	p->cur = min;
 	p->min = min;
 	p->max = len ? (min - 1 + len) : min;
 }
@@ -114,7 +116,7 @@ void progress_print(struct progress *p, FILE *fp)
 	}
 
 	if (p->cur < p->max) {
-		fprintf(fp, "%5d|%5d bytes/s (ETA  ", p->speed_now, p->speed_avg);
+		fprintf(fp, "%5u|%5u bytes/s (ETA  ", p->speed_now, p->speed_avg);
 		print_time(fp, p->eta_days, &p->eta);
 	} else {
 		struct tm elapsed;
