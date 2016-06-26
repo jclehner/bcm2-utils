@@ -52,6 +52,7 @@ struct bcm2_profile bcm2_profiles[] = {
 					{ "bootloader", 0x80f80000, 0x010000 }
 				}
 			},
+#if 0
 			{
 				.name = "flash",
 				.min = 0xbf000000,
@@ -65,7 +66,19 @@ struct bcm2_profile bcm2_profiles[] = {
 					{ "permnv",     0xbf7f0000, 0x010000, "perm" }
 				}
 			},
-
+#else
+			{
+				.name = "flash",
+				.size = 8 * 1024 * 1024,
+				.parts = {
+					{ "image2",     0x000000, 0x3e0000 },
+					{ "dynnv",      0x3e0000, 0x020000, "dyn" },
+					{ "bootloader", 0x400000, 0x010000 },
+					{ "image1",     0x410000, 0x3e0000 },
+					{ "permnv",     0x7f0000, 0x010000, "perm" }
+				}
+			},
+#endif
 		}
 	},
 	{
