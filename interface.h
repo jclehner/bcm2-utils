@@ -66,7 +66,7 @@ class interface
 
 	protected:
 	virtual uint32_t timeout() const
-	{ return 10; }
+	{ return 50; }
 
 	std::shared_ptr<io> m_io;
 	profile::sp m_profile;
