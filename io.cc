@@ -25,7 +25,7 @@ list<string> lines;
 
 void add_line(const string& line, bool in)
 {
-	if (lines.size() == 30) {
+	if (lines.size() == 50) {
 		lines.pop_front();
 	}
 

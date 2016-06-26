@@ -24,6 +24,11 @@ inline bool contains(const std::string& haystack, const std::string& needle)
 	return haystack.find(needle) != std::string::npos;
 }
 
+inline bool is_bfc_prompt(const std::string& str, const std::string& prompt)
+{
+	return str.find(prompt + ">") != std::string::npos || str.find(prompt + "/") != std::string::npos;
+}
+
 template<class T> T extract(const std::string& data, std::string::size_type offset = 0)
 {
 	return *reinterpret_cast<const T*>(data.substr(offset, sizeof(data)).c_str());

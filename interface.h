@@ -53,11 +53,11 @@ class interface
 	virtual void write(const std::string& str)
 	{ m_io->write(str); }
 
-	virtual std::string readln(unsigned timeout = 100) const
-	{ return m_io->readln(timeout); }
+	virtual std::string readln(unsigned timeout = 0) const
+	{ return m_io->readln(timeout ? timeout : 500); }
 
-	virtual bool pending(unsigned timeout = 100) const
-	{ return m_io->pending(); }
+	virtual bool pending(unsigned timeout = 0) const
+	{ return m_io->pending(timeout ? timeout : 500); }
 
 	static std::shared_ptr<interface> detect(const std::shared_ptr<io>& io);
 	static interface::sp create(const std::string& spec);

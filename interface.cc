@@ -1,5 +1,6 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <netdb.h>
 #include "interface.h"
 #include "rwx.h"
@@ -9,11 +10,6 @@ namespace bcm2dump {
 namespace {
 
 typedef runtime_error user_error;
-
-bool is_prompt(const string& str, const string& prompt)
-{
-	return str.find(prompt + ">") == 0 || str.find(prompt + "/") == 0;
-}
 
 bool is_char_device(const string& filename)
 {
@@ -62,9 +58,9 @@ bool bfc::is_ready(bool passive)
 			break;
 		}
 
-		if (is_prompt(line, "CM")) {
+		if (is_bfc_prompt(line, "CM")) {
 			ret = true;
-		} else if (is_prompt(line, "Console")) {
+		} else if (is_bfc_prompt(line, "Console")) {
 			// so we don't have to implement bfc_telnet::is_ready
 			ret = true;
 		}
@@ -156,7 +152,7 @@ bool bfc_telnet::is_ready(bool passive)
 			writeln();
 		}
 
-		while (pending()) {
+		while (m_status == invalid && pending()) {
 			string line = readln();
 
 			if (contains(line, "Telnet")) {
@@ -186,11 +182,18 @@ void bfc_telnet::runcmd(const string& cmd)
 
 bool bfc_telnet::login(const string& user, const string& pass)
 {
+	bool send_crlf = true;
+
 	while (pending()) {
 		string line = readln();
 		if (contains(line, "Login:") || contains(line, "login:")) {
+			send_crlf = false;
 			break;
 		}
+	}
+
+	if (send_crlf) {
+		writeln();
 	}
 
 	writeln(user);
@@ -202,26 +205,37 @@ bool bfc_telnet::login(const string& user, const string& pass)
 	}
 
 	writeln(pass);
+
+	send_crlf = true;
+
 	while (pending()) {
 		string line = readln();
-
 		if (contains(line, "Invalid login")) {
 			break;
-		} else if (contains(line, "Console>")) {
+		} else if (is_bfc_prompt(line, "Console")) {
 			m_status = authenticated;
-		} else if (contains(line, "CM>")) {
+		} else if (is_bfc_prompt(line, "CM")) {
 			m_status = rooted;
-		} else {
-			logger::d() << "login: " << line << endl;
+
+			if (send_crlf) {
+				// in some cases, after a telnet login, the prompt displays
+				// CM/Console>, but hitting enter switches to Console>, meaning
+				// we're NOT rooted.
+				writeln();
+				send_crlf = false;
+			}
 		}
 	}
 
 	if (m_status == authenticated) {
 		runcmd("su");
-		writeln("brcm");
-		runcmd("cd /");
-		while (pending()) {
-			if (contains(readln(), "CM>")) {
+		while (pending(1000)) {
+			string line = readln();
+			if (contains(line, "Password:")) {
+				sleep(1);
+				writeln("brcm");
+				sleep(1);
+			} else if (is_bfc_prompt(line, "CM")) {
 				m_status = rooted;
 			}
 		}

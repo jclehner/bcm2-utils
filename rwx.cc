@@ -121,7 +121,7 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 	unsigned timeout = chunk_timeout(offset, length);
 
 	do {
-		while ((!length || chunk.size() < length) && m_intf->pending()) {
+		while ((!length || chunk.size() < length) && m_intf->pending(500)) {
 			throw_if_interrupted();
 
 			line = trim(m_intf->readln());
@@ -197,6 +197,8 @@ class bfc_ram : public parsing_rwx
 	virtual bool is_ignorable_line(const string& line) override;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
 
+	virtual void init(uint32_t offset, uint32_t length, bool write) override;
+
 	private:
 	bool m_hint_decimal = false;
 	bool m_rooted = true;
@@ -238,7 +240,7 @@ void bfc_ram::do_read_chunk(uint32_t offset, uint32_t length)
 
 bool bfc_ram::is_ignorable_line(const string& line)
 {
-	if (line.size() >= 65) {
+	if (line.size() >= 51) {
 		if (line.substr(8, 2) == ": " && line.substr(48, 3) == " | ") {
 			m_hint_decimal = false;
 			return false;
@@ -279,6 +281,19 @@ string bfc_ram::parse_chunk_line(const string& line, uint32_t offset)
 	}
 
 	return linebuf;
+}
+
+void bfc_ram::init(uint32_t offset, uint32_t length, bool write)
+{
+	parsing_rwx::init(offset, length, write);
+	logger::d() << __PRETTY_FUNCTION__ << endl;
+	m_intf->runcmd("cd /");
+	while (m_intf->pending(500)) {
+		string line = m_intf->readln();
+		if (is_bfc_prompt(line, "Console")) {
+			m_rooted = false;
+		}
+	}
 }
 
 class bfc_flash : public parsing_rwx
