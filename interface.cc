@@ -126,8 +126,10 @@ class bfc_telnet : public bfc, public telnet
 
 	virtual ~bfc_telnet()
 	{
-		if (m_status >= authenticated) {
+		try {
 			runcmd("exit");
+		} catch (...) {
+
 		}
 	}
 
