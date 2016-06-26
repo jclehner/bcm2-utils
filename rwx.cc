@@ -63,6 +63,19 @@ uint32_t parse_num(const string& str)
 	return lexical_cast<uint32_t>(str, base) * mult;
 }
 
+bool wait_for_interface(const interface::sp& intf)
+{
+	for (unsigned i = 0; i < 10; ++i) {
+		if (intf->is_ready(true)) {
+			return true;
+		} else if (i != 9) {
+			sleep(1);
+		}
+	}
+
+	return false;
+}
+
 // rwx base class for a command line interface where you
 // enter a command which in turn displays a (hex) dump of the
 // data. for now, all rwx implementations are based on this
@@ -158,14 +171,10 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 			// if the dump is still underway, we need to wait for it to finish
 			// before issuing the next command. wait for up to 10 seconds.
 
-			for (unsigned i = 0; i < 10; ++i) {
-				if (m_intf->is_ready(true)) {
-					logger::d() << endl << msg << "; retrying" << endl;
-					on_chunk_retry(offset, length);
-					return read_chunk_impl(offset, length, retries + 1);
-				} else if (i != 9) {
-					sleep(1);
-				}
+			if (wait_for_interface(m_intf)) {
+				logger::d() << endl << msg << "; retrying" << endl;
+				on_chunk_retry(offset, length);
+				return read_chunk_impl(offset, length, retries + 1);
 			}
 		}
 
@@ -1030,6 +1039,11 @@ void rwx::write(uint32_t offset, const string& buf, uint32_t length)
 	uint32_t offset_w = align_left(offset, lim.min);
 	uint32_t length_w = align_right(length + (offset - offset_w), lim.min);
 
+	string contents;
+	if (true && (capabilities() & cap_read)) {
+		contents = read(offset_w, length_w);
+	}
+
 	auto cleaner = make_cleaner();
 	do_init(offset_w, length_w, true);
 	init_progress(offset_w, length_w, true);
@@ -1052,35 +1066,39 @@ void rwx::write(uint32_t offset, const string& buf, uint32_t length)
 
 	while (length_w) {
 		uint32_t n = length_w < lim.max ? lim.min : lim.max;
-		string chunk(buf_w.substr(buf_w.size() - length_w, n));
+		auto begin = buf_w.size() - length_w;
+		//string chunk(buf_w.substr(buf_w.size() - length_w, n));
+		string chunk(buf_w.substr(begin, n));
 
-		bool ok = false;
+		if (contents.empty() || contents.substr(begin, n) != chunk) {
+			bool ok = false;
 
-		while (!ok && retries < 2) {
-			string what;
-			try {
-				ok = write_chunk(offset_w, chunk);
-			} catch (const exception& e) {
-				what = e.what();
-			}
+			while (!ok && retries < 2) {
+				string what;
+				try {
+					ok = write_chunk(offset_w, chunk);
+				} catch (const exception& e) {
+					what = e.what();
+				}
 
-			throw_if_interrupted();
+				throw_if_interrupted();
 
-			if (!ok) {
-				 string msg = "failed to write chunk 0x" + to_hex(offset_w);
-				 if (!what.empty()) {
-					 msg += " (" + what + ")";
-				 }
+				if (!ok) {
+					string msg = "failed to write chunk 0x" + to_hex(offset_w);
+					if (!what.empty()) {
+						msg += " (" + what + ")";
+					}
 
-				 if (++retries < 2) {
-					 logger::d() << endl << msg << "; retrying" << endl;
-					 //on_chunk_retry(offset_w, chunk.size());
-					 continue;
-				 }
+					if (++retries < 2 && wait_for_interface(m_intf)) {
+						logger::d() << endl << msg << "; retrying" << endl;
+						//on_chunk_retry(offset_w, chunk.size());
+						continue;
+					}
 
-				 throw runtime_error(msg);
-			} else {
-				retries = 0;
+					 throw runtime_error(msg);
+				} else {
+					retries = 0;
+				}
 			}
 		}
 
