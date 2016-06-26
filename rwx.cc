@@ -66,7 +66,7 @@ uint32_t parse_num(const string& str)
 bool wait_for_interface(const interface::sp& intf)
 {
 	for (unsigned i = 0; i < 10; ++i) {
-		if (intf->is_ready(true)) {
+		if (intf->is_ready(false)) {
 			return true;
 		} else if (i != 9) {
 			sleep(1);
@@ -1040,7 +1040,7 @@ void rwx::write(uint32_t offset, const string& buf, uint32_t length)
 	uint32_t length_w = align_right(length + (offset - offset_w), lim.min);
 
 	string contents;
-	if (true && (capabilities() & cap_read)) {
+	if (false && (capabilities() & cap_read)) {
 		contents = read(offset_w, length_w);
 	}
 

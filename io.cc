@@ -419,7 +419,7 @@ void telnet::write(const string& str)
 
 void telnet::writeln(const string& str)
 {
-	tcp::writeln(str);
+	write(str + "\r\x00");
 	readln();
 }
 

@@ -39,7 +39,7 @@ class interface
 	bool is_active(const std::shared_ptr<io>& io)
 	{
 		m_io = io;
-		if (!is_ready()) {
+		if (!is_active()) {
 			m_io.reset();
 			return false;
 		}

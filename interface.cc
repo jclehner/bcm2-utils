@@ -211,6 +211,7 @@ bool bfc_telnet::login(const string& user, const string& pass)
 	}
 
 	writeln(pass);
+	writeln();
 
 	send_crlf = true;
 
@@ -235,12 +236,11 @@ bool bfc_telnet::login(const string& user, const string& pass)
 
 	if (m_status == authenticated) {
 		runcmd("su");
-		while (pending(1000)) {
+		while (pending()) {
 			string line = readln();
 			if (contains(line, "Password:")) {
-				sleep(1);
 				writeln("brcm");
-				sleep(1);
+				writeln();
 			} else if (is_bfc_prompt(line, "CM")) {
 				m_status = rooted;
 			}
@@ -248,7 +248,7 @@ bool bfc_telnet::login(const string& user, const string& pass)
 	}
 
 	if (m_status == authenticated) {
-		logger::w() << "login succeeded, but root failed. some functions might not work" << endl;
+		logger::w() << "failed to switch to super-user; some functions might not work" << endl;
 	}
 
 	return m_status >= authenticated;
