@@ -215,11 +215,11 @@ bool bfc_ram::write_chunk(uint32_t offset, const string& chunk)
 	if (m_rooted) {
 		uint32_t val = chunk.size() == 4 ? ntohl(extract<uint32_t>(chunk)) : chunk[0];
 		return m_intf->runcmd("/write_memory -s " + to_string(chunk.size()) + " 0x" +
-				to_hex(offset) + " 0x" + to_hex(val), "Writing");
+				to_hex(offset, 0) + " 0x" + to_hex(val, 0), "Writing");
 	} else {
 		// diag writemem only supports writing bytes
 		for (char c : chunk) {
-			if (!m_intf->runcmd("/system/diag/writemem 0x" + to_hex(offset) + " 0x" + to_hex(int(c)), "Writing")) {
+			if (!m_intf->runcmd("/system/diag/writemem 0x" + to_hex(offset, 0) + " 0x" + to_hex(int(c), 0), "Writing")) {
 				return false;
 			}
 		}
@@ -489,7 +489,7 @@ bool bootloader_ram::write_chunk(uint32_t offset, const string& chunk)
 			return false;
 		}
 
-		m_intf->writeln(to_hex(offset));
+		m_intf->writeln(to_hex(offset, 0));
 		uint32_t val = ntohl(extract<uint32_t>(chunk));
 		return m_intf->runcmd(to_hex(val) + "\r\n", "Main Menu");
 	} catch (const exception& e) {
@@ -501,7 +501,7 @@ bool bootloader_ram::write_chunk(uint32_t offset, const string& chunk)
 
 void bootloader_ram::do_read_chunk(uint32_t offset, uint32_t length)
 {
-	m_intf->writeln("0x" + to_hex(offset));
+	m_intf->writeln("0x" + to_hex(offset, 0));
 }
 
 bool bootloader_ram::is_ignorable_line(const string& line)
