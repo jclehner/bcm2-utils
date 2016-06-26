@@ -55,7 +55,7 @@ struct bcm2_profile bcm2_profiles[] = {
 			{
 				.name = "flash",
 				.min = 0xbf000000,
-				.mem = true,
+				.mem = BCM2_MEM_RW,
 				.size = 8 * 1024 * 1024,
 				.parts = {
 					{ "image2",     0xbf000000, 0x3e0000 },
