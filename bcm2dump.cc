@@ -90,7 +90,7 @@ int do_dump(int argc, char** argv, bool safe)
 	progress pg;
 
 	if (logger::loglevel() <= logger::info) {
-		rwx->set_progress_listener([&pg, &argv] (uint32_t offset, uint32_t length, bool init) {
+		rwx->set_progress_listener([&pg, &argv] (uint32_t offset, uint32_t length, bool write, bool init) {
 			if (init) {
 				progress_init(&pg, offset, length);
 				printf("dumping %s:0x%08x-0x%08x\n", argv[2], pg.min, pg.max);
@@ -137,10 +137,10 @@ int do_write(int argc, char** argv, bool safe)
 	progress pg;
 
 	if (logger::loglevel() <= logger::info) {
-		rwx->set_progress_listener([&pg, &argv] (uint32_t offset, uint32_t length, bool init) {
+		rwx->set_progress_listener([&pg, &argv] (uint32_t offset, uint32_t length, bool write, bool init) {
 			if (init) {
 				progress_init(&pg, offset, length);
-				printf("writing %s:0x%08x-0x%08x\n", argv[2], pg.min, pg.max);
+				printf("%s %s:0x%08x-0x%08x\n", write ? "writing" : "reading", argv[2], pg.min, pg.max);
 			}
 
 			printf("\r ");

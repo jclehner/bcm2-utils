@@ -321,9 +321,9 @@ class bfc_flash : public parsing_rwx
 	virtual bool is_ignorable_line(const string& line) override;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
 
-	virtual void update_progress(uint32_t offset, uint32_t length, bool init) override
+	virtual void update_progress(uint32_t offset, uint32_t length, bool write, bool init) override
 	{
-		parsing_rwx::update_progress(m_partition.offset() + offset, length, init);
+		parsing_rwx::update_progress(m_partition.offset() + offset, length, write, init);
 	}
 
 	private:
@@ -872,7 +872,7 @@ void rwx::dump(uint32_t offset, uint32_t length, std::ostream& os)
 	uint32_t length_w = length;
 
 	do_init(offset_r, length_r, false);
-	update_progress(offset_r, length_r, true);
+	init_progress(offset_r, length_r, false);
 
 	string hdrbuf;
 	bool show_hdr = true;
@@ -1032,7 +1032,7 @@ void rwx::write(uint32_t offset, const string& buf, uint32_t length)
 
 	auto cleaner = make_cleaner();
 	do_init(offset_w, length_w, true);
-	update_progress(offset_w, length_w, true);
+	init_progress(offset_w, length_w, true);
 
 	string buf_w;
 

@@ -17,7 +17,7 @@ class rwx //: public rwx_writer
 	static unsigned constexpr cap_rw = cap_read | cap_write;
 	static unsigned constexpr cap_rwx = cap_rw | cap_exec;
 
-	typedef std::function<void(uint32_t, uint32_t, bool)> progress_listener;
+	typedef std::function<void(uint32_t, uint32_t, bool, bool)> progress_listener;
 	typedef std::function<void(uint32_t, const ps_header&)> image_listener;
 	typedef std::shared_ptr<rwx> sp;
 	struct interrupted : public std::exception {};
@@ -119,11 +119,16 @@ class rwx //: public rwx_writer
 		}
 	}
 
-	virtual void update_progress(uint32_t offset, uint32_t length, bool init = false)
+	virtual void update_progress(uint32_t offset, uint32_t length, bool write = false, bool init = false)
 	{
 		if (m_prog_l) {
-			m_prog_l(offset, length, init);
+			m_prog_l(offset, length, write, init);
 		}
+	}
+
+	virtual void init_progress(uint32_t offset, uint32_t length, bool write)
+	{
+		update_progress(offset, length, write, true);
 	}
 
 	virtual void image_detected(uint32_t offset, const ps_header& hdr)
