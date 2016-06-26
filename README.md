@@ -44,7 +44,7 @@ which is then executed. Serial speeds are based on a baud-rate of `115200`.
 |                        | ram        | ram (fast) | flash        | flash (fast) |
 |-----------------------:|-----------:|-----------:|-------------:|-------------:|
 | **bootloader (serial)**|     12 B/s |    N/A     |     N/A      |      N/A     |
-| **firmware (serial)**  |     12 B/s |    N/A     |       12 B/s |      N/A     |
+| **firmware (serial)**  |     18 B/s |    N/A     |       18 B/s |      N/A     |
 | **firmware (telnet)**  |      ? B/s |    N/A     |        ? B/s |      N/A     |
 
 
