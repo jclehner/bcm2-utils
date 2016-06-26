@@ -1046,10 +1046,42 @@ void rwx::write(uint32_t offset, const string& buf, uint32_t length)
 		buf_w += read(offset + buf.size(), length_w - length);
 	}
 
+	throw_if_interrupted();
+
+	unsigned retries = 0;
+
 	while (length_w) {
 		uint32_t n = length_w < lim.max ? lim.min : lim.max;
-		if (!write_chunk(offset_w, buf_w.substr(buf_w.size() - length_w, n))) {
-			throw runtime_error("failed to write chunk (0x" + to_hex(offset) + ", " + to_string(n) + ")");
+		string chunk(buf_w.substr(buf_w.size() - length_w, n));
+
+		bool ok = false;
+
+		while (!ok && retries < 2) {
+			string what;
+			try {
+				ok = write_chunk(offset_w, chunk);
+			} catch (const exception& e) {
+				what = e.what();
+			}
+
+			throw_if_interrupted();
+
+			if (!ok) {
+				 string msg = "failed to write chunk 0x" + to_hex(offset_w);
+				 if (!what.empty()) {
+					 msg += " (" + what + ")";
+				 }
+
+				 if (++retries < 2) {
+					 logger::d() << endl << msg << "; retrying" << endl;
+					 //on_chunk_retry(offset_w, chunk.size());
+					 continue;
+				 }
+
+				 throw runtime_error(msg);
+			} else {
+				retries = 0;
+			}
 		}
 
 		if (offset_w < offset) {
