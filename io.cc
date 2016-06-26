@@ -430,12 +430,12 @@ int telnet::getc()
 		c = tcp::getc();
 		if (c < 0xff) {
 			int opt = tcp::getc();
-
+			logger::d() << "telnet: received command " << c << "," << opt << endl;
 			if (c >= op_will && c <= op_dont) {
-				logger::d() << "telnet: handling command " << c << "," << opt << endl;
-				handle_op_opt(c, opt);
+				//logger::d() << "telnet: handling command " << c << "," << opt << endl;
+				//handle_op_opt(c, opt);
 			} else {
-				logger::d() << "telnet: not handling command " << c << "," << opt << endl;
+				//logger::d() << "telnet: not handling command " << c << "," << opt << endl;
 			}
 			return ign;
 		}
