@@ -202,6 +202,7 @@ class bfc_ram : public parsing_rwx
 	private:
 	bool m_hint_decimal = false;
 	bool m_rooted = true;
+	bool m_check_root = true;
 };
 
 bool bfc_ram::exec_impl(uint32_t offset)
@@ -286,13 +287,16 @@ string bfc_ram::parse_chunk_line(const string& line, uint32_t offset)
 void bfc_ram::init(uint32_t offset, uint32_t length, bool write)
 {
 	parsing_rwx::init(offset, length, write);
-	logger::d() << __PRETTY_FUNCTION__ << endl;
-	m_intf->runcmd("cd /");
-	while (m_intf->pending(500)) {
-		string line = m_intf->readln();
-		if (is_bfc_prompt(line, "Console")) {
-			m_rooted = false;
+
+	if (m_check_root) {
+		m_intf->runcmd("cd /");
+		while (m_intf->pending()) {
+			string line = m_intf->readln();
+			if (is_bfc_prompt(line, "Console")) {
+				m_rooted = false;
+			}
 		}
+		m_check_root = false;
 	}
 }
 
