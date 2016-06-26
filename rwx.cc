@@ -134,7 +134,7 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 	unsigned timeout = chunk_timeout(offset, length);
 
 	do {
-		while ((!length || chunk.size() < length) && m_intf->pending(500)) {
+		while ((!length || chunk.size() < length) && m_intf->pending()) {
 			throw_if_interrupted();
 
 			line = trim(m_intf->readln());
@@ -880,6 +880,11 @@ void rwx::dump(uint32_t offset, uint32_t length, std::ostream& os)
 	uint32_t length_r = align_right(length + (offset - offset_r), limits_read().min);
 	uint32_t length_w = length;
 
+	if (offset_r != offset || length_r != length) {
+		logger::d() << "adjusted dump params: 0x" << to_hex(offset) << "," << length
+				<< " -> 0x" << to_hex(offset_r) << "," << length_r << endl;
+	}
+
 	do_init(offset_r, length_r, false);
 	init_progress(offset_r, length_r, false);
 
@@ -910,10 +915,9 @@ void rwx::dump(uint32_t offset, uint32_t length, std::ostream& os)
 
 		if (offset_r < offset && (offset_r + n) >= offset) {
 			uint32_t pos = offset - offset_r;
-			chunk_w = string(chunk.c_str() + pos, chunk.size() - pos);
-			//os.write(chunk.data() + pos, chunk.size() - pos);
+			chunk_w = chunk.substr(pos, min(n - pos, length_w));
 		} else if (offset_r >= offset && length_w) {
-			chunk_w = string(chunk.c_str(), min(n, length_w));
+			chunk_w = chunk.substr(0, min(n, length_w));
 		}
 
 		os.write(chunk_w.data(), chunk_w.size());
@@ -934,7 +938,7 @@ void rwx::dump(uint32_t offset, uint32_t length, std::ostream& os)
 			}
 		}
 
-		length_w = (length_w >= n) ? length_w - n : 0;
+		length_w -= chunk_w.size();
 		length_r -= n;
 		offset_r += n;
 	}
