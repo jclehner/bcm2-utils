@@ -881,7 +881,7 @@ void rwx::dump(uint32_t offset, uint32_t length, std::ostream& os)
 	uint32_t length_w = length;
 
 	if (offset_r != offset || length_r != length) {
-		logger::d() << "adjusted dump params: 0x" << to_hex(offset) << "," << length
+		logger::d() << "adjusting dump params: 0x" << to_hex(offset) << "," << length
 				<< " -> 0x" << to_hex(offset_r) << "," << length_r << endl;
 	}
 
@@ -1042,6 +1042,12 @@ void rwx::write(uint32_t offset, const string& buf, uint32_t length)
 
 	uint32_t offset_w = align_left(offset, lim.min);
 	uint32_t length_w = align_right(length + (offset - offset_w), lim.min);
+
+	if (offset_w != offset || length_w != length) {
+		logger::d() << "adjusting write params: 0x" << to_hex(offset) << "," << length
+				<< " -> 0x" << to_hex(offset_w) << "," << length_w << endl;
+		throw runtime_error("non-aligned writes are not yet supported");
+	}
 
 	string contents;
 	if (false && (capabilities() & cap_read)) {
