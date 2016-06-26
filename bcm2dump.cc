@@ -204,7 +204,7 @@ int main(int argc, char** argv)
 			break;
 		case 'h':
 		default:
-			bool help = (optopt == 'h' || (optopt == '-' && argv[optind] == "help"s));
+			bool help = (opt == 'h' || (optopt == '-' && argv[optind] == "help"s));
 			usage(help);
 			return help ? 0 : 1;
 		}
