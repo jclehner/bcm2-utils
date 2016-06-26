@@ -335,7 +335,7 @@ tcp::tcp(const string& addr, uint16_t port)
 
 	addrinfo* result = nullptr;
 	int error = getaddrinfo(addr.c_str(), nullptr, &hints, &result);
-	if (error != EAI_NONAME) {
+	if (error) {
 		if (error == EAI_NONAME) {
 			throw system_error(errno, getaddrinfo_category(), addr);
 		} else if (error != EAI_SYSTEM) {
