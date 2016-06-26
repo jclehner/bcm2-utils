@@ -188,7 +188,7 @@ class bfc_ram : public parsing_rwx
 	{ return limits(4, 1, 4); }
 
 	unsigned capabilities() const override
-	{ return cap_rwx; }
+	{ return m_space.is_ram() ? cap_rwx : (cap_read | (m_space.is_writable() ? cap_write : 0)); }
 
 	protected:
 	virtual bool exec_impl(uint32_t offset) override;
