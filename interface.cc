@@ -158,7 +158,7 @@ bool bfc_telnet::is_ready(bool passive)
 			writeln();
 		}
 
-		while (m_status == invalid && pending()) {
+		while (m_status == invalid && pending(1000)) {
 			string line = readln();
 
 			if (contains(line, "Telnet")) {
@@ -190,7 +190,7 @@ bool bfc_telnet::login(const string& user, const string& pass)
 {
 	bool send_crlf = true;
 
-	while (pending()) {
+	while (pending(1000)) {
 		string line = readln();
 		if (contains(line, "Login:") || contains(line, "login:")) {
 			send_crlf = false;
