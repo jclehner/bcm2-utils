@@ -486,6 +486,8 @@ void bootloader_ram::init(uint32_t offset, uint32_t length, bool write)
 {
 	if (!write) {
 		m_intf->runcmd("r");
+	} else {
+		m_intf->writeln();
 	}
 }
 
@@ -498,8 +500,6 @@ void bootloader_ram::cleanup()
 bool bootloader_ram::write_chunk(uint32_t offset, const string& chunk)
 {
 	try {
-		m_intf->writeln();
-
 		if (!m_intf->runcmd("w", "Write memory.", true)) {
 			return false;
 		}
