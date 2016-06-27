@@ -403,12 +403,26 @@ string tcp::read(size_t length, bool all)
 
 void telnet::write(const string& str)
 {
-	string::size_type i = str.find('\xff');
+	string::size_type i = str.find_first_of("\xff\r");
 	if (i != string::npos) {
 		string modstr = str;
 		do {
-			modstr.insert(i, 1, '\xff');
-			i = str.find('\xff', i + 1);
+			if (str[i] == '\xff') {
+				modstr.insert(i, 1, '\xff');
+				i += 2;
+			} else if (str[i] == '\r') {
+				if ((i + 1) < str.size()) {
+					if (str[i + 1] != '\n') {
+						modstr.insert(i + 1, 1, '\0');
+						i += 2;
+					}
+				} else {
+					modstr += '\0';
+					i += 1;
+				}
+			}
+
+			i = modstr.find_first_of("\xff\r", i + 1);
 		} while (i != string::npos);
 
 		tcp::write(modstr);
@@ -419,7 +433,7 @@ void telnet::write(const string& str)
 
 void telnet::writeln(const string& str)
 {
-	write(str + "\r\x00");
+	write(str + "\r");
 	readln();
 }
 
