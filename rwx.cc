@@ -315,7 +315,13 @@ class bfc_flash : public parsing_rwx
 	virtual ~bfc_flash() {}
 
 	virtual limits limits_read() const override
-	{ return limits(1, 16, 512); }
+	{
+#ifdef BFC_FLASH_READ_DIRECT
+		return limits(1, 16, 8192);
+#else
+		return limts(1, 16, 512);
+#endif
+	}
 
 	virtual limits limits_write() const override
 	{ return limits(1, 1, 4); }
@@ -771,10 +777,6 @@ class bfc_cmcfg : public parsing_rwx
 
 	virtual string read_special(uint32_t offset, uint32_t length) override
 	{ return parsing_rwx::read_special(offset, length) + "\xff"; }
-
-	private:
-	bool m_hint_decimal = false;
-	bool m_rooted = true;
 };
 
 void bfc_cmcfg::do_read_chunk(uint32_t offset, uint32_t length)
