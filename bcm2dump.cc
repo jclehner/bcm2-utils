@@ -14,6 +14,10 @@ using namespace bcm2dump;
 
 namespace {
 
+const unsigned opt_resume = 1;
+const unsigned opt_force = (1 << 1);
+const unsigned opt_safe = (1 << 2);
+
 void usage(bool help = false)
 {
 	ostream& os = logger::i();
@@ -71,10 +75,29 @@ void usage(bool help = false)
 	os << endl;
 }
 
-int do_dump(int argc, char** argv, bool safe)
+int do_dump(int argc, char** argv, int opts)
 {
 	if (argc != 5) {
 		usage(false);
+		return 1;
+	}
+
+	if (access(argv[4], F_OK) == 0 && !(opts & (opt_force | opt_resume))) {
+		logger::e() << "Output file " << argv[4] << " exists. Specify -F to overwrite, or -R to resume dump." << endl;
+		return 1;
+	}
+
+	ios::openmode mode = ios::out | ios::binary;
+	if (opts & opt_resume) {
+		// without ios::in, the file will be overwritten!
+		mode |= ios::in;
+	} else if (opts & opt_force) {
+		mode |= ios::trunc;
+	}
+
+	ofstream of(argv[4], mode);
+	if (!of.good()) {
+		logger::e() << "Failed to open " << argv[4] << " for writing" << endl;
 		return 1;
 	}
 
@@ -82,7 +105,7 @@ int do_dump(int argc, char** argv, bool safe)
 	rwx::sp rwx;
 
 	if (argv[2] != "special"s) {
-		rwx = rwx::create(intf, argv[2], safe);
+		rwx = rwx::create(intf, argv[2], opts & opt_safe);
 	} else {
 		rwx = rwx::create_special(intf, argv[3]);
 	}
@@ -106,14 +129,9 @@ int do_dump(int argc, char** argv, bool safe)
 		});
 	}
 
-	ofstream of(argv[4]);
-	if (!of.good()) {
-		throw runtime_error("failed to open "s + argv[4] + " for writing");
-	}
-
 	if (argv[2] != "special"s) {
 		if (argv[3] != "dumpcode"s) {
-			rwx->dump(argv[3], of);
+			rwx->dump(argv[3], of, opts & opt_resume);
 		} else {
 			rwx->dump(intf->profile()->codecfg(intf->id()).loadaddr | intf->profile()->kseg1(), 512, of);
 		}
@@ -124,11 +142,22 @@ int do_dump(int argc, char** argv, bool safe)
 	return 0;
 }
 
-int do_write(int argc, char** argv, bool safe)
+int do_write(int argc, char** argv, int opts)
 {
 	if (argc != 5) {
 		usage(false);
 		return 1;
+	}
+
+	if (!(opts & opt_force) && argv[2] != "ram"s) {
+		logger::e() << "Requested write operation to non-ram address space '" << argv[2] << "', which could" << endl
+				<< "potentially render your device inoperable. Specify -F (force) to continue." << endl;
+		return 1;
+	}
+
+	ifstream in(argv[4], ios::binary);
+	if (!in.good()) {
+		throw runtime_error("failed to open "s + argv[4] + " for reading");
 	}
 
 	auto intf = interface::create(argv[1]);
@@ -147,11 +176,6 @@ int do_write(int argc, char** argv, bool safe)
 			progress_set(&pg, offset);
 			progress_print(&pg, stdout);
 		});
-	}
-
-	ifstream in(argv[4]);
-	if (!in.good()) {
-		throw runtime_error("failed to open "s + argv[4] + " for reading");
 	}
 
 	rwx->write(argv[3], in);
@@ -177,9 +201,9 @@ int do_info(int argc, char** argv)
 int main(int argc, char** argv)
 {
 	ios_base::sync_with_stdio();
-	bool safe = false;
 	int loglevel = logger::info;
 	int opt;
+	int opts;
 
 	optind = 0;
 	opterr = 0;
@@ -187,7 +211,7 @@ int main(int argc, char** argv)
 	while ((opt = getopt(argc, argv, "hsARFqvP:")) != -1) {
 		switch (opt) {
 		case 's':
-			safe = true;
+			opts |= opt_safe;
 			break;
 		case 'v':
 			loglevel = max(loglevel - 1, logger::trace);
@@ -196,7 +220,11 @@ int main(int argc, char** argv)
 			loglevel = min(loglevel + 1, logger::err);
 			break;
 		case 'F':
+			opts |= opt_force;
+			break;
 		case 'R':
+			opts |= opt_resume;
+			break;
 		case 'P':
 			// FIXME
 			logger::e() << "flag not implemented: -" << char(opt) << endl;
@@ -224,9 +252,9 @@ int main(int argc, char** argv)
 		if (cmd == "info") {
 			return do_info(argc, argv);
 		} else if (cmd == "dump") {
-			return do_dump(argc, argv, safe);
+			return do_dump(argc, argv, opts);
 		} else if (cmd == "write") {
-			return do_write(argc, argv, safe);
+			return do_write(argc, argv, opts);
 		} else {
 			logger::e() << "command not implemented: " << cmd << endl;
 			return 1;

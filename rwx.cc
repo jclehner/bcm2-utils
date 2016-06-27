@@ -64,8 +64,12 @@ template<class T> uint32_t get_stream_size(T& stream)
 {
 	auto ioex = scoped_ios_exceptions::none(stream);
 	auto cur = tell(stream);
+	if (cur == -1) {
+		return 0;
+	}
+
 	seek(stream, 0, ios_base::end);
-	if (!stream.good() || tell(stream) <= cur) {
+	if (!stream.good() || tell(stream) < cur) {
 		throw runtime_error("failed to determine length of stream");
 	}
 
