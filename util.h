@@ -11,6 +11,7 @@
 #include <netdb.h>
 #include <fstream>
 #include <sstream>
+#include <cerrno>
 #include <vector>
 #include <string>
 #include <ios>
@@ -165,6 +166,20 @@ class logger
 	private:
 	static std::ofstream s_bucket;
 	static int s_loglevel;
+};
+
+class errno_error : public std::system_error
+{
+	public:
+	errno_error(const std::string& what, int error = errno)
+	: std::system_error(error, std::system_category(), what), m_interrupted(error == EINTR)
+	{}
+
+	bool interrupted() const noexcept
+	{ return m_interrupted; }
+
+	private:
+	bool m_interrupted;
 };
 
 class getaddrinfo_category : public std::error_category

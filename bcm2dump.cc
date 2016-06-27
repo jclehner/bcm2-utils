@@ -75,6 +75,28 @@ void usage(bool help = false)
 	os << endl;
 }
 
+void handle_exception(const exception& e)
+{
+	logger::e() << endl << "error: " << e.what() << endl;
+
+	auto lines = io::get_last_lines();
+	if (!lines.empty()) {
+		logger::d() << endl;
+		logger::d() << "context:" << endl;
+
+		for (string line : io::get_last_lines()) {
+			logger::d() << "  " << line << endl;
+		}
+
+		logger::d() << endl;
+	}
+}
+
+void handle_interrupt()
+{
+	logger::w() << endl << "interrupted" << endl;
+}
+
 int do_dump(int argc, char** argv, int opts)
 {
 	if (argc != 5) {
@@ -257,26 +279,18 @@ int main(int argc, char** argv)
 			return do_write(argc, argv, opts);
 		} else {
 			logger::e() << "command not implemented: " << cmd << endl;
-			return 1;
 		}
 	} catch (const rwx::interrupted& e) {
-		logger::w() << endl << "interrupted" << endl;
-		return 1;
-	} catch (const exception& e) {
-		logger::e() << endl;
-		logger::e() << "error: " << e.what() << endl;
-
-		auto lines = io::get_last_lines();
-		if (!lines.empty()) {
-			logger::d() << endl;
-			logger::d() << "context:" << endl;
-
-			for (string line : io::get_last_lines()) {
-				logger::d() << "  " << line << endl;
-			}
-
-			logger::d() << endl;
+		handle_interrupt();
+	} catch (const errno_error& e) {
+		if (!e.interrupted()) {
+			handle_exception(e);
+		} else {
+			handle_interrupt();
 		}
-		return 1;
+	} catch (const exception& e) {
+		handle_exception(e);
 	}
+
+	return 1;
 }

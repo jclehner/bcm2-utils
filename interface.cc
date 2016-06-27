@@ -16,7 +16,7 @@ bool is_char_device(const string& filename)
 	struct stat st;
 	errno = 0;
 	if (::stat(filename.c_str(), &st) != 0 && errno != ENOENT) {
-		throw system_error(errno, system_category(), "stat('" + filename + "')");
+		throw errno_error("stat('" + filename + "')");
 	}
 
 	return !errno ? S_ISCHR(st.st_mode) : false;
@@ -284,7 +284,7 @@ void detect_profile(const interface::sp& intf)
 			string data = magic->data;
 			if (ram->read(magic->addr, data.size()) == data) {
 				intf->set_profile(p);
-				logger::i() << "detected profile " << p->name() << endl;
+				logger::i() << "detected profile " << p->name() << " (" << intf->name() << ")" << endl;
 				return;
 			}
 		}

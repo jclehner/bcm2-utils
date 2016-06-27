@@ -231,7 +231,7 @@ bool fdio::pending(unsigned timeout)
 
 	int ret = select(m_fd + 1, &fds, NULL, NULL, &tv);
 	if (ret < 0) {
-		throw system_error(errno, system_category(), "select");
+		throw errno_error("select");
 	}
 
 	return ret;
@@ -246,7 +246,7 @@ int fdio::getc()
 	} else if (errno == EWOULDBLOCK || errno == EAGAIN) {
 		return eof;
 	} else {
-		throw system_error(errno, system_category(), "read1");
+		throw errno_error("read1");
 	}
 }
 
@@ -260,7 +260,7 @@ string fdio::read(size_t length, bool all)
 	string buf(length, '\0');
 	ssize_t read = ::read(m_fd, &buf[0], length);
 	if (read < 0 || (all && read < length)) {
-		throw system_error(errno, system_category(), "read");
+		throw errno_error("read");
 	}
 
 	buf.resize(read);
@@ -270,7 +270,7 @@ string fdio::read(size_t length, bool all)
 void fdio::write(const string& str)
 {
 	if (::write(m_fd, str.data(), str.size()) != str.size()) {
-		throw system_error(errno, system_category(), "write");
+		throw errno_error("write");
 	}
 #ifdef DEBUG
 	add_line("'" + trim(str) + "'", false);
@@ -281,7 +281,7 @@ void serial::write(const string& str)
 {
 	fdio::write(str);
 	if (tcdrain(m_fd) < 0) {
-		throw system_error(errno, system_category(), "tcdrain");
+		throw errno_error("tcdrain");
 	}
 }
 
@@ -296,13 +296,13 @@ serial::serial(const char* tty, unsigned speed)
 {
 	m_fd = open(tty, O_RDWR | O_NOCTTY | O_SYNC);
 	if (m_fd < 0) {
-		throw system_error(errno, system_category(), string(errno != ENOENT ? "open: " : "") + tty);
+		throw errno_error(string(errno != ENOENT ? "open: " : "") + tty);
 	}
 
 	termios cf;
 	memset(&cf, 0, sizeof(cf));
 	if (tcgetattr(m_fd, &cf) != 0) {
-		throw system_error(errno, system_category(), "tcgetattr");
+		throw errno_error("tcgetattr");
 	}
 
 	int tspeed = to_termspeed(speed);
@@ -311,7 +311,7 @@ serial::serial(const char* tty, unsigned speed)
 	}
 
 	if (cfsetispeed(&cf, tspeed) < 0 || cfsetospeed(&cf, tspeed) < 0) {
-		throw system_error(errno, system_category(), "cfsetXspeed");
+		throw errno_error("cfsetXspeed");
 	}
 
 	cf.c_cflag &= ~(CSIZE | PARENB | PARODD | CSTOPB | CRTSCTS);
@@ -323,7 +323,7 @@ serial::serial(const char* tty, unsigned speed)
 	cf.c_cc[VTIME] = 5;
 
 	if (tcsetattr(m_fd, TCSANOW, &cf) != 0) {
-		throw system_error(errno, system_category(), "tcsetattr");
+		throw errno_error("tcsetattr");
 	}
 }
 
@@ -341,7 +341,7 @@ tcp::tcp(const string& addr, uint16_t port)
 		} else if (error != EAI_SYSTEM) {
 			throw system_error(error, getaddrinfo_category(), "getaddrinfo");
 		} else {
-			throw system_error(errno, system_category(), "getaddrinfo");
+			throw errno_error("getaddrinfo");
 		}
 	}
 
@@ -377,7 +377,7 @@ tcp::tcp(const string& addr, uint16_t port)
 void tcp::write(const string& str)
 {
 	if (send(m_fd, str.data(), str.size(), MSG_NOSIGNAL) != str.size()) {
-		throw system_error(errno, system_category(), "send");
+		throw errno_error("send");
 	}
 	#ifdef DEBUG
 	add_line("'" + trim(str) + "'", false);
@@ -394,7 +394,7 @@ string tcp::read(size_t length, bool all)
 	string buf(length, '\0');
 	ssize_t read = recv(m_fd, &buf[0], length, MSG_DONTWAIT);
 	if (read < 0 || (all && read < length)) {
-		throw system_error(errno, system_category(), "read");
+		throw errno_error("read");
 	}
 
 	buf.resize(read);
