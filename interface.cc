@@ -1,7 +1,9 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <algorithm>
 #include <unistd.h>
 #include <netdb.h>
+#include <list>
 #include "interface.h"
 #include "rwx.h"
 using namespace std;
@@ -20,6 +22,15 @@ bool is_char_device(const string& filename)
 	}
 
 	return !errno ? S_ISCHR(st.st_mode) : false;
+}
+
+vector<profile::sp> get_profiles_sorted_by_ram_size()
+{
+	vector<profile::sp> profiles = profile::list();
+	sort(profiles.begin(), profiles.end(), [](const profile::sp& a, const profile::sp& b) {
+		return a->ram().size() < b->ram().size();
+	});
+	return profiles;
 }
 
 class telnet
@@ -275,11 +286,21 @@ interface::sp detect_interface(const io::sp &io)
 	throw user_error("interface auto-detection failed");
 }
 
-void detect_profile(const interface::sp& intf)
+void detect_profile_if_not_set(const interface::sp& intf, const profile::sp& profile)
 {
+	if (profile) {
+		intf->set_profile(profile);
+		return;
+	}
+
 	rwx::sp ram = rwx::create(intf, "ram", true);
 
-	for (auto p : profile::list()) {
+	// if device A's magic is at an offset that is invalid for device
+	// B, we could crash device B when checking for the magic of A.
+	// TODO this still breaks if a device's RAM does not start at
+	// 0x80000000!
+
+	for (auto p : get_profiles_sorted_by_ram_size()) {
 		for (auto magic : p->magics()) {
 			string data = magic->data;
 			if (ram->read(magic->addr, data.size()) == data) {
@@ -316,15 +337,20 @@ bool interface::runcmd(const string& cmd, const string& expect, bool stop_on_mat
 	return match;
 }
 
-interface::sp interface::detect(const io::sp& io)
+interface::sp interface::detect(const io::sp& io, const profile::sp& profile)
 {
 	interface::sp intf = detect_interface(io);
-	detect_profile(intf);
+	detect_profile_if_not_set(intf, profile);
 	return intf;
 }
 
-interface::sp interface::create(const string& spec)
+interface::sp interface::create(const string& spec, const string& profile_name)
 {
+	profile::sp profile;
+	if (!profile_name.empty()) {
+		profile = profile::get(profile_name);
+	}
+
 	string type;
 	vector<string> tokens = split(spec, ':', false);
 	if (tokens.size() == 2) {
@@ -349,9 +375,9 @@ interface::sp interface::create(const string& spec)
 	try {
 		if (type == "serial") {
 			unsigned speed = tokens.size() == 2 ? lexical_cast<unsigned>(tokens[1]) : 115200;
-			return detect(io::open_serial(tokens[0].c_str(), speed));
+			return detect(io::open_serial(tokens[0].c_str(), speed), profile);
 		} else if (type == "tcp") {
-			return detect(io::open_tcp(tokens[0], lexical_cast<uint16_t>(tokens[1])));
+			return detect(io::open_tcp(tokens[0], lexical_cast<uint16_t>(tokens[1])), profile);
 		} else if (type == "telnet") {
 			uint16_t port = tokens.size() == 4 ? lexical_cast<uint16_t>(tokens[3]) : 23;
 			interface::sp intf = detect_interface(io::open_telnet(tokens[0], port));
@@ -366,7 +392,7 @@ interface::sp interface::create(const string& spec)
 				logger::w() << "detected non-telnet interface" << endl;
 			}
 
-			detect_profile(intf);
+			detect_profile_if_not_set(intf, profile);
 			return intf;
 		}
 	} catch (const bad_lexical_cast& e) {

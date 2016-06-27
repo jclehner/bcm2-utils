@@ -372,8 +372,8 @@ class profile
 
 	void print_to_stdout(bool verbose = false) const;
 
-	static sp get(const std::string& name);
-	static std::vector<profile::sp> list();
+	static const sp& get(const std::string& name);
+	static const std::vector<profile::sp>& list();
 
 
 	private:

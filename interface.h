@@ -59,8 +59,8 @@ class interface
 	virtual bool pending(unsigned timeout = 0) const
 	{ return m_io->pending(timeout ? timeout : this->timeout()); }
 
-	static std::shared_ptr<interface> detect(const std::shared_ptr<io>& io);
-	static interface::sp create(const std::string& spec);
+	static interface::sp detect(const io::sp& io, const profile::sp& sp = nullptr);
+	static interface::sp create(const std::string& specl, const std::string& profile = "");
 
 	virtual bcm2_interface id() const = 0;
 

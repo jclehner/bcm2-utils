@@ -360,9 +360,9 @@ func addrspace::get_read_func(bcm2_interface intf) const
 
 vector<profile::sp> profile::s_profiles;
 
-profile::sp profile::get(const string& name)
+const profile::sp& profile::get(const string& name)
 {
-	for (auto p : list()) {
+	for (const profile::sp& p : list()) {
 		if (!strcasecmp(p->name().c_str(), name.c_str())) {
 			return p;
 		}
@@ -371,7 +371,7 @@ profile::sp profile::get(const string& name)
 	throw invalid_argument("no such profile: " + name);
 }
 
-vector<profile::sp> profile::list()
+const vector<profile::sp>& profile::list()
 {
 	if (s_profiles.empty()) {
 		for (const bcm2_profile* p = bcm2_profiles; p->name[0]; ++p) {

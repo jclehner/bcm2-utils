@@ -97,7 +97,7 @@ void handle_interrupt()
 	logger::w() << endl << "interrupted" << endl;
 }
 
-int do_dump(int argc, char** argv, int opts)
+int do_dump(int argc, char** argv, int opts, const string& profile)
 {
 	if (argc != 5) {
 		usage(false);
@@ -123,7 +123,7 @@ int do_dump(int argc, char** argv, int opts)
 		return 1;
 	}
 
-	auto intf = interface::create(argv[1]);
+	auto intf = interface::create(argv[1], profile);
 	rwx::sp rwx;
 
 	if (argv[2] != "special"s) {
@@ -164,7 +164,7 @@ int do_dump(int argc, char** argv, int opts)
 	return 0;
 }
 
-int do_write(int argc, char** argv, int opts)
+int do_write(int argc, char** argv, int opts, const string& profile)
 {
 	if (argc != 5) {
 		usage(false);
@@ -204,16 +204,23 @@ int do_write(int argc, char** argv, int opts)
 	return 0;
 }
 
-int do_info(int argc, char** argv)
+int do_info(int argc, char** argv, const string& profile)
 {
-	if (argc != 2) {
+	if (argc != 1 && argc != 2) {
 		usage(false);
 		return 1;
 	}
 
-	auto intf = interface::create(argv[1]);
-	if (intf->profile()) {
-		intf->profile()->print_to_stdout();
+	if (argc == 2) {
+		auto intf = interface::create(argv[1]);
+		if (intf->profile()) {
+			intf->profile()->print_to_stdout();
+		}
+	} else if (argc == 1 && !profile.empty()) {
+		profile::get(profile)->print_to_stdout();
+	} else {
+		usage(false);
+		return 1;
 	}
 	return 0;
 }
@@ -223,6 +230,7 @@ int do_info(int argc, char** argv)
 int main(int argc, char** argv)
 {
 	ios_base::sync_with_stdio();
+	string profile;
 	int loglevel = logger::info;
 	int opt;
 	int opts;
@@ -248,8 +256,7 @@ int main(int argc, char** argv)
 			opts |= opt_resume;
 			break;
 		case 'P':
-			// FIXME
-			logger::e() << "flag not implemented: -" << char(opt) << endl;
+			profile = optarg;
 			break;
 		case 'h':
 		default:
@@ -272,11 +279,11 @@ int main(int argc, char** argv)
 
 	try {
 		if (cmd == "info") {
-			return do_info(argc, argv);
+			return do_info(argc, argv, profile);
 		} else if (cmd == "dump") {
-			return do_dump(argc, argv, opts);
+			return do_dump(argc, argv, opts, profile);
 		} else if (cmd == "write") {
-			return do_write(argc, argv, opts);
+			return do_write(argc, argv, opts, profile);
 		} else {
 			logger::e() << "command not implemented: " << cmd << endl;
 		}
