@@ -281,7 +281,7 @@ interface::sp detect_interface(const io::sp &io)
 		return intf;
 	}
 
-	throw user_error("interface auto-detection failed");
+	throw runtime_error("interface auto-detection failed");
 }
 
 void detect_profile_if_not_set(const interface::sp& intf, const profile::sp& profile)
