@@ -5,8 +5,8 @@
 
 **Util**ities for **B**road**c**o**m**-based **c**able **m**odems.
 
-* `bcm2dump`: A utility to dump ram/flash via a serial console
-* `bcm2cfg`: A utility to modify/encrypt/decrypt the configuration
+* [bcm2dump](#bcm2dump): A utility to dump ram/flash via a serial console
+* [bcm2cfg](#bcm2cfg): A utility to modify/encrypt/decrypt the configuration
    dump (aka `GatewaySettings.bin`).
 
 Fully supported devices:
@@ -22,6 +22,35 @@ These utilities are not yet stable - command line options are likely
 to change. Bug reports are always welcome.
 
 ## bcm2dump
+```
+Usage: bcm2dump [<options>] <command> [<arguments> ...]
+
+Options:
+  -s               Always use safe (and slow) methods
+  -R               Resume dump
+  -F               Force operation
+  -P <profile>     Force profile
+  -q               Decrease verbosity
+  -v               Increase verbosity
+
+Commands: 
+  dump  <interface> <addrspace> {<partition>,<offset>}[,<size>] <outfile>
+  write <interface> <addrspace> {<partition>,<offset>}[,<size>] <infile>
+  exec  <interface> {<partition>,<offset>}[,<entry>] <infile>
+  info  <interface>
+  help
+
+Interfaces: 
+  /dev/ttyUSB0             Serial console with default baud rate
+  /dev/ttyUSB0,115200      Serial console, 115200 baud
+  192.168.0.1,2323         Raw TCP connection to 192.168.0.1, port 2323
+  192.168.0.1,foo,bar      Telnet, server 192.168.0.1, user 'foo', password 'bar'
+  192.168.0.1,foo,bar,233  Same as above, port 233
+
+bcm2dump e741871 Copyright (C) 2016 Joseph C. Lehner
+Licensed under the GNU GPLv3; source code is available at
+https://github.com/jclehner/bcm2utils
+```
 
 This utility can be used to dump firmware or other flash contents.
 `bcm2dump` requires either an unlocked bootloader (serial connection),
@@ -37,7 +66,7 @@ which is then executed. Serial speeds are based on a baud-rate of `115200`.
 |-----------------------:|-----------:|-----------:|-------------:|-------------:|
 | **bootloader (serial)**|   500  B/s |  4.4 KB/s  |     N/A      |    4.4 KB/s  |
 | **firmware (serial)**  |   2.5 KB/s |    N/A     |    2.8 KB/s  |      N/A     |
-| **firmware (telnet)**  |    48 KB/s |    N/A     |     60 KB/s  |      N/A     |
+| **firmware (telnet)**  | 20-50 KB/s |    N/A     |  20-50 KB/s  |      N/A     |
 
 ###### Write speeds
 
@@ -45,7 +74,7 @@ which is then executed. Serial speeds are based on a baud-rate of `115200`.
 |-----------------------:|-----------:|-----------:|-------------:|-------------:|
 | **bootloader (serial)**|     12 B/s |    N/A     |     N/A      |      N/A     |
 | **firmware (serial)**  |     18 B/s |    N/A     |       18 B/s |      N/A     |
-| **firmware (telnet)**  |      ? B/s |    N/A     |        ? B/s |      N/A     |
+| **firmware (telnet)**  |     18 B/s |    N/A     |       18 B/s |      N/A     |
 
 
 Firmware images are usually in Broadcom's ProgramStore format. Utilities for
@@ -53,40 +82,61 @@ extraction and compression are available from Broadcom (and GPLv3'd!):
 
 https://github.com/Broadcom/aeolus/tree/master/ProgramStore
 
-###### Option 1: bootloader
+##### Usage
 
-Make sure that you're in the bootloader's main menu. The bootloader
-should have the following options:
+Show device profile (and list partitions):
+```
+$ ./bcm2dump -P tc7200 info
+tc7200: Technicolor TC7200
+==========================
+pssig         0xa825
+blsig         0x3386
+
+ram           0x80000000 - 0x87ffffff  (   128 MB)  RW
+------------------------------------------------------
+bootloader    0x83f80000 - 0x83f9ffff  (   128 KB)
+image         0x85f00000 - 0x865bffff  (  6912 KB)
+linux         0x87000000 - 0x8747ffff  (  4608 KB)
+
+nvram         0x00000000 - 0x000fffff  (     1 MB)  RO
+------------------------------------------------------
+bootloader    0x00000000 - 0x0000ffff  (    64 KB)
+permnv        0x00010000 - 0x0001ffff  (    64 KB)
+dynnv         0x00020000 - 0x000fffff  (   896 KB)
+
+flash         0x00000000 - 0x03ffffff  (    64 MB)  RO
+------------------------------------------------------
+linuxapps     0x00000000 - 0x019bffff  ( 26368 KB)
+image1        0x019c0000 - 0x0207ffff  (  6912 KB)
+image2        0x02080000 - 0x0273ffff  (  6912 KB)
+linux         0x02740000 - 0x02bbffff  (  4608 KB)
+linuxkfs      0x02bc0000 - 0x03dbffff  (    18 MB)
+dhtml         0x03dc0000 - 0x03ffffff  (  2304 KB)
+```
+
+Dump partition `image1` from `flash` to `image.bin`, via the modem's
+builtin telnet server at `192.168.100.1`, username `foo`, password `bar`.
 
 ```
-Main Menu:
-==========
+$ ./bcm2dump -F dump 192.168.100.1,foo,bar flash image1 image.bin 
+detected profile tc7200 (bfc)
+dumping flash:0x019c0000-0x0207ffff
+   3.13% (0x019f6000) 38944|29259 bytes/s (ETA      00:03:54)
 ...
-  j) Jump to arbitrary address
-  r) Read memory
-  w) Write memory
- ...
-
 ```
 
-Dumping flash requires the "write memory" and "jump to arbitrary address" options,
-plus an appropriate device profile. Speed is ~4.4 kilobyte/s when using
-115200 baud.
+Dump 128 kilobytes of RAM at `0x80004000` to `ramdump.bin`, using serial
+over tcp, with the server at at `192.168.0.3:5555`.
+```
+$ bcm2dump dump 192.168.0.3,5555 ram 0x80004000,128k ramdump.bin
+```
 
-Without a device profile, or if only "read memory" is available, `bcm2dump`
-can only be used to dump ram. Speed in that case is slower,
-~500 byte/s on a 115200 baud line.
+Dump the first 64 kilobytes of partition `dynnv` from `nvram` to `ramdump.bin`, using
+a USB-TTL adapter:
+```
+$ bcm2dump dump /dev/ttyUSB0 nvram dynnv,64k ramdump.bin
+```
 
-###### Option 2: firmware shell
-
-If you have access to the firmware shell (`CM>`), and your firmware supports
-the `read_memory` command, you can dump RAM (and thus memory-mapped flash). Speed is
-~1.7 kilobyte/s. Make sure you're in the main menu (`cd /`) before running
-`bcm2dump`.
-
-If available, dumping firmware via TFTP using `/docsis_ctl/dump_flash` is usually
-a much better (and *much* faster) option, if it doesn't refuse to work via the LAN
-interface.
 
 ## bcm2cfg
 
@@ -95,77 +145,17 @@ devices (e.g. Technicolor TC7200, Thomson TWG850, Thomson TWG870). Given
 a device profile, it can be used to encrypt, decrypt, and verify the
 settings file. Dumping an unencrypted file also works without a device profile.
 
-This utility is currently alpha-ish at best!
+##### Usage
 
-# Usage
-###### bcm2dump
+Coming soon.
 
-Listing available profiles:
-```
-$ bcm2dump -L
-generic           Generic Profile
-tc7200            Technicolor TC7200
-twg850            Thomson TWG850-4
-twg870            Thomson TWG870
-```
-
-Show device profile (and list partitions):
-```
-$ bcm2dump -P tc7200 -L
-PROFILE 'tc7200': Technicolor TC7200
-======================================================
-baudrate   115200
-pssig      0xa825
-cfg_md5key 544d4d5f544337323030000000000000
-
-SPACE 'ram': 0x80000000-0x88000000 (128 M)
-name------------------offset--------size--------------
-bootloader        0x83f80000  0x00020000  (128 K)
-image1/2          0x85f00000  0x006c0000  (6912 K)
-linux             0x87000000  0x00480000  (4608 K)
-
-SPACE 'nvram': 0x00000000-0x00100000 (1 M) R
-name------------------offset--------size--------------
-bootloader        0x00000000  0x00010000  (64 K)
-permnv            0x00010000  0x00010000  (64 K)
-dynnv             0x00020000  0x000e0000  (896 K)
-
-SPACE 'flash': 0x00000000-0x04000000 (64 M) R
-name------------------offset--------size--------------
-linuxapps         0x00000000  0x019c0000  (26368 K)
-image1            0x019c0000  0x006c0000  (6912 K)
-image2            0x02080000  0x006c0000  (6912 K)
-linux             0x02740000  0x00480000  (4608 K)
-linuxkfs          0x02bc0000  0x01200000  (18 M)
-dhtml             0x03dc0000  0x00240000  (2304 K)
-```
-
-Dumping `image1` from `flash` to image1.bin:
-
-```
-$ bcm2dump dump -d /dev/ttyUSB0 -a flash -f image1.bin -o image1
-dump: auto-detecting profile ... TC7200 (bootloader)
-dump: flash 0x019c0000-0x0207ffff
-dump: writing dump code (412 b) to ram at 0xa4010000
-dump: 100.00% (0xa401019b)   12|  10 bytes/s (ELT      00:00:37)
-dump:   0.67% (0x019cb800) 4656|1782 bytes/s (ETA      01:05:47)
-...
-```
-
-Dumping 128 kilobytes of RAM at `0x80004000`:
-```
-$ bcm2dump dump -P tc7200 -d /dev/ttyUSB0 -a ram -f foobar.bin -o 0x80004000 -n 128k
-```
-
-Dumping 128 kilobytes of RAM at `0x80000000`, using the firmware console (`CM>`).
-```
-$ bcm2dump dump -d /dev/ttyUSB0 -a ram -f foobar.bin -o 0x80004000 -n 128k -K
-```
 
 # Writing a device profile
 
 A device profile is neccessary for most functions to work as advertised.
-All current definitions can be found in [profile.c](profile.c).
+All current definitions can be found in [profiledef.c](profiledef.c).
+
+**This section is currently out-of-date**
 
 ###### Unlocked bootloader
 
