@@ -785,10 +785,16 @@ template<class T> rwx::sp create_rwx(const interface::sp& intf, const addrspace&
 
 rwx::sp create_dumpcode_rwx(const interface::sp& intf, const addrspace& space)
 {
-	rwx::sp ret = make_shared<dumpcode_rwx>(space.get_read_func(intf->id()));
-	ret->set_interface(intf);
-	ret->set_addrspace(space);
-	return ret;
+	try {
+		rwx::sp ret = make_shared<dumpcode_rwx>(space.get_read_func(intf->id()));
+		ret->set_interface(intf);
+		ret->set_addrspace(space);
+		return ret;
+	} catch (const exception& e) {
+		logger::d() << e.what() << endl;
+		logger::i() << "falling back to safe dump method" << endl;
+		return rwx::create(intf, space.name(), true);
+	}
 }
 
 class bfc_cmcfg : public parsing_rwx
