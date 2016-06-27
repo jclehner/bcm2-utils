@@ -195,12 +195,11 @@ int main(int argc, char** argv)
 		case 'q':
 			loglevel = min(loglevel + 1, logger::err);
 			break;
-		case 'A':
 		case 'F':
 		case 'R':
 		case 'P':
 			// FIXME
-			logger::e() << "flag not implemented -" << opt << endl;
+			logger::e() << "flag not implemented: -" << char(opt) << endl;
 			break;
 		case 'h':
 		default:

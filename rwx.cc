@@ -14,6 +14,8 @@ using namespace std;
 namespace bcm2dump {
 namespace {
 
+const unsigned max_retry_count = 3;
+
 template<class T> T hex_cast(const std::string& str)
 {
 	return lexical_cast<T>(str, 16);
@@ -36,6 +38,40 @@ template<class T> T align_to(const T& num, const T& alignment)
 	}
 
 	return num;
+}
+
+streampos tell(ostream& os)
+{
+	return os.tellp();
+}
+
+streampos tell(istream& is)
+{
+	return is.tellg();
+}
+
+void seek(istream& is, streamoff off, ios_base::seekdir dir)
+{
+	is.seekg(off, dir);
+}
+
+void seek(ostream& os, streamoff off, ios_base::seekdir dir)
+{
+	os.seekp(off, dir);
+}
+
+template<class T> uint32_t get_stream_size(T& stream)
+{
+	auto ioex = scoped_ios_exceptions::none(stream);
+	auto cur = tell(stream);
+	seek(stream, 0, ios_base::end);
+	if (!stream.good() || tell(stream) <= cur) {
+		throw runtime_error("failed to determine length of stream");
+	}
+
+	uint32_t length = tell(stream) - cur;
+	seek(stream, cur, ios_base::beg);
+	return length;
 }
 
 uint32_t parse_num(const string& str)
@@ -153,7 +189,7 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 					update_progress(pos, chunk.size());
 				} catch (const exception& e) {
 					string msg = "failed to parse chunk line @" + to_hex(pos) + ": '" + line + "' (" + e.what() + ")";
-					if (retries >= 2) {
+					if (retries >= max_retry_count) {
 						throw runtime_error(msg);
 					}
 
@@ -167,7 +203,7 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 	if (length && (chunk.size() != length)) {
 		string msg = "read incomplete chunk 0x" + to_hex(offset)
 					+ ": " + to_string(chunk.size()) + "/" +to_string(length);
-		if (retries < 2) {
+		if (retries < max_retry_count) {
 			// if the dump is still underway, we need to wait for it to finish
 			// before issuing the next command. wait for up to 10 seconds.
 
@@ -863,19 +899,41 @@ void rwx::exec(uint32_t offset)
 	}
 }
 
-void rwx::dump(uint32_t offset, uint32_t length, std::ostream& os)
+void rwx::dump(uint32_t offset, uint32_t length, std::ostream& os, bool resume)
 {
 	require_capability(cap_read);
 
+	auto ioex = scoped_ios_exceptions::failbad(os);
 	auto cleaner = make_cleaner();
 
 	if (capabilities() & cap_special) {
+		if (resume) {
+			throw invalid_argument("resume not supported with special reader");
+		}
+
 		do_init(0, 0, false);
 		update_progress(0, 0, true);
 		read_special(offset, length, os);
 		return;
 	} else {
 		m_space.check_range(offset, length);
+	}
+
+	if (resume) {
+		uint32_t completed = get_stream_size(os);
+		if (completed >= length) {
+			logger::i() << "nothing to resume" << endl;
+			return;
+		} else {
+			uint32_t overlap = limits_read().max * 2;
+			completed = align_left(completed, overlap);
+			if (completed >= overlap) {
+				completed -= overlap;
+				offset += completed;
+				length -= completed;
+				logger::v() << "resuming at offset 0x" + to_hex(offset) << endl;
+			}
+		}
 	}
 
 	uint32_t offset_r = align_left(offset, limits_read().alignment);
@@ -946,8 +1004,10 @@ void rwx::dump(uint32_t offset, uint32_t length, std::ostream& os)
 	}
 }
 
-void rwx::dump(const string& spec, ostream& os)
+void rwx::dump(const string& spec, ostream& os, bool resume)
 {
+	require_capability(cap_read);
+
 	vector<string> tokens = split(spec, ',');
 	if (tokens.empty() || tokens.size() > 2) {
 		throw invalid_argument("invalid argument: '" + spec + "'");
@@ -973,7 +1033,7 @@ void rwx::dump(const string& spec, ostream& os)
 		length = tokens.size() >= 2 ? parse_num(tokens[1]) : p.size();
 	}
 
-	return dump(offset, length, os);
+	return dump(offset, length, os, resume);
 }
 
 string rwx::read(uint32_t offset, uint32_t length)
@@ -985,6 +1045,8 @@ string rwx::read(uint32_t offset, uint32_t length)
 
 void rwx::write(const string& spec, istream& is)
 {
+	require_capability(cap_write);
+
 	vector<string> tokens = split(spec, ',');
 	if (tokens.empty() || tokens.size() > 2) {
 		throw invalid_argument("invalid argument: '" + spec + "'");
@@ -1012,16 +1074,13 @@ void rwx::write(const string& spec, istream& is)
 
 void rwx::write(uint32_t offset, istream& is, uint32_t length)
 {
-	if (!length) {
-		auto cur = is.tellg();
-		is.seekg(0, ios_base::end);
-		if (is.tellg() <= cur) {
-			throw runtime_error("failed to determine length of stream");
-		}
+	require_capability(cap_write);
 
-		length = is.tellg() - cur;
-		is.seekg(cur, ios_base::beg);
+	if (!length) {
+		length = get_stream_size(is);
 	}
+
+	auto ioex = scoped_ios_exceptions::failbad(is);
 
 	string buf;
 	buf.resize(length);

@@ -13,6 +13,7 @@
 #include <sstream>
 #include <vector>
 #include <string>
+#include <ios>
 
 namespace bcm2dump {
 
@@ -97,6 +98,33 @@ inline unsigned elapsed_millis(std::clock_t start, std::clock_t end = std::clock
 {
 	return 1000 * (end - start) / CLOCKS_PER_SEC;
 }
+
+class scoped_ios_exceptions
+{
+	public:
+	~scoped_ios_exceptions()
+	{
+		try {
+			m_ios.exceptions(m_saved);
+		} catch (...) {}
+	}
+
+	static scoped_ios_exceptions failbad(std::ios& ios)
+	{ return scoped_ios_exceptions(ios, std::ios::failbit | std::ios::badbit, false); }
+
+	static scoped_ios_exceptions none(std::ios& ios)
+	{ return scoped_ios_exceptions(ios, std::ios::goodbit, true); }
+
+	private:
+	scoped_ios_exceptions(std::ios& ios, std::ios::iostate except, bool replace)
+	: m_ios(ios), m_saved(ios.exceptions())
+	{
+		ios.exceptions(replace ? except : (m_saved | except));
+	}
+
+	std::ios& m_ios;
+	std::ios::iostate m_saved;
+};
 
 class logger
 {

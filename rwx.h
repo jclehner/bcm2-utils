@@ -42,8 +42,8 @@ class rwx //: public rwx_writer
 	virtual unsigned capabilities() const
 	{ return cap_read; }
 
-	void dump(const std::string& spec, std::ostream& os);
-	void dump(uint32_t offset, uint32_t length, std::ostream& os);
+	void dump(const std::string& spec, std::ostream& os, bool resume = false);
+	void dump(uint32_t offset, uint32_t length, std::ostream& os, bool resume = false);
 	std::string read(uint32_t offset, uint32_t length);
 
 
