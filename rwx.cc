@@ -852,7 +852,7 @@ void rwx::require_capability(unsigned cap)
 		name = "(unknown)";
 	}
 
-	throw runtime_error("operation requires capability " + name + ((cap & cap_special) ? " special" : ""));
+	throw runtime_error("rwx does not support " + name + ((cap & cap_special) ? " special" : "") + " capability");
 }
 
 void rwx::exec(uint32_t offset)
@@ -1034,6 +1034,8 @@ void rwx::write(uint32_t offset, istream& is, uint32_t length)
 
 void rwx::write(uint32_t offset, const string& buf, uint32_t length)
 {
+	require_capability(cap_write);
+
 	if (!length) {
 		length = buf.size();
 	}
