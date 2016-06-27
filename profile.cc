@@ -333,7 +333,7 @@ bool addrspace::check_range(uint32_t offset, uint32_t length, const string& name
 		msg = "offset " + this->name() + ":0x" + to_hex(offset);
 	}
 
-	throw invalid_argument(m_profile_name + ": invalid " + msg + (!name.empty() ? ("(" + name + ")") : ""));
+	throw user_error(m_profile_name + ": invalid " + msg + (!name.empty() ? ("(" + name + ")") : ""));
 }
 
 const addrspace::part& addrspace::partition(const string& name) const
@@ -344,7 +344,7 @@ const addrspace::part& addrspace::partition(const string& name) const
 		}
 	}
 
-	throw invalid_argument(m_profile_name + ": " + this->name() + ": no such partition: " + name);
+	throw user_error(m_profile_name + ": " + this->name() + ": no such partition: " + name);
 }
 
 func addrspace::get_read_func(bcm2_interface intf) const
@@ -368,7 +368,7 @@ const profile::sp& profile::get(const string& name)
 		}
 	}
 
-	throw invalid_argument("no such profile: " + name);
+	throw user_error("no such profile: " + name);
 }
 
 const vector<profile::sp>& profile::list()

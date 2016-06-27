@@ -11,8 +11,6 @@ using namespace std;
 namespace bcm2dump {
 namespace {
 
-typedef runtime_error user_error;
-
 bool is_char_device(const string& filename)
 {
 	struct stat st;

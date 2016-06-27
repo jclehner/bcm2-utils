@@ -168,6 +168,14 @@ class logger
 	static int s_loglevel;
 };
 
+class user_error : public std::runtime_error
+{
+	public:
+	user_error(const std::string& what)
+	: std::runtime_error(what)
+	{}
+};
+
 class errno_error : public std::system_error
 {
 	public:

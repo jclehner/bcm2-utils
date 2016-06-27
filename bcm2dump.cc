@@ -75,20 +75,22 @@ void usage(bool help = false)
 	os << endl;
 }
 
-void handle_exception(const exception& e)
+void handle_exception(const exception& e, bool io_log = true)
 {
 	logger::e() << endl << "error: " << e.what() << endl;
 
-	auto lines = io::get_last_lines();
-	if (!lines.empty()) {
-		logger::d() << endl;
-		logger::d() << "context:" << endl;
+	if (io_log) {
+		auto lines = io::get_last_lines();
+		if (!lines.empty()) {
+			logger::d() << endl;
+			logger::d() << "context:" << endl;
 
-		for (string line : io::get_last_lines()) {
-			logger::d() << "  " << line << endl;
+			for (string line : io::get_last_lines()) {
+				logger::d() << "  " << line << endl;
+			}
+
+			logger::d() << endl;
 		}
-
-		logger::d() << endl;
 	}
 }
 
@@ -105,8 +107,7 @@ int do_dump(int argc, char** argv, int opts, const string& profile)
 	}
 
 	if (access(argv[4], F_OK) == 0 && !(opts & (opt_force | opt_resume))) {
-		logger::e() << "Output file " << argv[4] << " exists. Specify -F to overwrite, or -R to resume dump." << endl;
-		return 1;
+		throw user_error("output file "s + argv[4] + " exists; specify -F to overwrite or -R to resume dump");
 	}
 
 	ios::openmode mode = ios::out | ios::binary;
@@ -119,8 +120,7 @@ int do_dump(int argc, char** argv, int opts, const string& profile)
 
 	ofstream of(argv[4], mode);
 	if (!of.good()) {
-		logger::e() << "Failed to open " << argv[4] << " for writing" << endl;
-		return 1;
+		throw user_error("failed to open "s + argv[4] + " for writing");
 	}
 
 	auto intf = interface::create(argv[1], profile);
@@ -172,14 +172,12 @@ int do_write(int argc, char** argv, int opts, const string& profile)
 	}
 
 	if (!(opts & opt_force) && argv[2] != "ram"s) {
-		logger::e() << "Requested write operation to non-ram address space '" << argv[2] << "', which could" << endl
-				<< "potentially render your device inoperable. Specify -F (force) to continue." << endl;
-		return 1;
+		throw user_error("writing to non-ram address space "s + argv[2] + " is dangerous; specify -F to continue");
 	}
 
 	ifstream in(argv[4], ios::binary);
 	if (!in.good()) {
-		throw runtime_error("failed to open "s + argv[4] + " for reading");
+		throw user_error("failed to open "s + argv[4] + " for reading");
 	}
 
 	auto intf = interface::create(argv[1]);
@@ -295,6 +293,8 @@ int main(int argc, char** argv)
 		} else {
 			handle_interrupt();
 		}
+	} catch (const user_error& e) {
+		handle_exception(e, false);
 	} catch (const exception& e) {
 		handle_exception(e);
 	}
