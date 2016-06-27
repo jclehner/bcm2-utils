@@ -376,11 +376,6 @@ class bfc_flash : public parsing_rwx
 	virtual bool is_ignorable_line(const string& line) override;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
 
-	virtual void update_progress(uint32_t offset, uint32_t length, bool write, bool init) override
-	{
-		parsing_rwx::update_progress(m_partition.offset() + offset, length, write, init);
-	}
-
 	private:
 	uint32_t to_partition_offset(uint32_t offset);
 };
