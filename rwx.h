@@ -73,6 +73,9 @@ class rwx //: public rwx_writer
 	virtual void set_addrspace(const addrspace& space)
 	{ m_space = space; }
 
+	virtual const addrspace& space() const
+	{ return m_space; }
+
 	static bool was_interrupted()
 	{ return s_sigint; }
 

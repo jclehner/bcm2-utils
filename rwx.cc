@@ -69,7 +69,7 @@ template<class T> uint32_t get_stream_size(T& stream)
 	}
 
 	seek(stream, 0, ios_base::end);
-	if (!stream.good() || tell(stream) < cur) {
+	if (!stream.good() || tell(stream) <= cur) {
 		throw runtime_error("failed to determine length of stream");
 	}
 
@@ -101,6 +101,49 @@ uint32_t parse_num(const string& str)
 	}
 
 	return lexical_cast<uint32_t>(str, base) * mult;
+}
+
+void parse_offset_size(rwx& rwx, const string& arg, uint32_t& offset, uint32_t& length, bool write)
+{
+	auto tokens = split(arg, ',');
+	if (tokens.empty() || tokens.size() > 2) {
+		throw user_error("invalid argument '" + arg + "'");
+	}
+
+	offset = 0;
+	length = 0;
+
+	if (tokens.size() == 2) {
+		length = parse_num(tokens[1]);
+	}
+
+	try {
+		offset = parse_num(tokens[0]);
+	} catch (const bad_lexical_cast& e) {
+		tokens = split(tokens[0], '+');
+		if (tokens.empty() || tokens.size() > 2) {
+			throw user_error("invalid argument '" + arg + "'");
+		}
+
+		const addrspace::part& p = rwx.space().partition(tokens[0]);
+		if (!write && !length && !p.size()) {
+			throw user_error("size of partition '" + p.name() + "' is unknown, and size argument is missing");
+		}
+
+		rwx.set_partition(p);
+		offset = p.offset();
+
+		if (tokens.size() == 2) {
+			uint32_t n = parse_num(tokens[1]);
+			offset += n;
+
+			if (!write && !length) {
+				length = p.size() - n;
+			}
+		} else if (!length && !write) {
+			length = p.size();
+		}
+	}
 }
 
 bool wait_for_interface(const interface::sp& intf)
@@ -1012,52 +1055,8 @@ void rwx::dump(uint32_t offset, uint32_t length, std::ostream& os, bool resume)
 void rwx::dump(const string& spec, ostream& os, bool resume)
 {
 	require_capability(cap_read);
-
-	auto tokens = split(spec, ',');
-	if (tokens.empty() || tokens.size() > 2) {
-		throw user_error("invalid argument: '" + spec + "'");
-	}
-
-	uint32_t offset = 0;
-	uint32_t length = 0;
-
-	try {
-		offset = parse_num(tokens[0]);
-		if (tokens.size() < 2) {
-			throw user_error("missing size argument");
-		}
-		length = parse_num(tokens[1]);
-	} catch (const bad_lexical_cast& e) {
-		if (offset) {
-			throw e;
-		}
-
-		auto partname = split(tokens[0], '+');
-		if (partname.empty() || partname.size() > 2) {
-			throw user_error("invalid argument: '" + spec + "'");
-		}
-
-		const addrspace::part& p = m_space.partition(partname[0]);
-		set_partition(p);
-		offset = p.offset();
-		length = tokens.size() == 2 ? parse_num(tokens[1]) : p.size();
-
-		if (partname.size() == 2) {
-			uint32_t n = parse_num(partname[1]);
-			offset += n;
-
-			if (tokens.size() != 2 && length) {
-				length -= n;
-			}
-		}
-
-		if (!length) {
-			throw user_error("size of partition '" + p.name() + "' is unknown; must specify dump size");
-		} else if (p.size() && ((offset + length) > (p.offset() + p.size()))) {
-			logger::w() << "specification '" << spec << "' exceeds partition size" << endl;
-		}
-	}
-
+	uint32_t offset, length;
+	parse_offset_size(*this, spec, offset, length, false);
 	return dump(offset, length, os, resume);
 }
 
@@ -1071,29 +1070,8 @@ string rwx::read(uint32_t offset, uint32_t length)
 void rwx::write(const string& spec, istream& is)
 {
 	require_capability(cap_write);
-
-	vector<string> tokens = split(spec, ',');
-	if (tokens.empty() || tokens.size() > 2) {
-		throw user_error("invalid argument: '" + spec + "'");
-	}
-
-	uint32_t offset = 0;
-	uint32_t length = 0;
-
-	if (!tokens.empty()) {
-		try {
-			offset = parse_num(tokens[0]);
-		} catch (const bad_lexical_cast& e) {
-			const addrspace::part& p = m_space.partition(tokens[0]);
-			set_partition(p);
-			offset = p.offset();
-		}
-	}
-
-	if (tokens.size() == 2) {
-		length = parse_num(tokens[1]);
-	}
-
+	uint32_t offset, length;
+	parse_offset_size(*this, spec, offset, length, true);
 	write(offset, is, length);
 }
 
