@@ -1013,7 +1013,7 @@ void rwx::dump(const string& spec, ostream& os, bool resume)
 {
 	require_capability(cap_read);
 
-	vector<string> tokens = split(spec, ',');
+	auto tokens = split(spec, ',');
 	if (tokens.empty() || tokens.size() > 2) {
 		throw user_error("invalid argument: '" + spec + "'");
 	}
@@ -1032,13 +1032,29 @@ void rwx::dump(const string& spec, ostream& os, bool resume)
 			throw e;
 		}
 
-		const addrspace::part& p = m_space.partition(tokens[0]);
+		auto partname = split(tokens[0], '+');
+		if (partname.empty() || partname.size() > 2) {
+			throw user_error("invalid argument: '" + spec + "'");
+		}
+
+		const addrspace::part& p = m_space.partition(partname[0]);
 		set_partition(p);
 		offset = p.offset();
-		length = tokens.size() >= 2 ? parse_num(tokens[1]) : p.size();
+		length = tokens.size() == 2 ? parse_num(tokens[1]) : p.size();
+
+		if (partname.size() == 2) {
+			uint32_t n = parse_num(partname[1]);
+			offset += n;
+
+			if (tokens.size() != 2 && length) {
+				length -= n;
+			}
+		}
 
 		if (!length) {
-			throw user_error("must specify size of partition '" + p.name() + "'");
+			throw user_error("size of partition '" + p.name() + "' is unknown; must specify dump size");
+		} else if (p.size() && ((offset + length) > (p.offset() + p.size()))) {
+			logger::w() << "specification '" << spec << "' exceeds partition size" << endl;
 		}
 	}
 
