@@ -414,7 +414,11 @@ void profile::print_to_stdout(bool verbose) const
 
 		for (auto part : space.partitions()) {
 				cout << rpad(part.name(), 12) << "  0x" << to_hex(part.offset());
-				cout << " - 0x" << to_hex(part.offset() + part.size() - 1) << "  (" << lpad(to_pretty_size(part.size()), 9) << ")" << endl;
+				if (part.size()) {
+					cout << " - 0x" << to_hex(part.offset() + part.size() - 1) << "  ("
+							<< lpad(to_pretty_size(part.size()), 9) << ")";
+				}
+				cout << endl;
 		}
 	}
 }

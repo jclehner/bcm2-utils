@@ -1036,6 +1036,10 @@ void rwx::dump(const string& spec, ostream& os, bool resume)
 		set_partition(p);
 		offset = p.offset();
 		length = tokens.size() >= 2 ? parse_num(tokens[1]) : p.size();
+
+		if (!length) {
+			throw user_error("must specify size of partition '" + p.name() + "'");
+		}
 	}
 
 	return dump(offset, length, os, resume);

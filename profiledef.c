@@ -27,10 +27,22 @@ struct bcm2_profile bcm2_profiles[] = {
 			{
 				.name = "ram",
 			},
+			// this hack enables us to use the bfc_flash dumper on
+			// any device (provided you specify a dump size).
+			{
+				.name = "flash",
+				.parts = {
+						{ "bootloader" },
+						{ "dynnv", 0, 0, "dyn" },
+						{ "permnv", 0, 0, "perm" },
+						{ "image1" },
+						{ "image2" },
+						{ "image3" },
+						{ "image3e" },
+						{ "dhtml" }
+				},
+			}
 		},
-		.cfg_defkeys = {
-			"0000000000000000000000000000000000000000000000000000000000000000",
-		}
 	},
 	{
 		.name = "twg850",
