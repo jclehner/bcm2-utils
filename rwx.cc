@@ -1015,7 +1015,7 @@ void rwx::dump(const string& spec, ostream& os, bool resume)
 
 	vector<string> tokens = split(spec, ',');
 	if (tokens.empty() || tokens.size() > 2) {
-		throw invalid_argument("invalid argument: '" + spec + "'");
+		throw user_error("invalid argument: '" + spec + "'");
 	}
 
 	uint32_t offset = 0;
@@ -1024,7 +1024,7 @@ void rwx::dump(const string& spec, ostream& os, bool resume)
 	try {
 		offset = parse_num(tokens[0]);
 		if (tokens.size() < 2) {
-			throw invalid_argument("missing size argument");
+			throw user_error("missing size argument");
 		}
 		length = parse_num(tokens[1]);
 	} catch (const bad_lexical_cast& e) {
@@ -1054,7 +1054,7 @@ void rwx::write(const string& spec, istream& is)
 
 	vector<string> tokens = split(spec, ',');
 	if (tokens.empty() || tokens.size() > 2) {
-		throw invalid_argument("invalid argument: '" + spec + "'");
+		throw user_error("invalid argument: '" + spec + "'");
 	}
 
 	uint32_t offset = 0;
@@ -1114,7 +1114,7 @@ void rwx::write(uint32_t offset, const string& buf, uint32_t length)
 	if (offset_w != offset || length_w != length) {
 		logger::d() << "adjusting write params: 0x" << to_hex(offset) << "," << length
 				<< " -> 0x" << to_hex(offset_w) << "," << length_w << endl;
-		throw runtime_error("non-aligned writes are not yet supported");
+		throw user_error("non-aligned writes are not yet supported");
 	}
 
 	string contents;
