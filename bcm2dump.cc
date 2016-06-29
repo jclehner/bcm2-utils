@@ -17,6 +17,7 @@ namespace {
 const unsigned opt_resume = 1;
 const unsigned opt_force = (1 << 1);
 const unsigned opt_safe = (1 << 2);
+const unsigned opt_force_write = (1 << 3);
 
 void usage(bool help = false)
 {
@@ -138,7 +139,7 @@ int do_dump(int argc, char** argv, int opts, const string& profile)
 		rwx->set_progress_listener([&pg, &argv] (uint32_t offset, uint32_t length, bool write, bool init) {
 			if (init) {
 				progress_init(&pg, offset, length);
-				printf("dumping %s:0x%08x-0x%08x\n", argv[2], pg.min, pg.max);
+				printf("dumping %s:0x%08x-0x%08x (%d b)\n", argv[2], pg.min, pg.max, pg.max + 1 - pg.min);
 			}
 
 			printf("\r ");
@@ -171,8 +172,8 @@ int do_write(int argc, char** argv, int opts, const string& profile)
 		return 1;
 	}
 
-	if (!(opts & opt_force) && argv[2] != "ram"s) {
-		throw user_error("writing to non-ram address space "s + argv[2] + " is dangerous; specify -F to continue");
+	if (!(opts & opt_force_write) && argv[2] != "ram"s) {
+		throw user_error("writing to non-ram address space "s + argv[2] + " is dangerous; specify -FF to continue");
 	}
 
 	ifstream in(argv[4], ios::binary);
@@ -189,7 +190,7 @@ int do_write(int argc, char** argv, int opts, const string& profile)
 		rwx->set_progress_listener([&pg, &argv] (uint32_t offset, uint32_t length, bool write, bool init) {
 			if (init) {
 				progress_init(&pg, offset, length);
-				printf("%s %s:0x%08x-0x%08x\n", write ? "writing" : "reading", argv[2], pg.min, pg.max);
+				printf("%s %s:0x%08x-0x%08x (%d b)\n", write ? "writing" : "reading", argv[2], pg.min, pg.max, pg.max + 1 - pg.min);
 			}
 
 			printf("\r ");
@@ -230,8 +231,8 @@ int main(int argc, char** argv)
 	ios_base::sync_with_stdio();
 	string profile;
 	int loglevel = logger::info;
+	int opts = 0;
 	int opt;
-	int opts;
 
 	optind = 0;
 	opterr = 0;
@@ -248,7 +249,11 @@ int main(int argc, char** argv)
 			loglevel = min(loglevel + 1, logger::err);
 			break;
 		case 'F':
-			opts |= opt_force;
+			if (opts & opt_force) {
+				opts |= opt_force_write;
+			} else {
+				opts |= opt_force;
+			}
 			break;
 		case 'R':
 			opts |= opt_resume;
