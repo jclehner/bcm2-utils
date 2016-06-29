@@ -34,8 +34,8 @@ Options:
   -v               Increase verbosity
 
 Commands: 
-  dump  <interface> <addrspace> {<partition>,<offset>}[,<size>] <outfile>
-  write <interface> <addrspace> {<partition>,<offset>}[,<size>] <infile>
+  dump  <interface> <addrspace> {<partition>[+<offset>],<offset>}[,<size>] <outfile>
+  write <interface> <addrspace> {<partition>[+<offset>],<offset>}[,<size>] <infile>
   exec  <interface> {<partition>,<offset>}[,<entry>] <infile>
   info  <interface>
   help
@@ -118,7 +118,7 @@ Dump partition `image1` from `flash` to `image.bin`, via the modem's
 builtin telnet server at `192.168.100.1`, username `foo`, password `bar`.
 
 ```
-$ ./bcm2dump -F dump 192.168.100.1,foo,bar flash image1 image.bin 
+$ ./bcm2dump dump 192.168.100.1,foo,bar flash image1 image.bin 
 detected profile tc7200 (bfc)
 dumping flash:0x019c0000-0x0207ffff
    3.13% (0x019f6000) 38944|29259 bytes/s (ETA      00:03:54)
@@ -131,10 +131,10 @@ over tcp, with the server at at `192.168.0.3:5555`.
 $ bcm2dump dump 192.168.0.3,5555 ram 0x80004000,128k ramdump.bin
 ```
 
-Dump the first 64 kilobytes of partition `dynnv` from `nvram` to `ramdump.bin`, using
-a USB-TTL adapter:
+Dump 16 kilobytes of partition `dynnv` from `nvram` to `ramdump.bin`, starting
+at offset `0x200`, using a serial console:
 ```
-$ bcm2dump dump /dev/ttyUSB0 nvram dynnv,64k ramdump.bin
+$ bcm2dump dump /dev/ttyUSB0 nvram dynnv+0x200,16k ramdump.bin
 ```
 
 
@@ -155,11 +155,30 @@ Coming soon.
 A device profile is neccessary for most functions to work as advertised.
 All current definitions can be found in [profiledef.c](profiledef.c).
 
-**This section is currently out-of-date**
+If the device's bootloader serial console has been disabled, and you do
+not have access to the firmware console (either via serial connection,
+or telnet), there are ways to enable them (coming soon).
 
-###### Unlocked bootloader
+The following information is required to add a new profile:
 
-To add a new device profile, you'll first have to get hold of the bootloader code.
+##### Firmware (if unlocked)
+
+* Firmware image
+* Output of `/flash/show` command
+* Output of `/flash/help open`
+* Output of `/version` command
+
+To get the firmware image, dump either `image1` or `image2`.
+
+```
+$ bcm2dump -P generic /dev/ttyUSB0 flash image2 image.bin
+```
+
+##### Bootloader (if unlocked)
+
+* Bootloader image (see below)
+* Output of `p` command (partition table)
+
 An easy way to locate the bootloader is to jump to an arbitrary location in RAM,
 and then study the exception handler's output. Jumping to a random address is
 one way to crash your device, but to be safe, you could write an opcode to RAM
@@ -167,8 +186,13 @@ that will cause a crash, and then jump to that location. Something
 like `sw $zero, 0($zero)` (`0xac000000`) is always a safe bet:
 
 ```
+w
+
 Write memory.  Hex address: 0x80000000
 Hex value: 0xac000000
+
+j
+
 Jump to arbitrary address (hex): 0x80000000
 
 ******************** CRASH ********************
@@ -198,17 +222,10 @@ very small, around 64k. To be safe, we'll dump 128k before and after
 `0x83f80000`:
 
 ```
-$ bcm2dump dump -O baudrate=115200 -d /dev/ttyUSB0 -o 0x83f80000-128k -n 256k -f bootloader.bin
-dump: falling back to slow dump method
-dump:   4.50% (0x83f62e18)  528| 525 bytes/s (ETA      00:07:57)
-...
+$ bcm2dump -P generic dump dev/ttyUSB0 0x83f60000,256k -f bootloader.bin
 ```
 
-Load the image in your favorite disassembler and start digging. The
-`printf` address should be very easy to find; combined with a suitable
-suitable location to store the dump code (currently around 512 bytes),
-you'll be able to dump ram at "full" speed (4.4 kilobyte/s). Note that
-the dump code must be loaded at a 64k boundary.
+####### Flash read functions
 
 Determining which function is used to read from flash might be more
 difficult. In general, you're looking for a function that takes 3 parameters:
@@ -232,10 +249,6 @@ BCM2_RET_OK_LEN: function returns length on success
 
 Use a string from the bootloader code as the profile's magic to support
 profile auto-detection.
-
-`cfg_md5key` and `cfg_keyfun` aside, the profile can be completed by
-studying the bootloader code. The `cfg_` stuff is used by `bcm2cfg`,
-but requires reverse engineering the actual firmware.
 
 
 
