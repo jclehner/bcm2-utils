@@ -382,7 +382,7 @@ class bfc_flash : public parsing_rwx
 #ifdef BFC_FLASH_READ_DIRECT
 		return limits(1, 16, 8192);
 #else
-		return limts(1, 16, 512);
+		return limits(1, 16, 512);
 #endif
 	}
 
