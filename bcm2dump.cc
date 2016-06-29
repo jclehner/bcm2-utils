@@ -34,13 +34,13 @@ void usage(bool help = false)
 	os << "  -v               Increase verbosity" << endl;
 	os << endl;
 	os << "Commands: " << endl;
-	os << "  dump  <interface> <addrspace> {<partition>,<offset>}[,<size>] <outfile>" << endl;
+	os << "  dump  <interface> <addrspace> {<partition>[+<offset>],<offset>}[,<size>] <outfile>" << endl;
 	if (help) {
 		os << "\n    Dump data from given address space, starting at either an explicit offset or\n"
 				"    alternately a partition name. If a partition name is used, the <size>\n"
 				"    argument may be omitted. Data is stored in <outfile>.\n\n";
 	}
-	os << "  write <interface> <addrspace> {<partition>,<offset>}[,<size>] <infile>" << endl;
+	os << "  write <interface> <addrspace> {<partition>[+<offset>],<offset>}[,<size>] <infile>" << endl;
 	if (help) {
 		os << "\n    Write data to the specified address space, starting at either an explicit\n"
 				"    offset or alternately a partition name. The <size> argument may be used to\n"
@@ -148,7 +148,7 @@ int do_dump(int argc, char** argv, int opts, const string& profile)
 		});
 
 		rwx->set_image_listener([] (uint32_t offset, const ps_header& hdr) {
-			printf("  %s  (%u b)\n", hdr.filename().c_str(), hdr.length());
+			printf("  %s (0x%04x, %d b)\n", hdr.filename().c_str(), hdr.signature(), hdr.length());
 		});
 	}
 
