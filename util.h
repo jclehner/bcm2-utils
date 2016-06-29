@@ -49,24 +49,41 @@ class bad_lexical_cast : public std::invalid_argument
 
 template<class T> T lexical_cast(const std::string& str, unsigned base = 10)
 {
-	std::istringstream istr(str);
+	static std::istringstream istr;
+	istr.clear();
+	istr.str(str);
 	T t;
 
 	if (!base) {
 		if (str.size() > 2 && str.substr(0, 2) == "0x") {
 			base = 16;
-		} else if (str.size() > 1 && str[0] == '0') {
-			base = 8;
 		} else {
 			base = 10;
 		}
 	}
 
-	if (!(istr >> std::setbase(base) >> t)) {
-		throw bad_lexical_cast("conversion failed: '" + str + "' -> " + std::string(typeid(T).name()));
+	if ((istr >> std::setbase(base) >> t)) {
+		if (istr.eof()) {
+			return t;
+		} else if (base == 10) {
+			switch (istr.get()) {
+			case 'k':
+			case 'K':
+				t *= 1024;
+				break;
+			case 'm':
+			case 'M':
+				t *= 1024 * 1024;
+				break;
+			}
+		}
+
+		if (istr.get() == '\0' || istr.eof()) {
+			return t;
+		}
 	}
 
-	return t;
+	throw bad_lexical_cast("conversion failed: '" + str + "' -> " + std::string(typeid(T).name()));
 }
 
 template<class T> std::string to_hex(const T& t, size_t width = sizeof(T) * 2)

@@ -80,27 +80,7 @@ template<class T> uint32_t get_stream_size(T& stream)
 
 uint32_t parse_num(const string& str)
 {
-	uint32_t mult = 1;
-	uint32_t base = 10;
-
-	if (!str.empty()) {
-		if (str.size() > 2 && str.substr(0, 2) == "0x") {
-			base = 16;
-		} else {
-			switch (str.back()) {
-			case 'k':
-			case 'K':
-				mult = 1024;
-				break;
-			case 'm':
-			case 'M':
-				mult = 1024 * 1024;
-				break;
-			}
-		}
-	}
-
-	return lexical_cast<uint32_t>(str, base) * mult;
+	return lexical_cast<uint32_t>(str, 0);
 }
 
 void parse_offset_size(rwx& rwx, const string& arg, uint32_t& offset, uint32_t& length, bool write)
