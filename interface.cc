@@ -59,23 +59,15 @@ bool bfc::is_ready(bool passive)
 		writeln();
 	}
 
-	bool ret = false;
-
-	while (pending()) {
-		string line = readln();
-		if (line.empty()) {
-			break;
-		}
-
+	return foreach_line([] (const string& line) {
 		if (is_bfc_prompt(line, "CM")) {
-			ret = true;
+			return true;
 		} else if (is_bfc_prompt(line, "Console")) {
-			// so we don't have to implement bfc_telnet::is_ready
-			ret = true;
+			return true;
 		}
-	}
 
-	return ret;
+		return false;
+	}, 2000);
 }
 
 class bootloader : public interface
@@ -98,20 +90,9 @@ bool bootloader::is_ready(bool passive)
 		writeln();
 	}
 
-	bool ret = false;
-
-	while (pending()) {
-		string line = readln();
-		if (line.empty()) {
-			break;
-		}
-
-		if (line.find("Main Menu") != string::npos) {
-			ret = true;
-		}
-	}
-
-	return ret;
+	return foreach_line([] (const string& line) {
+		return line.find("Main Menu") != string::npos;
+	}, 2000);
 }
 
 void bootloader::runcmd(const string& cmd)
@@ -167,8 +148,10 @@ bool bfc_telnet::is_ready(bool passive)
 			writeln();
 		}
 
-		while (m_status == invalid && pending(1000)) {
-			string line = readln();
+		foreach_line([this] (const string& line) {
+			if (m_status != invalid) {
+				return true;
+			}
 
 			if (contains(line, "Telnet")) {
 				m_status = connected;
@@ -176,9 +159,12 @@ bool bfc_telnet::is_ready(bool passive)
 
 			if (m_status == connected && (contains(line, "refused")
 					|| contains(line, "logged and reported"))) {
-				throw runtime_error("connection refused");
+				throw runtime_error("ip is blocked by server");
 			}
-		}
+
+			return false;
+
+		}, 2000);
 
 		return m_status >= connected;
 	} else {
@@ -333,6 +319,24 @@ bool interface::runcmd(const string& cmd, const string& expect, bool stop_on_mat
 	}
 
 	return match;
+}
+
+bool interface::foreach_line(function<bool(const string&)> f, unsigned timeout, unsigned timeout_line) const
+{
+	clock_t start = clock();
+
+	while (pending(timeout_line) && (!timeout || elapsed_millis(start) < timeout)) {
+		string line = readln();
+		if (line.empty()) {
+			break;
+		}
+
+		if (f(line)) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 interface::sp interface::detect(const io::sp& io, const profile::sp& profile)

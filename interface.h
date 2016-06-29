@@ -53,6 +53,8 @@ class interface
 	virtual void write(const std::string& str)
 	{ m_io->write(str); }
 
+	virtual bool foreach_line(std::function<bool(const std::string&)> f, unsigned timeout = 0, unsigned timeout_line = 0) const;
+
 	virtual std::string readln(unsigned timeout = 0) const
 	{ return m_io->readln(timeout ? timeout : this->timeout()); }
 
