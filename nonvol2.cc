@@ -11,22 +11,46 @@ std::string desc(const nv_val::named& var)
 {
 	return var.name + " (" + var.val->type() + ")";
 }
+
+size_t to_index(const string& str, const nv_val& val)
+{
+	try {
+		size_t i = lexical_cast<size_t>(str);
+		if (i >= val.bytes()) {
+			throw runtime_error("index " + str + " invalid for " + val.type());
+		}
+		return i;
+	} catch (const bad_lexical_cast& e) {
+		throw runtime_error("invalid index " + str);
+	}
 }
 
-nv_val::sp nv_val::get(const string& name) const
+void read_group_header(istream& is, nv_u16& size, nv_magic& magic)
 {
-	throw runtime_error("requested member " + name + " of non-compound type " + type());
+	if (!size.read(is)) {
+		throw runtime_error("failed to read group size");
+	} else if (size.num() < 6) {
+		throw runtime_error("group size too small to be valid");
+	} else if (!magic.read(is)) {
+		throw runtime_error("failed to read group magic");
+	}
+}
+}
+
+nv_val::csp nv_val::get(const string& name) const
+{
+	throw runtime_error("requested member '" + name + "' of non-compound type " + type());
 }
 
 void nv_val::set(const string& name, const string& val)
 {
-	throw runtime_error("requested member " + name + " of non-compound type " + type());
+	throw runtime_error("requested member '" + name + "' of non-compound type " + type());
 }
 
 void nv_val::parse_checked(const std::string& str)
 {
 	if (!parse(str)) {
-		throw runtime_error("conversion to " + type() + " failed: \"" + str + "\"");
+		throw runtime_error("conversion to " + type() + " failed: '" + str + "'");
 	}
 }
 
@@ -42,11 +66,11 @@ bool nv_compound::parse(const string& str)
 	throw invalid_argument("cannot directly set value of compound type " + type());
 }
 
-nv_val::sp nv_compound::get(const string& name) const
+nv_val::csp nv_compound::get(const string& name) const
 {
 	auto val = find(name);
 	if (!val) {
-		throw invalid_argument("requested non-existing member " + type() + "." + name);
+		throw invalid_argument("requested non-existing member '" + name + "' of type " + type());
 	}
 
 	return val;
@@ -54,7 +78,7 @@ nv_val::sp nv_compound::get(const string& name) const
 
 void nv_compound::set(const string& name, const string& val)
 {
-	if (!get(name)->parse(val)) {
+	if (!const_pointer_cast<nv_val>(get(name))->parse(val)) {
 		throw invalid_argument("invalid " + type() + ": '" + val + "'");
 	}
 }
@@ -138,6 +162,16 @@ string nv_data::to_string(bool quote) const
 	}
 
 	return quote ? '"' + str + '"' : str;
+}
+
+nv_val::csp nv_data::get(const string& name) const
+{
+	return make_shared<nv_u8>(m_buf[to_index(name, *this)]);
+}
+
+void nv_data::set(const string& name, const string& val)
+{
+	m_buf[to_index(name, *this)] = lexical_cast<uint8_t>(val);
 }
 
 istream& nv_data::read(istream& is)
@@ -279,23 +313,14 @@ nv_group::nv_group(const nv_magic& magic, int type)
 
 istream& nv_group::read(istream& is)
 {
-	if (!m_size.read(is)) {
-		throw runtime_error("failed to read group size");
-	} else if (m_size.num() < 6) {
-		throw runtime_error("group size too small to be valid");
-	}
-
-	nv_magic magic;
-	if (!magic.read(is) || (is_versioned() && !m_version.read(is))) {
-		throw runtime_error("failed to read group header");
-	}
-
-	if (m_magic.is_set() && magic != m_magic) {
-		throw runtime_error("unexpected magic " + magic.to_string(false));
+#if 0
+	read_group_header(is, m_size, m_magic);
+#endif
+	if (is_versioned() && !m_version.read(is)) {
+		throw runtime_error("failed to read group version");
 	}
 
 	m_bytes = is_versioned() ? 8 : 6;
-	m_magic = magic;
 
 	if (nv_compound::read(is)) {
 		if (m_bytes < m_size.num()) {
@@ -323,9 +348,39 @@ ostream& nv_group::write(ostream& os) const
 	return nv_compound::write(os);
 }
 
-nv_val::list nv_group::definition() const
+nv_val::list nv_group::definition(int type, int maj, int min) const
 {
 	uint16_t size = m_size.num() - (is_versioned() ? 8 : 6);
 	{ return {{ "data", std::make_shared<nv_data>(size) }}; }
 }
+
+map<nv_magic, nv_group::sp> nv_group::s_registry;
+
+void nv_group::registry_add(const sp& group)
+{
+	s_registry[group->m_magic] = group;
+}
+
+istream& nv_group::read(istream& is, sp& group)
+{
+	nv_u16 size;
+	nv_magic magic;
+
+	read_group_header(is, size, magic);
+
+	auto i = s_registry.find(magic);
+	if (i == s_registry.end()) {
+		logger::d() << "no group definition for " << magic.to_string(false) << endl;
+		group = make_shared<nv_group>();
+	} else {
+		logger::d() << "found group definition for " << magic.to_string(false) << endl;
+		group.reset(i->second->clone());
+	}
+
+	group->m_size = size;
+	group->m_magic = magic;
+
+	return group->read(is);
+}
+
 }

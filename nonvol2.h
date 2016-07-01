@@ -4,22 +4,29 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <map>
 #include "util.h"
 
 namespace bcm2cfg {
 
-class serializable
+struct serializable
 {
-	public:
 	virtual ~serializable() {}
 	virtual std::istream& read(std::istream& is) = 0;
 	virtual std::ostream& write(std::ostream& os) const = 0;
+};
+
+struct cloneable
+{
+	virtual ~cloneable() {}
+	virtual cloneable* clone() const = 0;
 };
 
 class nv_val : public serializable
 {
 	public:
 	typedef std::shared_ptr<nv_val> sp;
+	typedef std::shared_ptr<const nv_val> csp;
 	struct named
 	{
 		named(const std::string& name, const sp& val)
@@ -30,7 +37,7 @@ class nv_val : public serializable
 	};
 	typedef std::vector<named> list;
 
-	nv_val() : m_set(false) {}
+	virtual ~nv_val() {}
 
 	virtual std::string type() const = 0;
 	virtual std::string to_string(bool quote = false) const = 0;
@@ -45,7 +52,7 @@ class nv_val : public serializable
 	virtual size_t bytes() const = 0;
 
 	// for compound types, provide a facility to get/set only a part
-	virtual sp get(const std::string& name) const;
+	virtual csp get(const std::string& name) const;
 	virtual void set(const std::string& name, const std::string& val);
 
 	virtual const list& parts() const
@@ -54,7 +61,7 @@ class nv_val : public serializable
 	protected:
 	virtual void parse_checked(const std::string& str);
 
-	bool m_set;
+	bool m_set = false;
 	list m_parts;
 };
 
@@ -66,7 +73,7 @@ class nv_compound : public nv_val
 
 	virtual bool parse(const std::string& str) override;
 
-	virtual sp get(const std::string& name) const override;
+	virtual csp get(const std::string& name) const override;
 	virtual void set(const std::string& name, const std::string& val) override;
 
 	virtual void init(bool force = false);
@@ -126,20 +133,18 @@ class nv_data : public nv_val
 	{ return "data[" + std::to_string(m_buf.size()) + "]"; }
 
 	virtual std::string to_string(bool quote) const override;
-
 	virtual bool parse(const std::string& str) override
 	{ return false; }
 
 	virtual std::istream& read(std::istream& is) override;
-
 	virtual std::ostream& write(std::ostream& os) const override
 	{  return os.write(m_buf.data(), m_buf.size()); }
 
 	virtual size_t bytes() const override
 	{ return m_buf.size(); }
 
-	bool operator!=(const nv_data& other)
-	{ return m_buf == other.m_buf; }
+	virtual csp get(const std::string& name) const override;
+	virtual void set(const std::string& name, const std::string& val) override;
 
 	protected:
 	std::string m_buf;
@@ -198,8 +203,8 @@ class nv_pstring : public nv_string
 template<class T, class H> class nv_num : public nv_val
 {
 	public:
-	nv_num(bool hex = false) : m_val(0), m_hex(hex) {}
-	explicit nv_num(T val, bool hex = false) : m_val(val), m_hex(hex) {}
+	explicit nv_num(bool hex = false) : m_val(0), m_hex(hex) {}
+	nv_num(T val, bool hex) : m_val(val), m_hex(hex) { m_set = true; }
 
 	virtual void hex(bool hex = true)
 	{ m_hex = hex; }
@@ -321,6 +326,16 @@ class nv_magic : public nv_data
 	virtual bool parse(const std::string& str) override;
 
 	virtual std::string to_string(bool) const override;
+
+	bool operator<(const nv_magic& other) const
+	{ return m_buf < other.m_buf; }
+
+	bool operator==(const nv_magic& other) const
+	{ return m_buf == other.m_buf; }
+
+	bool operator!=(const nv_magic& other) const
+	{ return !(*this == other); }
+
 };
 
 class nv_version : public nv_u16
@@ -331,11 +346,19 @@ class nv_version : public nv_u16
 
 	virtual std::string to_string(bool) const override
 	{ return std::to_string(m_val >> 8) + "." + std::to_string(m_val & 0xff); }
+
+	uint8_t major() const
+	{ return m_val >> 8; }
+
+	uint8_t minor() const
+	{ return m_val & 0xff; }
 };
 
-class nv_group : public nv_compound
+class nv_group : public nv_compound, public cloneable
 {
 	public:
+	typedef std::shared_ptr<nv_group> sp;
+
 	static constexpr int type_unknown = 0;
 	static constexpr int type_perm = 1;
 	static constexpr int type_dyn = 2;
@@ -350,26 +373,39 @@ class nv_group : public nv_compound
 	nv_group(const std::string& magic, int type)
 	: nv_group(nv_magic(magic), type) {}
 
+	virtual bool is_versioned() const
+	{ return true; }
+
 	virtual std::string type() const override
 	{ return "group[" + m_magic.to_string(false) + "]"; }
 
 	virtual std::string to_string(bool) const override
 	{ throw false; }
 
-	virtual std::istream& read(std::istream& is) override;
 	virtual std::ostream& write(std::ostream& os) const override;
 
-	virtual bool is_versioned() const
-	{ return true; }
+	virtual nv_group* clone() const override
+	{ return new nv_group(*this); }
+
+	static std::istream& read(std::istream& is, sp& group);
+	static void registry_add(const sp& group);
+	static const auto& registry()
+	{ return s_registry; }
 
 	protected:
 	nv_group(const nv_magic& magic, int type);
-	virtual list definition() const override;
+	virtual list definition() const override final
+	{ return definition(m_type, m_version.major(), m_version.minor()); }
+	virtual list definition(int type, int maj, int min) const;
+	virtual std::istream& read(std::istream& is) override;
 
 	nv_u16 m_size;
 	nv_magic m_magic;
 	nv_version m_version;
 	int m_type;
+
+	static std::map<nv_magic, sp> s_registry;
+
 };
 
 /*
