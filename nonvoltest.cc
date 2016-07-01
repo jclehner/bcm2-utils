@@ -36,24 +36,45 @@ void print_vars(const nv_val::list& vars)
 
 int main(int argc, char** argv)
 {
-	if (argc != 2) {
+	if (argc != 3) {
+		cerr << "usage: nonvoltest [type] [file]" << endl;
 		return 1;
 	}
 
-	logger::loglevel(logger::debug);
+	logger::loglevel(logger::verbose);
 
-	ifstream in(argv[1]);
+	ifstream in(argv[2]);
 	if (!in.good()) {
+		cerr << "failed to open " << argv[2] << endl;
 		return 1;
 	}
 
-	in.seekg(0x60);
+	int type;
+
+	if (argv[1] == "group"s) {
+		type = nv_group::type_dyn;
+	} else if (argv[1] == "dyn"s) {
+		type = nv_group::type_dyn;
+		in.seekg(0xd2);
+	} else if (argv[1] == "gwsettings"s) {
+		type = nv_group::type_dyn;
+		in.seekg(0x60);
+	} else if (argv[1] == "perm"s) {
+		type = nv_group::type_perm;
+		in.seekg(0xd2);
+	} else {
+		cerr << "invalid type " << argv[1] << endl;
+		return 1;
+	}
+
 
 	while (in.good()) {
 		nv_group::sp group;
-		if (nv_group::read(in, group, nv_group::type_dyn) || in.eof()) {
-			cout << "** " << group->magic().to_string(false) << endl;
-			print_vars(group->parts());
+		if (nv_group::read(in, group, type) || in.eof()) {
+			//print_vars(group->parts());
+			//cout << endl;
+		} else {
+			return 1;
 		}
 	}
 

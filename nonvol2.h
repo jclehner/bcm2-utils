@@ -71,12 +71,15 @@ class nv_compound : public nv_val
 	nv_compound(bool partial, size_t width)
 	: nv_compound(partial, width, false) {}
 
+	virtual std::string to_string(bool) const override
+	{ return "<compound type>"; }
+
 	virtual bool parse(const std::string& str) override;
 
 	virtual csp get(const std::string& name) const override;
 	virtual void set(const std::string& name, const std::string& val) override;
 
-	virtual void init(bool force = false);
+	virtual bool init(bool force = false);
 	virtual void clear()
 	{ init(true); }
 
@@ -151,6 +154,15 @@ class nv_data : public nv_val
 
 };
 
+class nv_unknown : public nv_data
+{
+	public:
+	nv_unknown(size_t width) : nv_data(width) {}
+
+	std::string to_string(bool quote) const
+	{ return "<" + std::to_string(bytes()) + " bytes>"; }
+};
+
 class nv_string : public nv_val
 {
 	public:
@@ -214,7 +226,8 @@ class nv_pzstring : public nv_string
 	{ return str.size() <= 0xfe ? nv_string::parse(str) : false; }
 
 	virtual size_t bytes() const override
-	{ return m_val.empty() ? 1 : 2 + m_val.size(); }
+	{ return 1 + m_val.size(); }
+	//{ return m_val.empty() ? 1 : 2 + m_val.size(); }
 };
 
 template<class T, class H> class nv_num : public nv_val
@@ -396,9 +409,6 @@ class nv_group : public nv_compound, public cloneable
 	virtual std::string type() const override
 	{ return "group[" + m_magic.to_string(false) + "]"; }
 
-	virtual std::string to_string(bool) const override
-	{ throw false; }
-
 	virtual std::ostream& write(std::ostream& os) const override;
 
 	static std::istream& read(std::istream& is, sp& group, int type);
@@ -410,6 +420,8 @@ class nv_group : public nv_compound, public cloneable
 
 	virtual const nv_magic& magic() const
 	{ return m_magic; }
+
+	bool init(bool force) override;
 
 	protected:
 	nv_group(const nv_magic& magic);

@@ -26,15 +26,17 @@ size_t to_index(const string& str, const nv_val& val)
 	}
 }
 
-void read_group_header(istream& is, nv_u16& size, nv_magic& magic)
+istream& read_group_header(istream& is, nv_u16& size, nv_magic& magic)
 {
-	if (!size.read(is)) {
-		throw runtime_error("failed to read group size");
-	} else if (size.num() < 6) {
-		throw runtime_error("group size " + size.to_string(false) + " too small to be valid");
-	} else if (!magic.read(is)) {
-		throw runtime_error("failed to read group magic");
+	if (size.read(is)) {
+		if (size.num() < 6) {
+			throw runtime_error("group size " + size.to_string(false) + " too small to be valid");
+		} else if (!magic.read(is)) {
+			throw runtime_error("failed to read group magic");
+		}
 	}
+
+	return is;
 }
 }
 
@@ -97,12 +99,16 @@ nv_val::sp nv_compound::find(const string& name) const
 	return nullptr;
 }
 
-void nv_compound::init(bool force)
+bool nv_compound::init(bool force)
 {
 	if (m_parts.empty() || force) {
 		m_parts = definition();
+		//m_bytes = 0;
 		m_set = false;
+		return true;
 	}
+
+	return false;
 }
 
 istream& nv_compound::read(istream& is)
@@ -117,20 +123,26 @@ istream& nv_compound::read(istream& is)
 		}
 
 		try {
-			if ((m_width && m_bytes + v.val->bytes() >= m_width) || !v.val->read(is)) {
+			if ((m_width && (m_bytes + v.val->bytes() > m_width)) || (!v.val->read(is) && !is.eof())) {
 				if (!m_partial) {
 					throw runtime_error("pos " + to_string(m_bytes) + ": failed to read " + desc(v));
+				} else {
+					logger::d() << "pos " << m_bytes << ": stopped parsing at " << desc(v) << ", stream=" << !!is << endl;
 				}
 				break;
 			} else {
 				// check again, because a successful read may have changed the
 				// byte count (e.g. an nv_pstring)
-				if ((m_width && m_bytes + v.val->bytes() >= m_width)) {
+				if ((m_width && m_bytes + v.val->bytes() > m_width)) {
 					throw runtime_error("pos " + to_string(m_bytes) + ": variable ends outside of group: " + desc(v));
 				}
+				logger::d() << "pos " << m_bytes  << ": " + desc(v) << " = " << v.val->to_string(true) << " (" << v.val->bytes() << " b)"<< endl;
 				m_bytes += v.val->bytes();
 				m_set = true;
-				logger::d() << "read " + desc(v) << " = " << v.val->to_string(true) << endl;
+
+				if (is.eof()) {
+					break;
+				}
 			}
 		} catch (const exception& e) {
 			throw runtime_error("failed at pos " + std::to_string(m_bytes) + " while reading " + desc(v) + ": " + e.what());
@@ -322,15 +334,13 @@ bool nv_bool::parse(const string& str)
 string nv_magic::to_string(bool) const
 {
 	string str;
-	bool ascii = true;
+	bool ascii = isprint(m_buf[0]) || isprint(m_buf[1]);
 
 	for (size_t i = 0; i < 4; ++i) {
 		if (!ascii) {
 			str += to_hex(m_buf[i]);
 		} else if (!isprint(m_buf[i])) {
-			i = 0;
-			ascii = false;
-			str.clear();
+			str += '.';
 		} else {
 			str += m_buf[i];
 		}
@@ -365,29 +375,46 @@ nv_group::nv_group(const nv_magic& magic)
 : nv_compound(true), m_magic(magic)
 {}
 
+bool nv_group::init(bool force)
+{
+	if (nv_compound::init(force)) {
+		m_bytes = is_versioned() ? 8 : 6;
+		m_width = m_size.num();
+		return true;
+	}
+
+	return false;
+}
+
 istream& nv_group::read(istream& is)
 {
 	if (is_versioned() && !m_version.read(is)) {
 		throw runtime_error("failed to read group version");
 	}
 
-	m_bytes = is_versioned() ? 8 : 6;
+	cout << "** " << m_magic.to_string(false) << " " << m_size.num() << " b" << endl;
 
 	if (nv_compound::read(is)) {
+		//m_bytes += is_versioned() ? 8 : 6;
+
 		if (m_bytes < m_size.num()) {
 			nv_val::sp extra = make_shared<nv_data>(m_size.num() - m_bytes);
 			if (!extra->read(is)) {
 				throw runtime_error("failed to read remaining " + std::to_string(extra->bytes()) + " bytes");
 			}
 
-			cout << "extra: " << extra->bytes() << " b" << endl;
+			logger::d() << "read " << m_bytes << " b so far, but group size is " << m_size.num() << "; extra data size is " << extra->bytes() << "b" << endl;
 
 			m_parts.push_back(named("extra", extra));
 			m_bytes += extra->bytes();
 		}
 	}
 
-	cout << "m_bytes: " << m_bytes << endl;
+#if 0
+	if (m_bytes != m_size.num()) {
+		throw runtime_error("group has trailing data: " + std::to_string(m_bytes) + " / " + m_size.to_string(false));
+	}
+#endif
 
 	return is;
 }
@@ -406,7 +433,11 @@ ostream& nv_group::write(ostream& os) const
 nv_val::list nv_group::definition(int type, int maj, int min) const
 {
 	uint16_t size = m_size.num() - (is_versioned() ? 8 : 6);
-	{ return {{ "data", std::make_shared<nv_data>(size) }}; }
+	if (size) {
+		return {{ "data", std::make_shared<nv_unknown>(size) }};
+	}
+
+	return {};
 }
 
 map<nv_magic, nv_group::sp> nv_group::s_registry;
@@ -421,7 +452,9 @@ istream& nv_group::read(istream& is, sp& group, int type)
 	nv_u16 size;
 	nv_magic magic;
 
-	read_group_header(is, size, magic);
+	if (!read_group_header(is, size, magic)) {
+		return is;
+	}
 
 	auto i = s_registry.find(magic);
 	if (i == s_registry.end()) {

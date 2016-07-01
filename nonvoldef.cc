@@ -10,6 +10,8 @@ using namespace std;
 		{ return new type(*this); }
 
 namespace bcm2cfg {
+namespace {
+
 class nv_group_mlog : public nv_group
 {
 	public:
@@ -65,39 +67,39 @@ class nv_group_8021 : public nv_group
 		if (type != type_perm) {
 			return {
 				NV_VAR(nv_zstring, "ssid", 33),
-				NV_VAR(nv_data, "data_1", 2),
+				NV_VAR(nv_unknown, "data_1", 2),
 				NV_VAR(nv_u8, "basic_rates"), // XXX u16?
-				NV_VAR(nv_data, "data_2", 0x29),
+				NV_VAR(nv_unknown, "data_2", 0x29),
 				NV_VAR(nv_u16, "beacon_interval"),
 				NV_VAR(nv_u16, "dtim_interval"),
 				NV_VAR(nv_u16, "frag_threshold"),
 				NV_VAR(nv_u16, "rts_threshold"),
-				NV_VAR(nv_data, "data_3", 0xe8),
+				NV_VAR(nv_unknown, "data_3", 0xe8),
 				NV_VAR(nv_u8, "byte_1", true),
 				NV_VAR(nv_u8, "byte_2", true),
 				NV_VAR(nv_u8, "byte_3", true),
-				NV_VAR(nv_data, "data_4", 0x20),
+				NV_VAR(nv_unknown, "data_4", 0x20),
 				NV_VAR(nv_u8, "short_retry_limit"),
 				NV_VAR(nv_u8, "long_retry_limit"),
-				NV_VAR(nv_data, "data_5", 0x6),
+				NV_VAR(nv_unknown, "data_5", 0x6),
 				NV_VAR(nv_u16, "tx_power"), // XXX u8?
 				NV_VAR(nv_pstring, "wpa_psk"),
-				NV_VAR(nv_data, "data_6", 0x8),
+				NV_VAR(nv_unknown, "data_6", 0x8),
 				NV_VAR(nv_u16, "radius_port"),
-				NV_VAR(nv_data, "data_7", 0x9d),
+				NV_VAR(nv_unknown, "data_7", 0x9d),
 				NV_VAR(nv_pzstring, "wps_device_pin"),
 				NV_VAR(nv_pzstring, "wps_model"),
 				NV_VAR(nv_pzstring, "wps_manufacturer"),
 				NV_VAR(nv_pzstring, "wps_device_name"),
-				NV_VAR(nv_data, "data_8", 3),
+				NV_VAR(nv_unknown, "data_8", 3),
 				NV_VAR(nv_pzstring, "wps_model_num"),
 				//NV_VAR(nv_bool, "wps_timeout"),
-				NV_VAR(nv_data, "data_9", 2),
+				NV_VAR(nv_unknown, "data_9", 2),
 				NV_VAR(nv_pzstring, "wps_uuid"),
 				NV_VAR(nv_pzstring, "wps_board_num"),
 				NV_VAR(nv_u8, "byte_6", true),
 				NV_VAR(nv_pzstring, "country"),
-				NV_VAR(nv_data, "data_10", 0x6),
+				NV_VAR(nv_unknown, "data_10", 0x6),
 				NV_VAR(nv_u8, "pre_network_radar_check"),
 				NV_VAR(nv_u8, "in_network_radar_check")
 			};
@@ -107,7 +109,6 @@ class nv_group_8021 : public nv_group
 	}
 };
 
-namespace {
 struct registrar {
 	registrar()
 	{
