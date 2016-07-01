@@ -71,8 +71,7 @@ class nv_compound : public nv_val
 	nv_compound(bool partial, size_t width)
 	: nv_compound(partial, width, false) {}
 
-	virtual std::string to_string(bool) const override
-	{ return "<compound type>"; }
+	virtual std::string to_string(bool) const override;
 
 	virtual bool parse(const std::string& str) override;
 
@@ -217,10 +216,10 @@ class nv_zstring : public nv_string
 };
 
 // <len16><string>
-class nv_pstring : public nv_string
+class nv_p16string : public nv_string
 {
 	public:
-	explicit nv_pstring(size_t width = 0) : nv_string(width) {}
+	explicit nv_p16string(size_t width = 0) : nv_string(width) {}
 
 	virtual bool parse(const std::string& str) override
 	{ return str.size() <= 0xffff ? nv_string::parse(str) : false; }
@@ -233,19 +232,33 @@ class nv_pstring : public nv_string
 };
 
 // <len8><string><nul>
-class nv_pzstring : public nv_string
+class nv_p8string : public nv_string
 {
 	public:
-	explicit nv_pzstring(size_t width = 0) : nv_string(width) {}
+	explicit nv_p8string(size_t width = 0) : nv_p8string(false, width) {}
 
 	virtual std::istream& read(std::istream& is) override;
 	virtual std::ostream& write(std::ostream& os) const override;
 	virtual bool parse(const std::string& str) override
 	{ return str.size() <= 0xfe ? nv_string::parse(str) : false; }
 
+	virtual std::string to_string(bool quote = false) const override;
+
 	virtual size_t bytes() const override
-	{ return 1 + m_val.size(); }
+	{ return 1 + m_val.size() + (m_nul ? 1 : 0); }
+
+	protected:
+	nv_p8string(bool nul, size_t width = 0) : nv_string(width), m_nul(nul) {}
+	bool m_nul;
+
 	//{ return m_val.empty() ? 1 : 2 + m_val.size(); }
+};
+
+class nv_p8zstring : public nv_p8string
+{
+	public:
+	explicit nv_p8zstring(size_t width = 0) : nv_p8string(true, width) {}
+
 };
 
 template<class T, class H> class nv_num : public nv_val

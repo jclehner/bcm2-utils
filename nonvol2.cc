@@ -38,6 +38,34 @@ istream& read_group_header(istream& is, nv_u16& size, nv_magic& magic)
 
 	return is;
 }
+
+string data_to_string(const string& data, bool quote)
+{
+	const unsigned threshold = 24;
+	ostringstream ostr;
+	bool multiline = data.size() > threshold;
+	if (multiline) {
+		ostr << "{";
+	}
+
+	for (size_t i = 0; i < data.size(); ++i) {
+		if (!(i % threshold)) {
+			if (multiline) {
+				ostr << endl << "  ";
+			}
+		} else {
+			ostr << ':';
+		}
+
+		ostr << setw(2) << setfill('0') << hex << uppercase << (data[i] & 0xff);
+	}
+
+	if (multiline) {
+		ostr << endl << "}";
+	}
+
+	return ostr.str();
+}
 }
 
 nv_val::csp nv_val::get(const string& name) const
@@ -169,6 +197,22 @@ ostream& nv_compound::write(ostream& os) const
 	return os;
 }
 
+std::string nv_compound::to_string(bool quote) const
+{
+	if (!quote) {
+		return "<compound type " + type() + ">";
+	}
+
+	string str = "{";
+
+	for (auto v : m_parts) {
+		str += "\n  " + v.name + " = " + v.val->to_string(quote);
+	}
+
+	return str + "\n}";
+
+}
+
 nv_data::nv_data(size_t width)
 : m_buf(width, '\0')
 {
@@ -179,23 +223,7 @@ nv_data::nv_data(size_t width)
 
 string nv_data::to_string(bool quote) const
 {
-	ostringstream ostr;
-
-	for (size_t i = 0; i < m_buf.size(); ++i) {
-		if (ostr.tellp() != 0) {
-			ostr << ':';
-		}
-
-		ostr << setw(2) << setfill('0') << hex << uppercase << (m_buf[i] & 0xff);
-
-#if 0
-		if (quote && i && !(i % 32)) {
-			ostr << endl;
-		}
-#endif
-	}
-
-	return quote ? '"' + ostr.str() + '"' : ostr.str();
+	return data_to_string(m_buf, quote);
 }
 
 nv_val::csp nv_data::get(const string& name) const
@@ -258,7 +286,7 @@ ostream& nv_zstring::write(ostream& os) const
 	return os.write(val.data(), val.size());
 }
 
-istream& nv_pstring::read(istream& is)
+istream& nv_p16string::read(istream& is)
 {
 	uint16_t len;
 	if (!is.read(reinterpret_cast<char*>(&len), 2)) {
@@ -277,7 +305,7 @@ istream& nv_pstring::read(istream& is)
 	return is;
 }
 
-ostream& nv_pstring::write(ostream& os) const
+ostream& nv_p16string::write(ostream& os) const
 {
 	uint16_t len = htons(m_val.size() & 0xffff);
 	if (!os.write(reinterpret_cast<const char*>(&len), 2)) {
@@ -287,7 +315,12 @@ ostream& nv_pstring::write(ostream& os) const
 	return os.write(m_val.data(), m_val.size());
 }
 
-istream& nv_pzstring::read(istream& is)
+string nv_p8string::to_string(bool quote) const
+{
+	return m_nul ? nv_string::to_string(quote) : data_to_string(m_val, quote);
+}
+
+istream& nv_p8string::read(istream& is)
 {
 	uint8_t len;
 	if (!is.read(reinterpret_cast<char*>(&len), 1)) {
@@ -297,8 +330,12 @@ istream& nv_pzstring::read(istream& is)
 	string val(len, '\0');
 	if (!is.read(&val[0], val.size())) {
 		throw runtime_error("failed to read " + std::to_string(len) + " bytes");
-	} else if (val.back() != '\0') {
+	} else if (m_nul && val.back() != '\0') {
 		throw runtime_error("expected terminating null byte");
+	}
+
+	if (m_nul) {
+		val = val.c_str();
 	}
 
 	parse_checked(val);
@@ -306,7 +343,7 @@ istream& nv_pzstring::read(istream& is)
 	return is;
 }
 
-ostream& nv_pzstring::write(ostream& os) const
+ostream& nv_p8string::write(ostream& os) const
 {
 	uint8_t len = m_val.size() & 0xfe;
 	if (!(os << len)) {

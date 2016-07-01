@@ -23,10 +23,10 @@ class nv_group_mlog : public nv_group
 	virtual list definition(int type, int maj, int min) const
 	{
 		return {
-			NV_VAR(nv_pstring, "http_user", 32),
-			NV_VAR(nv_pstring, "http_pass", 32),
-			NV_VAR(nv_pstring, "http_admin_user", 32),
-			NV_VAR(nv_pstring, "http_admin_pass", 32),
+			NV_VAR(nv_p16string, "http_user", 32),
+			NV_VAR(nv_p16string, "http_pass", 32),
+			NV_VAR(nv_p16string, "http_admin_user", 32),
+			NV_VAR(nv_p16string, "http_admin_pass", 32),
 			NV_VAR(nv_bool, "telnet_enabled"),
 			NV_VAR(nv_zstring, "remote_acc_user", 16),
 			NV_VAR(nv_zstring, "remote_acc_pass", 16),
@@ -89,22 +89,22 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_u8, "long_retry_limit"),
 				NV_VAR(nv_unknown, "data_5", 0x6),
 				NV_VAR(nv_u16, "tx_power"), // XXX u8?
-				NV_VAR(nv_pstring, "wpa_psk"),
+				NV_VAR(nv_p16string, "wpa_psk"),
 				NV_VAR(nv_unknown, "data_6", 0x8),
 				NV_VAR(nv_u16, "radius_port"),
 				NV_VAR(nv_unknown, "data_7", 0x9d),
-				NV_VAR(nv_pzstring, "wps_device_pin"),
-				NV_VAR(nv_pzstring, "wps_model"),
-				NV_VAR(nv_pzstring, "wps_manufacturer"),
-				NV_VAR(nv_pzstring, "wps_device_name"),
+				NV_VAR(nv_p8zstring, "wps_device_pin"),
+				NV_VAR(nv_p8zstring, "wps_model"),
+				NV_VAR(nv_p8zstring, "wps_manufacturer"),
+				NV_VAR(nv_p8zstring, "wps_device_name"),
 				NV_VAR(nv_unknown, "data_8", 3),
-				NV_VAR(nv_pzstring, "wps_model_num"),
+				NV_VAR(nv_p8zstring, "wps_model_num"),
 				//NV_VAR(nv_bool, "wps_timeout"),
 				NV_VAR(nv_unknown, "data_9", 2),
-				NV_VAR(nv_pzstring, "wps_uuid"),
-				NV_VAR(nv_pzstring, "wps_board_num"),
+				NV_VAR(nv_p8zstring, "wps_uuid"),
+				NV_VAR(nv_p8zstring, "wps_board_num"),
 				NV_VAR(nv_u8, "byte_6", true),
-				NV_VAR(nv_pzstring, "country"),
+				NV_VAR(nv_p8zstring, "country"),
 				NV_VAR(nv_unknown, "data_10", 0x6),
 				NV_VAR(nv_u8, "pre_network_radar_check"),
 				NV_VAR(nv_u8, "in_network_radar_check")
@@ -160,7 +160,7 @@ class nv_group_cdp : public nv_group
 		virtual list definition() const override
 		{
 			return {
-				NV_VAR(nv_u8, "type"),
+				NV_VAR(nv_u32, "type"),
 				NV_VAR(nv_ip4, "ip")
 			};
 		}
@@ -185,8 +185,8 @@ class nv_group_cdp : public nv_group
 				NV_VAR(nv_ip4, "ip"),
 				NV_VAR(nv_data, "ip_data", 3),
 				NV_VAR(nv_u8, "method"),
-				NV_VAR(nv_pzstring, "client_id"),
-				NV_VAR(nv_pzstring, "hostname"),
+				NV_VAR(nv_p8string, "client_id"),
+				NV_VAR(nv_p8string, "hostname"),
 				NV_VAR(nv_mac, "mac")
 			};
 		}
@@ -202,11 +202,15 @@ class nv_group_cdp : public nv_group
 			NV_VAR(nv_ip4_typed, "dhcp_pool_start"),
 			NV_VAR(nv_ip4_typed, "dhcp_pool_end"),
 			NV_VAR(nv_ip4_typed, "dhcp_subnet_mask"),
-			NV_VAR(nv_data, "data_3", 5),
+			NV_VAR(nv_data, "data_3", 4),
 			NV_VAR(nv_ip4_typed, "router"),
 			NV_VAR(nv_ip4_typed, "dns"),
 			NV_VAR(nv_ip4_typed, "syslog"),
-			NV_VAR(nv_lan_addr_entry, "lan_addr_1")
+			NV_VAR(nv_ip4_typed, "ip_1"),
+			NV_VAR(nv_ip4_typed, "ip_2"),
+			NV_VAR(nv_ip4_typed, "ip_3"),
+			NV_VAR(nv_data, "data_4", 2),
+			NV_VAR(nv_lan_addr_entry, "lan_addr_2")
 			// lan addr table format:
 			// <u16 create_time><u16 ?><u16 expire_time><u8 ip_type><data[7] ip><u8 method><pzstring client_id><pzstring hostname><?mac?>...
 		};
