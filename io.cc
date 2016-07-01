@@ -34,17 +34,46 @@ void add_line(const string& line, bool in)
 	logger::t() << lines.back() << endl;
 }
 
-bool set_nonblock(int fd, bool nonblock)
+class scoped_flags
+{
+	public:
+	scoped_flags(int fd, int flags, bool replace = false)
+	: m_fd(fd)
+	{
+		if ((m_orig = fcntl(fd, F_GETFL, 0)) < 0) {
+			throw errno_error("fcntl(F_GETFL)");
+		}
+
+		if (!replace) {
+			flags |= m_orig;
+		}
+
+		if (fcntl(fd, F_SETFL, flags) < 0) {
+			throw errno_error("fcntl(F_SETFL");
+		}
+	}
+
+	~scoped_flags()
+	{
+		fcntl(m_fd, F_SETFL, m_orig);
+	}
+
+	private:
+	int m_fd;
+	int m_orig;
+};
+
+bool set_flag(int fd, int flag, bool set)
 {
 	int flags = 0;
 	if ((flags = fcntl(fd, F_GETFL, 0)) < 0) {
 		return false;
 	}
 
-	if (nonblock) {
-		flags |= O_NONBLOCK;
+	if (set) {
+		flags |= flag;
 	} else {
-		flags &= ~O_NONBLOCK;
+		flags &= ~flag;
 	}
 
 	if (fcntl(fd, F_SETFL, flags) < 0) {
@@ -54,11 +83,24 @@ bool set_nonblock(int fd, bool nonblock)
 	return true;
 }
 
+ssize_t recv_dontwait(int fd, void* buf, size_t len, int flags = 0)
+{
+	scoped_flags f(fd, O_NONBLOCK);
+	return recv(fd, buf, len, flags);
+}
+
+ssize_t send_nosignal(int fd, const void* buf, size_t len, int flags = 0)
+{
+#ifdef __linux__
+	flags |= MSG_NOSIGNAL;
+#endif
+	return send(fd, buf, len, flags);
+}
+}
+
 int connect_nonblock(int fd, sockaddr* addr, socklen_t len)
 {
-	if (!set_nonblock(fd, true)) {
-		return -1;
-	}
+	scoped_flags f(fd, O_NONBLOCK);
 
 	int err = connect(fd, addr, len);
 	if (err) {
@@ -94,10 +136,6 @@ int connect_nonblock(int fd, sockaddr* addr, socklen_t len)
 			}
 			return -1;
 		}
-	}
-
-	if (!set_nonblock(fd, false)) {
-		return -1;
 	}
 
 	return 0;
