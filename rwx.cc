@@ -498,6 +498,10 @@ string bfc_flash::parse_chunk_line(const string& line, uint32_t offset)
 #else
 	for (size_t i = 0; i < line.size(); i += 9) {
 		linebuf += to_buf(htonl(hex_cast<uint32_t>(line.substr(i, 8))));
+
+		if (!(i % 128)) {
+			update_progress(offset + i, 0);
+		}
 	}
 #endif
 
