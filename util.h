@@ -63,9 +63,7 @@ template<class T> T lexical_cast(const std::string& str, unsigned base = 10)
 	}
 
 	if ((istr >> std::setbase(base) >> t)) {
-		if (istr.eof()) {
-			return t;
-		} else if (base == 10) {
+		if (!istr.eof() && base == 10) {
 			switch (istr.get()) {
 			case 'k':
 			case 'K':
@@ -78,7 +76,7 @@ template<class T> T lexical_cast(const std::string& str, unsigned base = 10)
 			}
 		}
 
-		if (istr.get() == '\0' || istr.eof()) {
+		if (istr.eof() || istr.get() == '\0') {
 			return t;
 		}
 	}
@@ -93,19 +91,24 @@ template<class T> std::string to_hex(const T& t, size_t width = sizeof(T) * 2)
 	return ostr.str();
 }
 
-std::string to_hex(const std::string& buffer);
-
-// return the closest number lower than num that matches the requested alignment
-template<class T> T align_left(const T& num, size_t alignment)
+template<> inline std::string to_hex<uint8_t>(const uint8_t& t, size_t width)
 {
-	return num - (num % alignment);
+	return to_hex(uint16_t(t) & 0xff, width);
 }
 
-// return the closest number higher than num that matches the requested alignment
-template<class T> T align_right(const T& num, size_t alignment)
+std::string to_hex(const std::string& buffer);
+
+// return the closest nv_number lower than nv_num that matches the requested alignment
+template<class T> T align_left(const T& nv_num, size_t alignment)
 {
-	T rem = num % alignment;
-	return num + (rem ? alignment - rem : 0);
+	return nv_num - (nv_num % alignment);
+}
+
+// return the closest nv_number higher than nv_num that matches the requested alignment
+template<class T> T align_right(const T& nv_num, size_t alignment)
+{
+	T rem = nv_num % alignment;
+	return nv_num + (rem ? alignment - rem : 0);
 }
 
 uint16_t crc16_ccitt(const void* buf, size_t size);

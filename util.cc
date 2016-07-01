@@ -98,7 +98,7 @@ string to_hex(const std::string& buffer)
 	string ret;
 
 	for (char c : buffer) {
-		ret += to_hex(c);
+		ret += to_hex(c & 0xff, 2);
 	}
 
 	return ret;
