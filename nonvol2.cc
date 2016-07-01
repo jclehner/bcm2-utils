@@ -152,16 +152,23 @@ nv_data::nv_data(size_t width)
 
 string nv_data::to_string(bool quote) const
 {
-	string str;
+	ostringstream ostr;
 
-	for (char c : m_buf) {
-		if (!str.empty()) {
-			//str += '';
+	for (size_t i = 0; i < m_buf.size(); ++i) {
+		if (ostr.tellp() != 0) {
+			ostr << ':';
 		}
-		str += "\\x" + to_hex(c & 0xff, 2);
+
+		ostr << setw(2) << setfill('0') << hex << uppercase << (m_buf[i] & 0xff);
+
+#if 0
+		if (quote && i && !(i % 32)) {
+			ostr << endl;
+		}
+#endif
 	}
 
-	return quote ? '"' + str + '"' : str;
+	return quote ? '"' + ostr.str() + '"' : ostr.str();
 }
 
 nv_val::csp nv_data::get(const string& name) const
@@ -307,8 +314,8 @@ bool nv_magic::parse(const string& str)
 	return false;
 }
 
-nv_group::nv_group(const nv_magic& magic, int type)
-: nv_compound(true), m_magic(magic), m_type(type)
+nv_group::nv_group(const nv_magic& magic)
+: nv_compound(true), m_magic(magic)
 {}
 
 istream& nv_group::read(istream& is)
@@ -361,7 +368,7 @@ void nv_group::registry_add(const sp& group)
 	s_registry[group->m_magic] = group;
 }
 
-istream& nv_group::read(istream& is, sp& group)
+istream& nv_group::read(istream& is, sp& group, int type)
 {
 	nv_u16 size;
 	nv_magic magic;
@@ -370,15 +377,14 @@ istream& nv_group::read(istream& is, sp& group)
 
 	auto i = s_registry.find(magic);
 	if (i == s_registry.end()) {
-		logger::d() << "no group definition for " << magic.to_string(false) << endl;
-		group = make_shared<nv_group>();
+		group = make_shared<nv_group_generic>();
 	} else {
-		logger::d() << "found group definition for " << magic.to_string(false) << endl;
 		group.reset(i->second->clone());
 	}
 
 	group->m_size = size;
 	group->m_magic = magic;
+	group->m_type = type;
 
 	return group->read(is);
 }

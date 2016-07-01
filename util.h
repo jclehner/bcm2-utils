@@ -91,9 +91,14 @@ template<class T> std::string to_hex(const T& t, size_t width = sizeof(T) * 2)
 	return ostr.str();
 }
 
-template<> inline std::string to_hex<uint8_t>(const uint8_t& t, size_t width)
+template<> inline std::string to_hex<char>(const char& c, size_t width)
 {
-	return to_hex(uint16_t(t) & 0xff, width);
+	return to_hex(c & 0xff, width);
+}
+
+template<> inline std::string to_hex<unsigned char>(const unsigned char& c, size_t width)
+{
+	return to_hex(c & 0xff, width);
 }
 
 std::string to_hex(const std::string& buffer);

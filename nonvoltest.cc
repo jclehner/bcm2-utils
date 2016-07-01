@@ -23,8 +23,8 @@ void read_vars(istream& is, vector<nv_val::named>& vars)
 void print_vars(const nv_val::list& vars)
 {
 	for (auto v : vars) {
-		cerr << v.name << " = ";
 		if (v.val->is_set()) {
+			cerr << v.name << " = ";
 			cerr << v.val->to_string(true);
 		} else {
 			break;
@@ -48,7 +48,7 @@ int main(int argc, char** argv)
 	}
 
 	nv_group::sp group;
-	if (nv_group::read(in, group) || in.eof()) {
+	if (nv_group::read(in, group, nv_group::type_dyn) || in.eof()) {
 		print_vars(group->parts());
 		return 0;
 	} else {

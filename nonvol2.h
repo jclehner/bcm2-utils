@@ -365,13 +365,13 @@ class nv_group : public nv_compound, public cloneable
 	static constexpr int type_cfg = 3;
 
 	nv_group()
-	: nv_compound(true), m_type(type_unknown) {}
+	: nv_compound(true) {}
 
-	nv_group(uint32_t magic, int type)
-	: nv_group(nv_magic(magic), type) {}
+	nv_group(uint32_t magic)
+	: nv_group(nv_magic(magic)) {}
 
-	nv_group(const std::string& magic, int type)
-	: nv_group(nv_magic(magic), type) {}
+	nv_group(const std::string& magic)
+	: nv_group(nv_magic(magic)) {}
 
 	virtual bool is_versioned() const
 	{ return true; }
@@ -384,16 +384,15 @@ class nv_group : public nv_compound, public cloneable
 
 	virtual std::ostream& write(std::ostream& os) const override;
 
-	virtual nv_group* clone() const override
-	{ return new nv_group(*this); }
-
-	static std::istream& read(std::istream& is, sp& group);
+	static std::istream& read(std::istream& is, sp& group, int type);
 	static void registry_add(const sp& group);
 	static const auto& registry()
 	{ return s_registry; }
 
+	virtual nv_group* clone() const override = 0;
+
 	protected:
-	nv_group(const nv_magic& magic, int type);
+	nv_group(const nv_magic& magic);
 	virtual list definition() const override final
 	{ return definition(m_type, m_version.major(), m_version.minor()); }
 	virtual list definition(int type, int maj, int min) const;
@@ -402,10 +401,17 @@ class nv_group : public nv_compound, public cloneable
 	nv_u16 m_size;
 	nv_magic m_magic;
 	nv_version m_version;
-	int m_type;
+	int m_type = type_unknown;
 
 	static std::map<nv_magic, sp> s_registry;
 
+};
+
+class nv_group_generic : public nv_group
+{
+	public:
+	virtual nv_group_generic* clone() const override
+	{ return new nv_group_generic(*this); }
 };
 
 /*

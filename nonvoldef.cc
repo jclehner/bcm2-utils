@@ -2,12 +2,18 @@
 using namespace std;
 
 #define NV_VAR(type, name, ...) { name, make_shared<type>(__VA_ARGS__) }
+#define NV_GROUP(group) make_shared<group>()
+#define NV_GROUP_DEF_CTOR_AND_CLONE(type, magic) \
+		type() : nv_group(magic) {} \
+		\
+		type* clone() const \
+		{ return new type(*this); }
 
 namespace bcm2cfg {
 class nv_group_mlog : public nv_group
 {
 	public:
-	nv_group_mlog() : nv_group("MLog", type_dyn) {}
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_mlog, "MLog")
 
 	protected:
 	virtual list definition(int type, int maj, int min) const
@@ -34,7 +40,7 @@ class nv_group_mlog : public nv_group
 class nv_group_cmap : public nv_group
 {
 	public:
-	nv_group_cmap() : nv_group("CMAp", type_dyn) {}
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_cmap, "CMAp")
 
 	protected:
 	virtual list definition(int type, int maj, int min) const
@@ -48,16 +54,70 @@ class nv_group_cmap : public nv_group
 	}
 };
 
+class nv_group_8021 : public nv_group
+{
+	public:
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_8021, "8021");
+
+	protected:
+	virtual list definition(int type, int maj, int min) const
+	{
+		if (type != type_perm) {
+			return {
+				NV_VAR(nv_zstring, "ssid", 33),
+				NV_VAR(nv_data, "data1", 2),
+				NV_VAR(nv_u8, "basic_rates"), // XXX u16?
+				NV_VAR(nv_data, "data2", 0x29),
+				NV_VAR(nv_u16, "beacon_interval"),
+				NV_VAR(nv_u16, "dtim_interval"),
+				NV_VAR(nv_u16, "frag_threshold"),
+				NV_VAR(nv_u16, "rts_threshold"),
+				NV_VAR(nv_data, "data3", 0xe8),
+				NV_VAR(nv_bool, "bool1"),
+				NV_VAR(nv_bool, "bool2"),
+				NV_VAR(nv_bool, "bool3"),
+				NV_VAR(nv_data, "data4", 0x20),
+				NV_VAR(nv_u8, "short_retry_limit"),
+				NV_VAR(nv_u8, "long_retry_limit"),
+				NV_VAR(nv_data, "data5", 0x6),
+				NV_VAR(nv_u16, "tx_power"), // XXX u8?
+				NV_VAR(nv_pstring, "wpa_psk"),
+				NV_VAR(nv_data, "data6", 0x8),
+				NV_VAR(nv_u16, "radius_port"),
+				NV_VAR(nv_data, "data7", 0x9d),
+				NV_VAR(nv_u8, "byte4"), // XXX length?
+				NV_VAR(nv_data, "wps_device_pin", 8),
+				NV_VAR(nv_pstring, "wps_model"),
+				NV_VAR(nv_pstring, "wps_manufacturer"),
+				NV_VAR(nv_pstring, "wps_device_name"),
+				NV_VAR(nv_data, "data8", 4),
+				NV_VAR(nv_u8, "byte5"),
+				NV_VAR(nv_u8, "byte6"),
+				NV_VAR(nv_pstring, "wps_model_num"),
+				NV_VAR(nv_bool, "wps_timeout"),
+				NV_VAR(nv_pstring, "wps_uuid"),
+				NV_VAR(nv_pstring, "wps_board_num"),
+				NV_VAR(nv_u8, "byte7"),
+				NV_VAR(nv_u8, "byte8"), // XXX length?
+				NV_VAR(nv_data, "country", 3),
+				NV_VAR(nv_data, "data9", 0x6),
+				NV_VAR(nv_u8, "pre_network_radar_check"),
+				NV_VAR(nv_u8, "in_network_radar_check")
+			};
+		}
+
+		return nv_group::definition(type, maj, min);
+	}
+};
+
 namespace {
 struct registrar {
 	registrar()
 	{
-#define NV_GROUP(group) make_shared<group>()
 		vector<nv_group::sp> groups = {
 			NV_GROUP(nv_group_cmap),
 			NV_GROUP(nv_group_mlog)
 		};
-#undef NV_GROUP
 
 		for (auto g : groups) {
 			nv_group::registry_add(g);
