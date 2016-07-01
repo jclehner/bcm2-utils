@@ -51,7 +51,7 @@ string data_to_string(const string& data, bool quote)
 	for (size_t i = 0; i < data.size(); ++i) {
 		if (!(i % threshold)) {
 			if (multiline) {
-				ostr << endl << "  ";
+				ostr << endl << "  0x" << to_hex(i, 3) << " = ";
 			}
 		} else {
 			ostr << ':';

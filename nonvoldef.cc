@@ -121,6 +121,29 @@ class nv_group_rg : public nv_group
 	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_rg, "RG..")
 
 	protected:
+	template<int N> class nv_ip_range : public nv_compound
+	{
+		public:
+		nv_ip_range() : nv_compound(false, 0, true) {}
+
+		string type() const
+		{ return "ip" + ::to_string(N) + "_range"; }
+
+		string to_string(bool quote = false) const override
+		{
+			return get("start")->to_string(quote) + "," + get("end")->to_string(quote);
+		}
+
+		protected:
+		virtual list definition() const override
+		{
+			return {
+				NV_VAR(nv_ip<N>, "start"),
+				NV_VAR(nv_ip<N>, "end")
+			};
+		}
+	};
+
 	virtual list definition(int type, int maj, int min) const
 	{
 		return {
@@ -134,8 +157,11 @@ class nv_group_rg : public nv_group
 			NV_VAR(nv_zstring, "dmz_hostname", 256),
 			NV_VAR(nv_mac, "dmz_mac"),
 			NV_VAR(nv_data, "data_3", 7),
-			NV_VAR(nv_unknown, "data_4", 0x8f6),
-			NV_VAR(nv_data, "data_5", 4),
+			NV_VAR(nv_data, "data_4", 0x1ff),
+			NV_VAR(nv_ip_range<4>, "ip_filter.1"),
+			NV_VAR(nv_ip_range<4>, "ip_filter.2"), // XXX and so forth; make this an array
+			NV_VAR(nv_data, "data_5", 0xd7a),
+			NV_VAR(nv_data, "data_6", 4),
 			NV_VAR(nv_u8, "timeserver_count"),
 		};
 	}
@@ -190,7 +216,6 @@ class nv_group_cdp : public nv_group
 				NV_VAR(nv_mac, "mac")
 			};
 		}
-
 	};
 
 	virtual list definition(int type, int maj, int min) const
@@ -206,13 +231,12 @@ class nv_group_cdp : public nv_group
 			NV_VAR(nv_ip4_typed, "router"),
 			NV_VAR(nv_ip4_typed, "dns"),
 			NV_VAR(nv_ip4_typed, "syslog"),
-			NV_VAR(nv_ip4_typed, "ip_1"),
+			NV_VAR(nv_u32, "ttl"),
+			NV_VAR(nv_data, "data_4", 4),
 			NV_VAR(nv_ip4_typed, "ip_2"),
 			NV_VAR(nv_ip4_typed, "ip_3"),
-			NV_VAR(nv_data, "data_4", 2),
-			NV_VAR(nv_lan_addr_entry, "lan_addr_2")
-			// lan addr table format:
-			// <u16 create_time><u16 ?><u16 expire_time><u8 ip_type><data[7] ip><u8 method><pzstring client_id><pzstring hostname><?mac?>...
+			NV_VAR(nv_data, "data_5", 2),
+			NV_VAR(nv_lan_addr_entry, "lan_addr_1"), // XXX make this an array
 		};
 	}
 };

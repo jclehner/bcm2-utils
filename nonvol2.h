@@ -1,5 +1,6 @@
 #ifndef BCM2CFG_NONVOL_H
 #define BCM2CFG_NONVOL_H
+#include <arpa/inet.h>
 #include <iostream>
 #include <vector>
 #include <memory>
@@ -158,21 +159,38 @@ class nv_unknown : public nv_data
 	public:
 	nv_unknown(size_t width) : nv_data(width) {}
 
-	std::string to_string(bool quote) const
+	std::string to_string(bool quote) const override
 	{ return "<" + std::to_string(bytes()) + " bytes>"; }
 };
 
-class nv_ip4 : public nv_data
+template<int N> class nv_ip : public nv_data
 {
+	static_assert(N == 4 || N == 6, "N must be either 4 or 6");
+	static constexpr int AF = (N == 4 ? AF_INET : AF_INET6);
+
 	public:
-	nv_ip4() : nv_data(4) {}
+	nv_ip() : nv_data(N == 4 ? 4 : 16) {}
+
+	std::string type() const override
+	{ return "ip" + std::to_string(N); }
+
+	std::string to_string(bool quote) const override
+	{
+		char buf[32];
+		if (!inet_ntop(AF, m_buf.data(), buf, sizeof(buf)-1)) {
+			return nv_data::to_string(quote);
+		}
+		return buf;
+	}
+
+	bool parse(const std::string& str) override
+	{
+		return inet_pton(AF, str.c_str(), &m_buf[0]) == 1;
+	}
 };
 
-class nv_ip6 : public nv_data
-{
-	public:
-	nv_ip6() : nv_data(16) {}
-};
+class nv_ip4 : public nv_ip<4> {};
+class nv_ip6 : public nv_ip<6> {};
 
 class nv_mac : public nv_data
 {
