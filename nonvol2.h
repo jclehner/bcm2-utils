@@ -42,6 +42,7 @@ class nv_val : public serializable
 	virtual std::string type() const = 0;
 	virtual std::string to_string(bool quote = false) const = 0;
 	virtual bool parse(const std::string& str) = 0;
+	virtual nv_val& parse_checked(const std::string& str) final;
 
 	bool is_set() const
 	{ return m_set; }
@@ -59,7 +60,6 @@ class nv_val : public serializable
 	{ return m_parts; }
 
 	protected:
-	virtual void parse_checked(const std::string& str);
 
 	bool m_set = false;
 	list m_parts;
@@ -173,6 +173,7 @@ class nv_string : public nv_val
 	std::string m_val;
 };
 
+// <string><nul>
 class nv_zstring : public nv_string
 {
 	public:
@@ -185,6 +186,7 @@ class nv_zstring : public nv_string
 	{ return m_width ? m_width : m_val.size() + 1; }
 };
 
+// <len16><string>
 class nv_pstring : public nv_string
 {
 	public:
@@ -198,6 +200,21 @@ class nv_pstring : public nv_string
 
 	virtual size_t bytes() const override
 	{ return 2 + m_val.size(); }
+};
+
+// <len8><string><nul>
+class nv_pzstring : public nv_string
+{
+	public:
+	explicit nv_pzstring(size_t width = 0) : nv_string(width) {}
+
+	virtual std::istream& read(std::istream& is) override;
+	virtual std::ostream& write(std::ostream& os) const override;
+	virtual bool parse(const std::string& str) override
+	{ return str.size() <= 0xfe ? nv_string::parse(str) : false; }
+
+	virtual size_t bytes() const override
+	{ return m_val.empty() ? 1 : 2 + m_val.size(); }
 };
 
 template<class T, class H> class nv_num : public nv_val
@@ -390,6 +407,9 @@ class nv_group : public nv_compound, public cloneable
 	{ return s_registry; }
 
 	virtual nv_group* clone() const override = 0;
+
+	virtual const nv_magic& magic() const
+	{ return m_magic; }
 
 	protected:
 	nv_group(const nv_magic& magic);

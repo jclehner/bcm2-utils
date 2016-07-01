@@ -47,11 +47,15 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	nv_group::sp group;
-	if (nv_group::read(in, group, nv_group::type_dyn) || in.eof()) {
-		print_vars(group->parts());
-		return 0;
-	} else {
-		return 1;
+	in.seekg(0x60);
+
+	while (in.good()) {
+		nv_group::sp group;
+		if (nv_group::read(in, group, nv_group::type_dyn) || in.eof()) {
+			cout << "** " << group->magic().to_string(false) << endl;
+			print_vars(group->parts());
+		}
 	}
+
+	return 0;
 }

@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <set>
 #include "nonvol2.h"
 #include "util.h"
 using namespace std;
@@ -30,7 +31,7 @@ void read_group_header(istream& is, nv_u16& size, nv_magic& magic)
 	if (!size.read(is)) {
 		throw runtime_error("failed to read group size");
 	} else if (size.num() < 6) {
-		throw runtime_error("group size too small to be valid");
+		throw runtime_error("group size " + size.to_string(false) + " too small to be valid");
 	} else if (!magic.read(is)) {
 		throw runtime_error("failed to read group magic");
 	}
@@ -47,11 +48,13 @@ void nv_val::set(const string& name, const string& val)
 	throw runtime_error("requested member '" + name + "' of non-compound type " + type());
 }
 
-void nv_val::parse_checked(const std::string& str)
+nv_val& nv_val::parse_checked(const std::string& str)
 {
 	if (!parse(str)) {
 		throw runtime_error("conversion to " + type() + " failed: '" + str + "'");
 	}
+
+	return *this;
 }
 
 nv_compound::nv_compound(bool partial, size_t width, bool internal) : m_partial(partial), m_width(width)
@@ -78,9 +81,9 @@ nv_val::csp nv_compound::get(const string& name) const
 
 void nv_compound::set(const string& name, const string& val)
 {
-	if (!const_pointer_cast<nv_val>(get(name))->parse(val)) {
-		throw invalid_argument("invalid " + type() + ": '" + val + "'");
-	}
+	int diff = get(name)->bytes();
+	diff -= const_pointer_cast<nv_val>(get(name))->parse_checked(val).bytes();
+	m_bytes += diff;
 }
 
 nv_val::sp nv_compound::find(const string& name) const
@@ -106,19 +109,31 @@ istream& nv_compound::read(istream& is)
 {
 	clear();
 
-	for (auto v : m_parts) {
-		if ((m_width && m_bytes + v.val->bytes() >= m_width) || !v.val->read(is)) {
-			if (!m_partial) {
-				throw runtime_error("pos " + to_string(m_bytes) + ": failed to read " + desc(v));
+	std::set<string> names;
+
+	for (auto& v : m_parts) {
+		if (!names.insert(v.name).second) {
+			throw runtime_error("redefinition of member " + v.name);
+		}
+
+		try {
+			if ((m_width && m_bytes + v.val->bytes() >= m_width) || !v.val->read(is)) {
+				if (!m_partial) {
+					throw runtime_error("pos " + to_string(m_bytes) + ": failed to read " + desc(v));
+				}
+				break;
+			} else {
+				// check again, because a successful read may have changed the
+				// byte count (e.g. an nv_pstring)
+				if ((m_width && m_bytes + v.val->bytes() >= m_width)) {
+					throw runtime_error("pos " + to_string(m_bytes) + ": variable ends outside of group: " + desc(v));
+				}
+				m_bytes += v.val->bytes();
+				m_set = true;
+				logger::d() << "read " + desc(v) << " = " << v.val->to_string(true) << endl;
 			}
-			break;
-		} else {
-			// check again, because a successful read may have changed the
-			// byte count (e.g. an nv_pstring)
-			if ((m_width && m_bytes + v.val->bytes() >= m_width)) {
-				throw runtime_error("pos " + to_string(m_bytes) + ": variable ends outside of group: " + desc(v));
-			}
-			m_bytes += v.val->bytes();
+		} catch (const exception& e) {
+			throw runtime_error("failed at pos " + std::to_string(m_bytes) + " while reading " + desc(v) + ": " + e.what());
 		}
 	}
 
@@ -207,20 +222,19 @@ istream& nv_zstring::read(istream& is)
 
 	if (m_width) {
 		val.resize(m_width);
-		if (!is.read(&val[0], val.size()) || val.back() != '\0') {
+		if (!is.read(&val[0], val.size())) {
 			return is;
 		}
 		// reduce the string to its actual size
 		val = string(val.c_str());
+
 	} else {
 		if (!getline(is, val, '\0')) {
 			return is;
 		}
 	}
 
-	if (!parse(val)) {
-		is.setstate(ios::failbit);
-	}
+	parse_checked(val);
 
 	return is;
 }
@@ -239,10 +253,14 @@ istream& nv_pstring::read(istream& is)
 		return is;
 	}
 
-	string val(ntohs(len), '\0');
-	if (!is.read(&val[0], val.size()) || !parse(val)) {
-		is.setstate(ios::failbit);
+	len = ntohs(len);
+
+	string val(len, '\0');
+	if (!is.read(&val[0], val.size())) {
+		throw runtime_error("failed to read " + std::to_string(len) + " bytes");
 	}
+
+	parse_checked(val);
 
 	return is;
 }
@@ -255,6 +273,35 @@ ostream& nv_pstring::write(ostream& os) const
 	}
 
 	return os.write(m_val.data(), m_val.size());
+}
+
+istream& nv_pzstring::read(istream& is)
+{
+	uint8_t len;
+	if (!is.read(reinterpret_cast<char*>(&len), 1)) {
+		return is;
+	}
+
+	string val(len, '\0');
+	if (!is.read(&val[0], val.size())) {
+		throw runtime_error("failed to read " + std::to_string(len) + " bytes");
+	} else if (val.back() != '\0') {
+		throw runtime_error("expected terminating null byte");
+	}
+
+	parse_checked(val);
+
+	return is;
+}
+
+ostream& nv_pzstring::write(ostream& os) const
+{
+	uint8_t len = m_val.size() & 0xfe;
+	if (!(os << len)) {
+		return os;
+	}
+
+	return os.write(m_val.c_str(), m_val.size() + 1);
 }
 
 bool nv_bool::parse(const string& str)
@@ -320,9 +367,6 @@ nv_group::nv_group(const nv_magic& magic)
 
 istream& nv_group::read(istream& is)
 {
-#if 0
-	read_group_header(is, m_size, m_magic);
-#endif
 	if (is_versioned() && !m_version.read(is)) {
 		throw runtime_error("failed to read group version");
 	}
@@ -336,10 +380,14 @@ istream& nv_group::read(istream& is)
 				throw runtime_error("failed to read remaining " + std::to_string(extra->bytes()) + " bytes");
 			}
 
+			cout << "extra: " << extra->bytes() << " b" << endl;
+
 			m_parts.push_back(named("extra", extra));
-			m_bytes = m_size.num();
+			m_bytes += extra->bytes();
 		}
 	}
+
+	cout << "m_bytes: " << m_bytes << endl;
 
 	return is;
 }
