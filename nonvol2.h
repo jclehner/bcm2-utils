@@ -163,6 +163,24 @@ class nv_unknown : public nv_data
 	{ return "<" + std::to_string(bytes()) + " bytes>"; }
 };
 
+class nv_ip4 : public nv_data
+{
+	public:
+	nv_ip4() : nv_data(4) {}
+};
+
+class nv_ip6 : public nv_data
+{
+	public:
+	nv_ip6() : nv_data(16) {}
+};
+
+class nv_mac : public nv_data
+{
+	public:
+	nv_mac() : nv_data(6) {}
+};
+
 class nv_string : public nv_val
 {
 	public:

@@ -71,8 +71,12 @@ int main(int argc, char** argv)
 	while (in.good()) {
 		nv_group::sp group;
 		if (nv_group::read(in, group, type) || in.eof()) {
-			//print_vars(group->parts());
-			//cout << endl;
+			if (!group) {
+				break;
+			}
+
+			print_vars(group->parts());
+			cout << endl;
 		} else {
 			return 1;
 		}
