@@ -72,12 +72,15 @@ string data_to_string(const string& data, unsigned level, bool pretty)
 	return ostr.str();
 }
 
-string compound_to_string(const nv_compound::list& parts, unsigned level, bool pretty,
+string compound_to_string(const nv_compound& c, unsigned level, bool pretty,
 		const nv_array_base::is_end_func& is_end = nullptr)
 {
 	string str = "{";
+	size_t i = 0;
 
-	for (auto v : parts) {
+	auto parts = c.parts();
+	for (; i < parts.size(); ++i) {
+		auto v = parts[i];
 		if (is_end && is_end(v.val)) {
 			break;
 		}
@@ -85,8 +88,27 @@ string compound_to_string(const nv_compound::list& parts, unsigned level, bool p
 		str += "\n" + pad(level) + v.name + " = " + v.val->to_string(level + 1, pretty);
 	}
 
+	if (i != parts.size() && is_end) {
+		str += "\n" + pad(level) + std::to_string(i) + ".." + (std::to_string(parts.size() - 1) + " = <empty>");
+	}
+
 	return str + "\n" + pad(level - 1) + "}";
 
+}
+
+bool is_valid_identifier(const std::string& name)
+{
+	if (name.empty()) {
+		return false;
+	}
+
+	for (char c : name) {
+		if (!isalnum(c) && c != '-' && c != '_') {
+			return false;
+		}
+	}
+
+	return true;
 }
 }
 
@@ -166,10 +188,20 @@ istream& nv_compound::read(istream& is)
 	clear();
 
 	std::set<string> names;
+	unsigned unk = 0;
 
 	for (auto& v : m_parts) {
+		if (v.name.empty()) {
+			v.name = "_unk_" + std::to_string(++unk);
+		}
+
 		if (!names.insert(v.name).second) {
 			throw runtime_error("redefinition of member " + v.name);
+		} else if (!is_valid_identifier(v.name)) {
+			throw runtime_error("invalid identifier name " + v.name);
+		} else if (v.val->is_disabled()) {
+			logger::d() << "skipping disabled " << desc(v) << endl;
+			continue;
 		}
 
 		try {
@@ -225,12 +257,12 @@ std::string nv_compound::to_string(unsigned level, bool pretty) const
 		return "<compound type " + type() + ">";
 	}
 
-	return compound_to_string(m_parts, level, pretty);
+	return compound_to_string(*this, level, pretty);
 }
 
 std::string nv_array_base::to_string(unsigned level, bool pretty) const
 {
-	return compound_to_string(m_parts, level, pretty, m_is_end);
+	return compound_to_string(*this, level, pretty, m_is_end);
 }
 
 nv_data::nv_data(size_t width)
@@ -351,7 +383,7 @@ istream& nv_p8string_base::read(istream& is)
 	if (!is.read(&val[0], val.size())) {
 		throw runtime_error("failed to read " + std::to_string(len) + " bytes");
 	} else if (m_nul && val.back() != '\0') {
-		throw runtime_error("expected terminating null byte");
+		throw runtime_error("expected terminating null byte in '" + val + "'");
 	}
 
 	if (m_nul) {
@@ -449,13 +481,13 @@ istream& nv_group::read(istream& is)
 		throw runtime_error("failed to read group version");
 	}
 
-	cout << "** " << m_magic.to_str() << " " << m_size.num() << " b" << endl;
+	cout << "** " << m_magic.to_str() << " " << m_size.num() << " b, version 0x" << to_hex(m_version.num()) << endl;
 
 	if (nv_compound::read(is)) {
 		//m_bytes += is_versioned() ? 8 : 6;
 
 		if (m_bytes < m_size.num()) {
-			sp<nv_val> extra = make_shared<nv_data>(m_size.num() - m_bytes);
+			sp<nv_val> extra = make_shared<nv_unknown>(m_size.num() - m_bytes);
 			if (!extra->read(is)) {
 				throw runtime_error("failed to read remaining " + std::to_string(extra->bytes()) + " bytes");
 			}
@@ -487,7 +519,12 @@ ostream& nv_group::write(ostream& os) const
 	return nv_compound::write(os);
 }
 
-nv_val::list nv_group::definition(int type, int maj, int min) const
+nv_val::list nv_group::definition() const
+{
+	return definition(m_type, m_version);
+}
+
+nv_val::list nv_group::definition(int type, const nv_version& ver) const
 {
 	uint16_t size = m_size.num() - (is_versioned() ? 8 : 6);
 	if (size) {

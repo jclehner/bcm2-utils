@@ -41,7 +41,7 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	logger::loglevel(logger::verbose);
+	logger::loglevel(logger::debug);
 
 	ifstream in(argv[2]);
 	if (!in.good()) {
@@ -75,6 +75,7 @@ int main(int argc, char** argv)
 				break;
 			}
 
+			cout << group->magic() << " v" << group->version() << endl;
 			print_vars(group->parts());
 			cout << endl;
 		} else {

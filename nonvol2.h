@@ -2,6 +2,7 @@
 #define BCM2CFG_NONVOL_H
 #include <arpa/inet.h>
 #include <iostream>
+#include <limits>
 #include <vector>
 #include <memory>
 #include <string>
@@ -26,11 +27,16 @@ struct cloneable
 	virtual cloneable* clone() const = 0;
 };
 
-template<class T> struct nv_type_name
+template<class T> struct nv_type
 {
-	static std::string get()
+	static std::string name()
 	{
 		return T().type();
+	}
+
+	static size_t bytes()
+	{
+		return T().bytes();
 	}
 };
 
@@ -77,7 +83,7 @@ class nv_val : public serializable
 		csp<nv_val> val = get(name);
 		csp<T> ret = std::dynamic_pointer_cast<const T>(val);
 		if (!ret) {
-			throw std::invalid_argument("failed cast " + val->type() + " -> " + nv_type_name<T>::get());
+			throw std::invalid_argument("failed cast " + val->type() + " -> " + nv_type<T>::name());
 		}
 
 		return ret;
@@ -88,8 +94,16 @@ class nv_val : public serializable
 	virtual const list& parts() const
 	{ return m_parts; }
 
-	protected:
+	virtual void disable(bool disable)
+	{ m_disabled = disable; }
+	virtual bool is_disabled() const
+	{ return m_disabled; }
 
+	friend std::ostream& operator<<(std::ostream& os, const nv_val& val)
+	{ return (os << val.to_pretty()); }
+
+	protected:
+	bool m_disabled = false;
 	bool m_set = false;
 	list m_parts;
 };
@@ -120,6 +134,7 @@ class nv_compound : public nv_val
 	protected:
 	nv_compound(bool partial)
 	: nv_compound(partial, 0, true) {}
+	nv_compound(bool partial, size_t width, bool internal);
 	// like get, but shouldn't throw
 	virtual sp<nv_val> find(const std::string& name) const;
 	virtual list definition() const = 0;
@@ -129,9 +144,24 @@ class nv_compound : public nv_val
 	size_t m_width = 0;
 	// actual size
 	size_t m_bytes = 0;
+};
+
+class nv_compound_def final : public nv_compound
+{
+	public:
+	nv_compound_def(const std::string& name, const nv_compound::list& def, bool partial = false)
+	: nv_compound(partial), m_name(name), m_def(def) {}
+
+	virtual std::string type() const override
+	{ return m_name; }
+
+	protected:
+	virtual list definition() const override
+	{ return m_def; }
 
 	private:
-	nv_compound(bool partial, size_t width, bool internal);
+	std::string m_name;
+	nv_compound::list m_def;
 };
 
 class nv_array_base : public nv_compound
@@ -144,7 +174,7 @@ class nv_array_base : public nv_compound
 	virtual std::string to_string(unsigned level, bool pretty) const override;
 
 	protected:
-	nv_array_base() : nv_compound(false), m_is_end(nullptr) {}
+	nv_array_base(size_t width) : nv_compound(false, width, true), m_is_end(nullptr) {}
 	is_end_func m_is_end;
 };
 
@@ -152,7 +182,7 @@ template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 {
 	public:
 	nv_array_generic(I n = 0)
-	: m_memb(), m_count(n)
+	: nv_array_base(n * nv_type<T>::bytes()), m_memb(), m_count(n)
 	{
 		if (!L && !n) {
 			throw std::invalid_argument("size must not be 0");
@@ -409,6 +439,8 @@ class nv_p8zstring : public nv_p8string_base
 template<class T, class H> class nv_num : public nv_val
 {
 	public:
+	typedef T num_type;
+
 	explicit nv_num(bool hex = false) : m_val(0), m_hex(hex) {}
 	nv_num(T val, bool hex) : m_val(val), m_hex(hex) { m_set = true; }
 
@@ -501,6 +533,177 @@ class nv_bool : public nv_u8
 	virtual bool parse(const std::string& str) override;
 };
 
+template<typename T> class nv_enum_bitmask : public T
+{
+	public:
+	typedef typename T::num_type num_type;
+	typedef typename std::map<num_type, std::string> valmap;
+	typedef std::vector<std::string> valvec;
+
+	virtual ~nv_enum_bitmask() {}
+
+	protected:
+	nv_enum_bitmask(const std::string& name, const valvec& vals) : nv_enum_bitmask(name, vals.size()) { m_vec = vals; }
+	nv_enum_bitmask(const std::string& name, const valmap& vals) : nv_enum_bitmask(name, vals.size()) { m_map = vals; }
+
+	bool str_to_num(const std::string& str, num_type& num) const
+	{
+		for (num_type i = 0; i < str.size(); ++i) {
+			if (m_vec[i] == str) {
+				num = i;
+				return true;
+			}
+		}
+
+		for (auto v : m_map) {
+			if (v.second == str) {
+				num = v.first;
+				return true;
+			}
+		}
+
+		try {
+			num = bcm2dump::lexical_cast<num_type>(str, 0);
+			return true;
+		} catch (const bcm2dump::bad_lexical_cast& e) {}
+
+		return false;
+	}
+
+	std::string num_to_str(const num_type& num, bool bitmask, bool pretty) const
+	{
+		std::string str;
+
+		if (!m_map.empty()) {
+			auto i = m_map.find(bitmask ? (1 << num) : num);
+			if (i != m_map.end()) {
+				str = i->second;
+			}
+		} else if (!m_vec.empty() && num < m_vec.size()) {
+			str = m_vec[num];
+		}
+
+		return str;
+	}
+
+	std::string m_name;
+
+	private:
+	nv_enum_bitmask(const std::string& name, size_t n)
+	: m_name(name)
+	{
+		if (n > std::numeric_limits<num_type>::max()) {
+			throw std::invalid_argument("number of enum elements exceeds maximum for " + nv_type<T>::name());
+		}
+	}
+
+	valmap m_map;
+	valvec m_vec;
+};
+
+template<class T> class nv_enum : public nv_enum_bitmask<T>
+{
+	typedef nv_enum_bitmask<T> super;
+
+	public:
+	nv_enum(const std::string& name, const typename super::valmap& vals)
+	: super(name, vals) {}
+	nv_enum(const std::string& name, const typename super::valvec& vals)
+	: super(name, vals) {}
+
+	virtual ~nv_enum() {}
+
+	virtual std::string type() const override
+	{
+		std::string name = super::m_name;
+		return name.empty() ? "enum" : name;
+	}
+
+	virtual std::string to_string(unsigned, bool pretty) const override
+	{
+		std::string str = super::num_to_str(T::m_val, false, pretty);
+		return str.empty() ? type() + "(" + T::to_string(0, pretty) + ")" : str;
+	}
+
+	virtual bool parse(const std::string& str) override
+	{
+		return super::str_to_num(str, T::m_val);
+	}
+};
+
+template<class T> class nv_bitmask : public nv_enum_bitmask<T>
+{
+	typedef typename nv_enum_bitmask<T>::num_type num_type;
+	typedef nv_enum_bitmask<T> super;
+
+	public:
+	nv_bitmask()
+	: nv_bitmask("", typename super::valvec {}) {}
+	nv_bitmask(const typename super::valmap& vals)
+	: super("", vals) {}
+	nv_bitmask(const typename super::valvec& vals)
+	: super("", vals) {}
+	nv_bitmask(const std::string& name, const typename super::valmap& vals)
+	: super(name, vals) {}
+	nv_bitmask(const std::string& name, const typename super::valvec& vals)
+	: super(name, vals) {}
+
+	virtual ~nv_bitmask() {}
+
+	virtual std::string type() const override
+	{
+		std::string name = super::m_name;
+		return name.empty() ? "bitmask" : name;
+	}
+
+	virtual std::string to_string(unsigned, bool pretty) const override
+	{
+		if (T::m_val == 0) {
+			return "0x" + bcm2dump::to_hex(T::m_val);
+		}
+
+		std::string ret;
+
+		for (size_t i = 0; i != sizeof(num_type) * 8; ++i) {
+			num_type flag = 1 << i;
+			if (T::m_val & flag) {
+				if (!ret.empty()) {
+					ret += pretty ? " | " : "|";
+				}
+				std::string str = super::num_to_str(i, true, pretty);
+				ret += str.empty() ? "0x" + bcm2dump::to_hex(flag) : str;
+			}
+		}
+
+		return ret;
+	}
+
+	virtual bool parse(const std::string& str) override
+	{
+		if (!str.empty()) {
+			num_type n;
+			if (str[0] == '+' || str[0] == '-') {
+				if (!super::str_to_num(str.substr(1), n)) {
+					return false;
+				}
+
+				if (str[0] == '+') {
+					T::m_val |= n;
+				} else {
+					T::m_val &= ~n;
+				}
+				return true;
+			} else if(super::str_to_num(str, n)) {
+				T::m_val = n;
+				return true;
+			}
+		}
+
+		return false;
+	}
+};
+
+
 class nv_magic : public nv_data
 {
 	public:
@@ -529,11 +732,21 @@ class nv_magic : public nv_data
 class nv_version : public nv_u16
 {
 	public:
+	nv_version() {}
+	nv_version(uint8_t maj, uint8_t min)
+	{ m_val = maj << 8 | min; }
+
 	virtual std::string type() const override
 	{ return "version"; }
 
 	virtual std::string to_string(unsigned, bool) const override
 	{ return std::to_string(m_val >> 8) + "." + std::to_string(m_val & 0xff); }
+
+	bool operator==(const nv_version& other)
+	{ return m_val == other.m_val; }
+
+	bool operator<(const nv_version& other)
+	{ return m_val < other.m_val; }
 
 	uint8_t major() const
 	{ return m_val >> 8; }
@@ -577,13 +790,16 @@ class nv_group : public nv_compound, public cloneable
 	virtual const nv_magic& magic() const
 	{ return m_magic; }
 
+	virtual const nv_version& version() const
+	{ return m_version; }
+
 	bool init(bool force) override;
 
 	protected:
+
 	nv_group(const nv_magic& magic);
-	virtual list definition() const override final
-	{ return definition(m_type, m_version.major(), m_version.minor()); }
-	virtual list definition(int type, int maj, int min) const;
+	virtual list definition() const override final;
+	virtual list definition(int type, const nv_version& ver) const;
 	virtual std::istream& read(std::istream& is) override;
 
 	nv_u16 m_size;
@@ -646,7 +862,8 @@ class nv_group : public serializable
 */
 
 // nv_vals: bool, nv_u8, nv_u16, nv_u32, nv_u64, ip4, ip6, mac, 
-
 }
+
+template struct bcm2dump_def_comparison_operators<bcm2cfg::nv_version>;
 
 #endif

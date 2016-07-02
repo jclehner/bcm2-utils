@@ -161,7 +161,6 @@ template<> struct bswapper<uint32_t>
 template<typename T> using sp = std::shared_ptr<T>;
 template<typename T> using csp = std::shared_ptr<const T>;
 
-
 class scoped_ios_exceptions
 {
 	public:
@@ -260,5 +259,20 @@ class getaddrinfo_category : public std::error_category
 	virtual std::string message(int condition) const override;
 };
 }
+
+template<class T> struct bcm2dump_def_comparison_operators
+{
+	friend bool operator!=(const T& lhs, const T& rhs)
+	{ return !(lhs == rhs); }
+
+	friend bool operator <=(const T& lhs, const T& rhs)
+	{ return lhs < rhs || lhs == rhs; }
+
+	friend bool operator>(const T& lhs, const T& rhs)
+	{ return !(lhs <= rhs); }
+
+	friend bool operator>=(const T& lhs, const T& rhs)
+	{ return !(lhs < rhs); }
+};
 
 #endif
