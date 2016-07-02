@@ -125,6 +125,39 @@ inline unsigned elapsed_millis(std::clock_t start, std::clock_t now = std::clock
 	return 1000 * (now - start) / CLOCKS_PER_SEC;
 }
 
+template<typename T> struct bswapper
+{
+	static T ntoh(T n);
+	static T hton(T n);
+};
+
+template<> struct bswapper<uint8_t>
+{
+	static uint8_t ntoh(uint8_t n)
+	{ return n; }
+
+	static uint8_t hton(uint8_t n)
+	{ return n; }
+};
+
+template<> struct bswapper<uint16_t>
+{
+	static uint16_t ntoh(uint16_t n)
+	{ return ntohs(n); }
+
+	static uint16_t hton(uint16_t n)
+	{ return htons(n); }
+};
+
+template<> struct bswapper<uint32_t>
+{
+	static uint32_t ntoh(uint32_t n)
+	{ return ntohl(n); }
+
+	static uint32_t hton(uint32_t n)
+	{ return htonl(n); }
+};
+
 class scoped_ios_exceptions
 {
 	public:

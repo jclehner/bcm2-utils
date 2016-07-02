@@ -98,34 +98,71 @@ class nv_compound : public nv_val
 	virtual list definition() const = 0;
 
 	bool m_partial = false;
+	// expected final size
 	size_t m_width = 0;
+	// actual size
 	size_t m_bytes = 0;
 };
 
-
-/*
-template<class T> class nv_val_base : public nv_val
+template<class T, class I, bool S> class nv_array_base : public nv_compound
 {
 	public:
-	typedef T value_type;
+	nv_array_base(I n) : nv_array_base(n, false) {}
 
-	nv_val_base(const T& def) : m_set(false), m_val(def) {}
-	nv_val_base() : m_set(false) {}
-
-	virtual const T& get() const
-	{ return m_val; }
-
-	virtual void set(const T& t)
+	virtual std::istream& read(std::istream& is) override
 	{
-		m_val = t;
-		m_set = true;
+		if (S) {
+			if (!m_count && !is.read(reinterpret_cast<char*>(&m_count), sizeof(T))) {
+				return is;
+			}
+			m_count = bcm2dump::bswapper<T>::ntoh(m_count);
+		}
+
+		return nv_compound::read(is);
+	}
+
+	virtual std::ostream& write(std::ostream& os) const override
+	{
+		if (S) {
+			T count = bcm2dump::bswapper<T>::hton(m_count);
+			if (!os.write(reinterpret_cast<const char*>(&count), sizeof(T))) {
+				return os;
+			}
+		}
+
+		return nv_compound::write(os);
 	}
 
 	protected:
-	bool m_set;
-	T m_val;
+	nv_array_base(I n, bool allow_zero) : nv_compound(false, 0, true), m_count(n)
+	{
+		if (!n && !allow_zero) {
+			throw std::invalid_argument("size must not be 0");
+		}
+
+		if (n) {
+			m_width = n * std::make_shared<T>().bytes();
+		}
+	}
+
+	virtual list definition() const override
+	{
+		list ret;
+
+		for (I i = 0; i < m_count; ++i) {
+			ret.push_back({ std::to_string(i), std::make_shared<T>()});
+		}
+
+		return ret;
+	}
+
+	I m_count = 0;
 };
-*/
+
+template<typename T> using nv_array = nv_array_base<T, size_t, false>;
+template<typename T, typename I> using nv_plist = nv_array_base<T, I, true>;
+template<typename T> using nv_p8list = nv_plist<T, uint8_t>;
+template<typename T> using nv_p16list = nv_plist<T, uint8_t>;
 
 class nv_data : public nv_val
 {
@@ -314,7 +351,7 @@ template<class T, class H> class nv_num : public nv_val
 	virtual std::istream& read(std::istream& is) override
 	{
 		if (is.read(reinterpret_cast<char*>(&m_val), sizeof(T))) {
-			m_val = H::ntoh(m_val);
+			m_val = bcm2dump::bswapper<T>::ntoh(m_val);
 			m_set = true;
 		}
 
@@ -323,7 +360,7 @@ template<class T, class H> class nv_num : public nv_val
 
 	virtual std::ostream& write(std::ostream& os) const override
 	{
-		T swapped = H::hton(m_val);
+		T swapped = bcm2dump::bswapper<T>::hton(m_val);
 		return os.write(reinterpret_cast<const char*>(&swapped), sizeof(T));
 	}
 
@@ -344,38 +381,20 @@ template<class T, class H> class nv_num : public nv_val
 namespace detail {
 struct nv_u8_h
 {
-	static constexpr uint8_t hton(uint8_t val)
-	{ return val; }
-
-	static constexpr uint8_t ntoh(uint8_t val)
-	{ return val; }
-
 	static std::string type()
 	{ return "u8"; }
 };
 
 struct nv_u16_h
 {
-	static uint16_t hton(uint16_t val)
-	{ return htons(val); }
-
-	static uint16_t ntoh(uint16_t val)
-	{ return ntohs(val); }
-
 	static std::string type()
 	{ return "u16"; }
 };
 
 struct nv_u32_h
 {
-	static uint32_t hton(uint32_t val)
-	{ return htonl(val); }
-
-	static uint32_t ntoh(uint32_t val)
-	{ return ntohl(val); }
-
 	static std::string type()
-	{ return "u16"; }
+	{ return "u32"; }
 };
 }
 
