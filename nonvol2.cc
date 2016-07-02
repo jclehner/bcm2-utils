@@ -90,7 +90,7 @@ string compound_to_string(const nv_compound::list& parts, unsigned level, bool p
 }
 }
 
-nv_val::csp nv_val::get(const string& name) const
+csp<nv_val> nv_val::get(const string& name) const
 {
 	throw runtime_error("requested member '" + name + "' of non-compound type " + type());
 }
@@ -121,7 +121,7 @@ bool nv_compound::parse(const string& str)
 	throw invalid_argument("cannot directly set value of compound type " + type());
 }
 
-nv_val::csp nv_compound::get(const string& name) const
+csp<nv_val> nv_compound::get(const string& name) const
 {
 	auto val = find(name);
 	if (!val) {
@@ -138,7 +138,7 @@ void nv_compound::set(const string& name, const string& val)
 	m_bytes += diff;
 }
 
-nv_val::sp nv_compound::find(const string& name) const
+sp<nv_val> nv_compound::find(const string& name) const
 {
 	for (auto c : m_parts) {
 		if (c.name == name) {
@@ -246,7 +246,7 @@ string nv_data::to_string(unsigned level, bool pretty) const
 	return data_to_string(m_buf, level, pretty);
 }
 
-nv_val::csp nv_data::get(const string& name) const
+csp<nv_val> nv_data::get(const string& name) const
 {
 	return make_shared<nv_u8>(m_buf[to_index(name, *this)]);
 }
@@ -455,7 +455,7 @@ istream& nv_group::read(istream& is)
 		//m_bytes += is_versioned() ? 8 : 6;
 
 		if (m_bytes < m_size.num()) {
-			nv_val::sp extra = make_shared<nv_data>(m_size.num() - m_bytes);
+			sp<nv_val> extra = make_shared<nv_data>(m_size.num() - m_bytes);
 			if (!extra->read(is)) {
 				throw runtime_error("failed to read remaining " + std::to_string(extra->bytes()) + " bytes");
 			}
@@ -497,14 +497,14 @@ nv_val::list nv_group::definition(int type, int maj, int min) const
 	return {};
 }
 
-map<nv_magic, nv_group::sp> nv_group::s_registry;
+map<nv_magic, csp<nv_group>> nv_group::s_registry;
 
-void nv_group::registry_add(const sp& group)
+void nv_group::registry_add(const csp<nv_group>& group)
 {
 	s_registry[group->m_magic] = group;
 }
 
-istream& nv_group::read(istream& is, sp& group, int type)
+istream& nv_group::read(istream& is, sp<nv_group>& group, int type)
 {
 	nv_u16 size;
 	nv_magic magic;

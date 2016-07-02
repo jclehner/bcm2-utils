@@ -69,7 +69,7 @@ int main(int argc, char** argv)
 
 
 	while (in.good()) {
-		nv_group::sp group;
+		sp<nv_group> group;
 		if (nv_group::read(in, group, type) || in.eof()) {
 			if (!group) {
 				break;

@@ -8,6 +8,9 @@
 #include <map>
 #include "util.h"
 
+using bcm2dump::sp;
+using bcm2dump::csp;
+
 namespace bcm2cfg {
 
 struct serializable
@@ -23,18 +26,24 @@ struct cloneable
 	virtual cloneable* clone() const = 0;
 };
 
+template<class T> struct nv_type_name
+{
+	static std::string get()
+	{
+		return T().type();
+	}
+};
+
 class nv_val : public serializable
 {
 	public:
-	typedef std::shared_ptr<nv_val> sp;
-	typedef std::shared_ptr<const nv_val> csp;
 	struct named
 	{
-		named(const std::string& name, const sp& val)
+		named(const std::string& name, const sp<nv_val>& val)
 		: name(name), val(val) {}
 
 		std::string name;
-		sp val;
+		sp<nv_val> val;
 	};
 	typedef std::vector<named> list;
 
@@ -61,7 +70,19 @@ class nv_val : public serializable
 	virtual size_t bytes() const = 0;
 
 	// for compound types, provide a facility to get/set only a part
-	virtual csp get(const std::string& name) const;
+	virtual csp<nv_val> get(const std::string& name) const;
+
+	template<class T> csp<T> get_as(const std::string& name) const
+	{
+		csp<nv_val> val = get(name);
+		csp<T> ret = std::dynamic_pointer_cast<const T>(val);
+		if (!ret) {
+			throw std::invalid_argument("failed cast " + val->type() + " -> " + nv_type_name<T>::get());
+		}
+
+		return ret;
+	}
+
 	virtual void set(const std::string& name, const std::string& val);
 
 	virtual const list& parts() const
@@ -83,7 +104,7 @@ class nv_compound : public nv_val
 
 	virtual bool parse(const std::string& str) override;
 
-	virtual csp get(const std::string& name) const override;
+	virtual csp<nv_val> get(const std::string& name) const override;
 	virtual void set(const std::string& name, const std::string& val) override;
 
 	virtual bool init(bool force = false);
@@ -100,7 +121,7 @@ class nv_compound : public nv_val
 	nv_compound(bool partial)
 	: nv_compound(partial, 0, true) {}
 	// like get, but shouldn't throw
-	virtual sp find(const std::string& name) const;
+	virtual sp<nv_val> find(const std::string& name) const;
 	virtual list definition() const = 0;
 
 	bool m_partial = false;
@@ -118,7 +139,7 @@ class nv_array_base : public nv_compound
 	public:
 	// used by to_string to prematurely stop printing elements
 	// in a fixed-size list
-	typedef std::function<bool(const nv_val::sp&)> is_end_func;
+	typedef std::function<bool(const csp<nv_val>&)> is_end_func;
 
 	virtual std::string to_string(unsigned level, bool pretty) const override;
 
@@ -130,13 +151,14 @@ class nv_array_base : public nv_compound
 template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 {
 	public:
-	nv_array_generic(I n)
+	nv_array_generic(I n = 0)
 	: m_memb(), m_count(n)
 	{
 		if (!L && !n) {
 			throw std::invalid_argument("size must not be 0");
 		}
 	}
+
 	virtual ~nv_array_generic() {}
 
 	virtual std::string type() const override
@@ -189,25 +211,33 @@ template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 	I m_count = 0;
 };
 
-template<typename T> using nv_array = nv_array_generic<T, size_t, false>;
-
-template<typename T, typename I> class nv_plist : public nv_array_generic<T, I, true>
+template<typename T> class nv_array : public nv_array_generic<T, size_t, false>
 {
 	public:
+	typedef std::function<bool(const csp<T>&)> is_end_func;
+
 	// arguments to is_end shall only be of type T, so an unchecked
 	// dynamic_cast can be safely used
-	nv_plist(const std::function<bool(const std::shared_ptr<const T>&)>& is_end = nullptr)
-	: nv_array_generic<T, I, true>(0)
+	nv_array(size_t n, const is_end_func& is_end = nullptr)
+	: nv_array_generic<T, size_t, false>(n), m_is_end(is_end)
 	{
-		if (is_end) {
-			nv_array_base::m_is_end = [&is_end] (const nv_val::csp& val) {
-				return is_end(std::dynamic_pointer_cast<const T>(val));
+		if (!n) {
+			throw std::invalid_argument("array size must not be 0");
+		}
+
+		if (m_is_end) {
+			nv_array_base::m_is_end = [this] (const csp<nv_val>& val) {
+				return m_is_end(std::dynamic_pointer_cast<const T>(val));
 			};
 		}
 	}
-	virtual ~nv_plist() {}
+	virtual ~nv_array() {}
+
+	private:
+	is_end_func m_is_end;
 };
 
+template<typename T, typename I> using nv_plist = nv_array_generic<T, I, true>;
 template<typename T> using nv_p8list = nv_plist<T, uint8_t>;
 template<typename T> using nv_p16list = nv_plist<T, uint8_t>;
 
@@ -230,7 +260,7 @@ class nv_data : public nv_val
 	virtual size_t bytes() const override
 	{ return m_buf.size(); }
 
-	virtual csp get(const std::string& name) const override;
+	virtual csp<nv_val> get(const std::string& name) const override;
 	virtual void set(const std::string& name, const std::string& val) override;
 
 	protected:
@@ -515,8 +545,6 @@ class nv_version : public nv_u16
 class nv_group : public nv_compound, public cloneable
 {
 	public:
-	typedef std::shared_ptr<nv_group> sp;
-
 	static constexpr int type_unknown = 0;
 	static constexpr int type_perm = 1;
 	static constexpr int type_dyn = 2;
@@ -539,8 +567,8 @@ class nv_group : public nv_compound, public cloneable
 
 	virtual std::ostream& write(std::ostream& os) const override;
 
-	static std::istream& read(std::istream& is, sp& group, int type);
-	static void registry_add(const sp& group);
+	static std::istream& read(std::istream& is, sp<nv_group>& group, int type);
+	static void registry_add(const csp<nv_group>& group);
 	static const auto& registry()
 	{ return s_registry; }
 
@@ -563,7 +591,7 @@ class nv_group : public nv_compound, public cloneable
 	nv_version m_version;
 	int m_type = type_unknown;
 
-	static std::map<nv_magic, sp> s_registry;
+	static std::map<nv_magic, csp<nv_group>> s_registry;
 
 };
 

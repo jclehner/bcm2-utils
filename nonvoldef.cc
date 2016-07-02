@@ -199,8 +199,16 @@ class nv_group_rg : public nv_group
 			NV_VAR(nv_mac, "dmz_mac"),
 			NV_VAR(nv_data, "data_3", 7),
 			NV_VAR(nv_data, "data_4", 0x1ff),
+#if 1
+			NV_VAR(nv_array<nv_ip_range<4>>, "ip_filters", 10, [] (const csp<nv_ip_range<4>>& range) {
+				return range->get("start")->to_str() == "0.0.0.0" && range->get("end")->to_str() == "0.0.0.0";
+			}),
+#else
 			NV_VAR(nv_array<nv_ip_range<4>>, "ip_filters", 10),
-			NV_VAR(nv_array<nv_port_range>, "port_filters", 10),
+#endif
+			NV_VAR(nv_array<nv_port_range>, "port_filters", 10, [] (const csp<nv_port_range>& range) {
+				return range->get_as<nv_u16>("start")->num() == 1 && range->get_as<nv_u16>("end")->num() == 0xffff;
+			}),
 			NV_VAR(nv_array<nv_port_forward>, "port_forwards", 10),
 			NV_VAR(nv_array<nv_mac>, "mac_filters", 10),
 			NV_VAR(nv_data, "data_5", 0xa7),
@@ -290,7 +298,7 @@ class nv_group_cdp : public nv_group
 struct registrar {
 	registrar()
 	{
-		vector<nv_group::sp> groups = {
+		vector<sp<nv_group>> groups = {
 			NV_GROUP(nv_group_cmap),
 			NV_GROUP(nv_group_mlog),
 			NV_GROUP(nv_group_8021, false),

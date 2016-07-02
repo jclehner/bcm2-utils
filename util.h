@@ -158,6 +158,10 @@ template<> struct bswapper<uint32_t>
 	{ return htonl(n); }
 };
 
+template<typename T> using sp = std::shared_ptr<T>;
+template<typename T> using csp = std::shared_ptr<const T>;
+
+
 class scoped_ios_exceptions
 {
 	public:
