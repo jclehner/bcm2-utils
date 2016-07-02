@@ -25,7 +25,7 @@ void print_vars(const nv_val::list& vars)
 	for (auto v : vars) {
 		if (v.val->is_set()) {
 			cerr << v.name << " = ";
-			cerr << v.val->to_string(true);
+			cerr << v.val->to_pretty();
 		} else {
 			break;
 			cerr << "<not set>";

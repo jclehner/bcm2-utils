@@ -13,6 +13,11 @@ std::string desc(const nv_val::named& var)
 	return var.name + " (" + var.val->type() + ")";
 }
 
+string pad(unsigned level)
+{
+	return string(2 * (level + 1), ' ');
+}
+
 size_t to_index(const string& str, const nv_val& val)
 {
 	try {
@@ -30,7 +35,7 @@ istream& read_group_header(istream& is, nv_u16& size, nv_magic& magic)
 {
 	if (size.read(is)) {
 		if (size.num() < 6) {
-			throw runtime_error("group size " + size.to_string(false) + " too small to be valid");
+			throw runtime_error("group size " + size.to_str() + " too small to be valid");
 		} else if (!magic.read(is)) {
 			throw runtime_error("failed to read group magic");
 		}
@@ -39,11 +44,11 @@ istream& read_group_header(istream& is, nv_u16& size, nv_magic& magic)
 	return is;
 }
 
-string data_to_string(const string& data, bool quote)
+string data_to_string(const string& data, unsigned level, bool pretty)
 {
 	const unsigned threshold = 24;
 	ostringstream ostr;
-	bool multiline = data.size() > threshold;
+	bool multiline = pretty && (data.size() > threshold);
 	if (multiline) {
 		ostr << "{";
 	}
@@ -51,7 +56,7 @@ string data_to_string(const string& data, bool quote)
 	for (size_t i = 0; i < data.size(); ++i) {
 		if (!(i % threshold)) {
 			if (multiline) {
-				ostr << endl << "  0x" << to_hex(i, 3) << " = ";
+				ostr << endl << pad(level) << "0x" << to_hex(i, 3) << " = ";
 			}
 		} else {
 			ostr << ':';
@@ -61,10 +66,27 @@ string data_to_string(const string& data, bool quote)
 	}
 
 	if (multiline) {
-		ostr << endl << "}";
+		ostr << endl << pad(level - 1) + "}";
 	}
 
 	return ostr.str();
+}
+
+string compound_to_string(const nv_compound::list& parts, unsigned level, bool pretty,
+		const nv_array_base::is_end_func& is_end = nullptr)
+{
+	string str = "{";
+
+	for (auto v : parts) {
+		if (is_end && is_end(v.val)) {
+			break;
+		}
+
+		str += "\n" + pad(level) + v.name + " = " + v.val->to_string(level + 1, pretty);
+	}
+
+	return str + "\n" + pad(level - 1) + "}";
+
 }
 }
 
@@ -153,7 +175,7 @@ istream& nv_compound::read(istream& is)
 		try {
 			if ((m_width && (m_bytes + v.val->bytes() > m_width)) || (!v.val->read(is) && !is.eof())) {
 				if (!m_partial) {
-					throw runtime_error("pos " + to_string(m_bytes) + ": failed to read " + desc(v));
+					throw runtime_error("pos " + ::to_string(m_bytes) + ": failed to read " + desc(v));
 				} else {
 					logger::d() << "pos " << m_bytes << ": stopped parsing at " << desc(v) << ", stream=" << !!is << endl;
 				}
@@ -162,9 +184,9 @@ istream& nv_compound::read(istream& is)
 				// check again, because a successful read may have changed the
 				// byte count (e.g. an nv_pstring)
 				if ((m_width && m_bytes + v.val->bytes() > m_width)) {
-					throw runtime_error("pos " + to_string(m_bytes) + ": variable ends outside of group: " + desc(v));
+					throw runtime_error("pos " + ::to_string(m_bytes) + ": variable ends outside of group: " + desc(v));
 				}
-				logger::d() << "pos " << m_bytes  << ": " + desc(v) << " = " << v.val->to_string(true) << " (" << v.val->bytes() << " b)"<< endl;
+				logger::d() << "pos " << m_bytes  << ": " + desc(v) << " = " << v.val->to_pretty() << " (" << v.val->bytes() << " b)"<< endl;
 				m_bytes += v.val->bytes();
 				m_set = true;
 
@@ -197,20 +219,18 @@ ostream& nv_compound::write(ostream& os) const
 	return os;
 }
 
-std::string nv_compound::to_string(bool quote) const
+std::string nv_compound::to_string(unsigned level, bool pretty) const
 {
-	if (!quote) {
+	if (!pretty) {
 		return "<compound type " + type() + ">";
 	}
 
-	string str = "{";
+	return compound_to_string(m_parts, level, pretty);
+}
 
-	for (auto v : m_parts) {
-		str += "\n  " + v.name + " = " + v.val->to_string(quote);
-	}
-
-	return str + "\n}";
-
+std::string nv_array_base::to_string(unsigned level, bool pretty) const
+{
+	return compound_to_string(m_parts, level, pretty, m_is_end);
 }
 
 nv_data::nv_data(size_t width)
@@ -221,9 +241,9 @@ nv_data::nv_data(size_t width)
 	}
 }
 
-string nv_data::to_string(bool quote) const
+string nv_data::to_string(unsigned level, bool pretty) const
 {
-	return data_to_string(m_buf, quote);
+	return data_to_string(m_buf, level, pretty);
 }
 
 nv_val::csp nv_data::get(const string& name) const
@@ -315,12 +335,12 @@ ostream& nv_p16string::write(ostream& os) const
 	return os.write(m_val.data(), m_val.size());
 }
 
-string nv_p8string::to_string(bool quote) const
+string nv_p8string_base::to_string(unsigned level, bool pretty) const
 {
-	return m_nul ? nv_string::to_string(quote) : data_to_string(m_val, quote);
+	return !m_data ? nv_string::to_string(level, pretty) : data_to_string(m_val, level, pretty);
 }
 
-istream& nv_p8string::read(istream& is)
+istream& nv_p8string_base::read(istream& is)
 {
 	uint8_t len;
 	if (!is.read(reinterpret_cast<char*>(&len), 1)) {
@@ -343,7 +363,7 @@ istream& nv_p8string::read(istream& is)
 	return is;
 }
 
-ostream& nv_p8string::write(ostream& os) const
+ostream& nv_p8string_base::write(ostream& os) const
 {
 	uint8_t len = m_val.size() & 0xfe;
 	if (!(os << len)) {
@@ -368,7 +388,7 @@ bool nv_bool::parse(const string& str)
 	return false;
 }
 
-string nv_magic::to_string(bool) const
+string nv_magic::to_string(unsigned, bool) const
 {
 	string str;
 	bool ascii = isprint(m_buf[0]) || isprint(m_buf[1]);
@@ -429,7 +449,7 @@ istream& nv_group::read(istream& is)
 		throw runtime_error("failed to read group version");
 	}
 
-	cout << "** " << m_magic.to_string(false) << " " << m_size.num() << " b" << endl;
+	cout << "** " << m_magic.to_str() << " " << m_size.num() << " b" << endl;
 
 	if (nv_compound::read(is)) {
 		//m_bytes += is_versioned() ? 8 : 6;

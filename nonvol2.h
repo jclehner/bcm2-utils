@@ -41,7 +41,14 @@ class nv_val : public serializable
 	virtual ~nv_val() {}
 
 	virtual std::string type() const = 0;
-	virtual std::string to_string(bool quote = false) const = 0;
+	virtual std::string to_string(unsigned level, bool pretty) const = 0;
+
+	virtual std::string to_str() const final
+	{ return to_string(0, false); }
+
+	virtual std::string to_pretty(unsigned level = 0) const final
+	{ return to_string(level, true); }
+
 	virtual bool parse(const std::string& str) = 0;
 	virtual nv_val& parse_checked(const std::string& str) final;
 
@@ -72,7 +79,7 @@ class nv_compound : public nv_val
 	nv_compound(bool partial, size_t width)
 	: nv_compound(partial, width, false) {}
 
-	virtual std::string to_string(bool) const override;
+	virtual std::string to_string(unsigned level, bool pretty) const override;
 
 	virtual bool parse(const std::string& str) override;
 
@@ -90,7 +97,6 @@ class nv_compound : public nv_val
 	virtual std::ostream& write(std::ostream& os) const override;
 
 	protected:
-	nv_compound(bool partial, size_t width, bool internal);
 	nv_compound(bool partial)
 	: nv_compound(partial, 0, true) {}
 	// like get, but shouldn't throw
@@ -102,20 +108,50 @@ class nv_compound : public nv_val
 	size_t m_width = 0;
 	// actual size
 	size_t m_bytes = 0;
+
+	private:
+	nv_compound(bool partial, size_t width, bool internal);
 };
 
-template<class T, class I, bool S> class nv_array_base : public nv_compound
+class nv_array_base : public nv_compound
 {
 	public:
-	nv_array_base(I n) : nv_array_base(n, false) {}
+	// used by to_string to prematurely stop printing elements
+	// in a fixed-size list
+	typedef std::function<bool(const nv_val::sp&)> is_end_func;
+
+	virtual std::string to_string(unsigned level, bool pretty) const override;
+
+	protected:
+	nv_array_base() : nv_compound(false), m_is_end(nullptr) {}
+	is_end_func m_is_end;
+};
+
+template<class T, class I, bool L> class nv_array_generic : public nv_array_base
+{
+	public:
+	nv_array_generic(I n)
+	: m_memb(), m_count(n)
+	{
+		if (!L && !n) {
+			throw std::invalid_argument("size must not be 0");
+		}
+	}
+	virtual ~nv_array_generic() {}
+
+	virtual std::string type() const override
+	{
+		return std::string(L ? "list" : "array") + "<" + m_memb.type() + ">"
+			+ (m_count ? "[" + std::to_string(m_count) + "]" : "");
+	}
 
 	virtual std::istream& read(std::istream& is) override
 	{
-		if (S) {
-			if (!m_count && !is.read(reinterpret_cast<char*>(&m_count), sizeof(T))) {
+		if (L) {
+			if (!m_count && !is.read(reinterpret_cast<char*>(&m_count), sizeof(I))) {
 				return is;
 			}
-			m_count = bcm2dump::bswapper<T>::ntoh(m_count);
+			m_count = bcm2dump::bswapper<I>::ntoh(m_count);
 		}
 
 		return nv_compound::read(is);
@@ -123,9 +159,9 @@ template<class T, class I, bool S> class nv_array_base : public nv_compound
 
 	virtual std::ostream& write(std::ostream& os) const override
 	{
-		if (S) {
-			T count = bcm2dump::bswapper<T>::hton(m_count);
-			if (!os.write(reinterpret_cast<const char*>(&count), sizeof(T))) {
+		if (L) {
+			I count = bcm2dump::bswapper<I>::hton(m_count);
+			if (!os.write(reinterpret_cast<const char*>(&count), sizeof(I))) {
 				return os;
 			}
 		}
@@ -133,18 +169,10 @@ template<class T, class I, bool S> class nv_array_base : public nv_compound
 		return nv_compound::write(os);
 	}
 
+	virtual size_t bytes() const override
+	{ return nv_compound::bytes() + (L ? sizeof(I) : 0); }
+
 	protected:
-	nv_array_base(I n, bool allow_zero) : nv_compound(false, 0, true), m_count(n)
-	{
-		if (!n && !allow_zero) {
-			throw std::invalid_argument("size must not be 0");
-		}
-
-		if (n) {
-			m_width = n * std::make_shared<T>().bytes();
-		}
-	}
-
 	virtual list definition() const override
 	{
 		list ret;
@@ -156,11 +184,30 @@ template<class T, class I, bool S> class nv_array_base : public nv_compound
 		return ret;
 	}
 
+	private:
+	T m_memb;
 	I m_count = 0;
 };
 
-template<typename T> using nv_array = nv_array_base<T, size_t, false>;
-template<typename T, typename I> using nv_plist = nv_array_base<T, I, true>;
+template<typename T> using nv_array = nv_array_generic<T, size_t, false>;
+
+template<typename T, typename I> class nv_plist : public nv_array_generic<T, I, true>
+{
+	public:
+	// arguments to is_end shall only be of type T, so an unchecked
+	// dynamic_cast can be safely used
+	nv_plist(const std::function<bool(const std::shared_ptr<const T>&)>& is_end = nullptr)
+	: nv_array_generic<T, I, true>(0)
+	{
+		if (is_end) {
+			nv_array_base::m_is_end = [&is_end] (const nv_val::csp& val) {
+				return is_end(std::dynamic_pointer_cast<const T>(val));
+			};
+		}
+	}
+	virtual ~nv_plist() {}
+};
+
 template<typename T> using nv_p8list = nv_plist<T, uint8_t>;
 template<typename T> using nv_p16list = nv_plist<T, uint8_t>;
 
@@ -172,7 +219,7 @@ class nv_data : public nv_val
 	virtual std::string type() const override
 	{ return "data[" + std::to_string(m_buf.size()) + "]"; }
 
-	virtual std::string to_string(bool quote) const override;
+	virtual std::string to_string(unsigned level, bool pretty) const override;
 	virtual bool parse(const std::string& str) override
 	{ return false; }
 
@@ -196,7 +243,7 @@ class nv_unknown : public nv_data
 	public:
 	nv_unknown(size_t width) : nv_data(width) {}
 
-	std::string to_string(bool quote) const override
+	std::string to_string(unsigned, bool) const override
 	{ return "<" + std::to_string(bytes()) + " bytes>"; }
 };
 
@@ -211,11 +258,11 @@ template<int N> class nv_ip : public nv_data
 	std::string type() const override
 	{ return "ip" + std::to_string(N); }
 
-	std::string to_string(bool quote) const override
+	std::string to_string(unsigned level, bool pretty) const override
 	{
 		char buf[32];
 		if (!inet_ntop(AF, m_buf.data(), buf, sizeof(buf)-1)) {
-			return nv_data::to_string(quote);
+			return nv_data::to_string(level, pretty);
 		}
 		return buf;
 	}
@@ -244,8 +291,8 @@ class nv_string : public nv_val
 	virtual std::string type() const override
 	{ return "string" + (m_width ? "[" + std::to_string(m_width) + "]" : ""); }
 
-	virtual std::string to_string(bool quote = false) const override
-	{ return quote ? '"' + m_val + '"' : m_val; }
+	virtual std::string to_string(unsigned, bool pretty) const override
+	{ return pretty ? '"' + m_val + '"' : m_val; }
 
 	virtual bool parse(const std::string& str) override;
 
@@ -286,34 +333,47 @@ class nv_p16string : public nv_string
 	{ return 2 + m_val.size(); }
 };
 
-// <len8><string><nul>
-class nv_p8string : public nv_string
+class nv_p8string_base : public nv_string
 {
 	public:
-	explicit nv_p8string(size_t width = 0) : nv_p8string(false, width) {}
-
 	virtual std::istream& read(std::istream& is) override;
 	virtual std::ostream& write(std::ostream& os) const override;
 	virtual bool parse(const std::string& str) override
 	{ return str.size() <= 0xfe ? nv_string::parse(str) : false; }
 
-	virtual std::string to_string(bool quote = false) const override;
+	virtual std::string to_string(unsigned level, bool pretty) const override;
 
 	virtual size_t bytes() const override
 	{ return 1 + m_val.size() + (m_nul ? 1 : 0); }
 
 	protected:
-	nv_p8string(bool nul, size_t width = 0) : nv_string(width), m_nul(nul) {}
+	nv_p8string_base(bool nul, bool data, size_t width = 0) : nv_string(width), m_nul(nul), m_data(data) {}
 	bool m_nul;
+	bool m_data;
 
 	//{ return m_val.empty() ? 1 : 2 + m_val.size(); }
 };
 
-class nv_p8zstring : public nv_p8string
+
+// <len8><string>[<nul>]
+class nv_p8string : public nv_p8string_base
 {
 	public:
-	explicit nv_p8zstring(size_t width = 0) : nv_p8string(true, width) {}
+	nv_p8string(size_t width = 0) : nv_p8string_base(false, false, width) {}
+};
 
+// <len8><string>
+class nv_p8data : public nv_p8string_base
+{
+	public:
+	nv_p8data(size_t width = 0) : nv_p8string_base(false, true, width) {}
+};
+
+// <len8><string><nul>
+class nv_p8zstring : public nv_p8string_base
+{
+	public:
+	explicit nv_p8zstring(size_t width = 0) : nv_p8string_base(true, false, width) {}
 };
 
 template<class T, class H> class nv_num : public nv_val
@@ -328,7 +388,7 @@ template<class T, class H> class nv_num : public nv_val
 	virtual std::string type() const override
 	{ return H::type(); }
 
-	virtual std::string to_string(bool = false) const override
+	virtual std::string to_string(unsigned, bool) const override
 	{
 		if (!m_hex) {
 			return std::to_string(m_val);
@@ -423,7 +483,7 @@ class nv_magic : public nv_data
 
 	virtual bool parse(const std::string& str) override;
 
-	virtual std::string to_string(bool) const override;
+	virtual std::string to_string(unsigned, bool) const override;
 
 	bool operator<(const nv_magic& other) const
 	{ return m_buf < other.m_buf; }
@@ -442,7 +502,7 @@ class nv_version : public nv_u16
 	virtual std::string type() const override
 	{ return "version"; }
 
-	virtual std::string to_string(bool) const override
+	virtual std::string to_string(unsigned, bool) const override
 	{ return std::to_string(m_val >> 8) + "." + std::to_string(m_val & 0xff); }
 
 	uint8_t major() const
@@ -475,7 +535,7 @@ class nv_group : public nv_compound, public cloneable
 	{ return true; }
 
 	virtual std::string type() const override
-	{ return "group[" + m_magic.to_string(false) + "]"; }
+	{ return "group[" + m_magic.to_str() + "]"; }
 
 	virtual std::ostream& write(std::ostream& os) const override;
 

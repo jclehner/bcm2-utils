@@ -4,12 +4,17 @@ using namespace std;
 #define NV_VAR(type, name, ...) { name, make_shared<type>(__VA_ARGS__) }
 #define NV_GROUP(group, ...) make_shared<group>(__VA_ARGS__)
 #define NV_GROUP_DEF_CLONE(type) \
-		type* clone() const \
+		virtual type* clone() const override \
 		{ return new type(*this); }
 #define NV_GROUP_DEF_CTOR_AND_CLONE(type, magic) \
 		type() : nv_group(magic) {} \
 		\
 		NV_GROUP_DEF_CLONE(type)
+#define NV_COMPOUND_DEF_CTOR_AND_TYPE(name, typestr) \
+		name() : nv_compound(false) {} \
+		\
+		virtual string type() const override \
+		{ return typestr; }
 
 namespace bcm2cfg {
 namespace {
@@ -20,7 +25,7 @@ class nv_group_mlog : public nv_group
 	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_mlog, "MLog")
 
 	protected:
-	virtual list definition(int type, int maj, int min) const
+	virtual list definition(int type, int maj, int min) const override
 	{
 		return {
 			NV_VAR(nv_p16string, "http_user", 32),
@@ -47,7 +52,7 @@ class nv_group_cmap : public nv_group
 	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_cmap, "CMAp")
 
 	protected:
-	virtual list definition(int type, int maj, int min) const
+	virtual list definition(int type, int maj, int min) const override
 	{
 		return {
 			NV_VAR(nv_bool, "stop_at_console"),
@@ -68,7 +73,7 @@ class nv_group_8021 : public nv_group
 	NV_GROUP_DEF_CLONE(nv_group_8021);
 
 	protected:
-	virtual list definition(int type, int maj, int min) const
+	virtual list definition(int type, int maj, int min) const override
 	{
 		if (type != type_perm) {
 			return {
@@ -124,14 +129,14 @@ class nv_group_rg : public nv_group
 	template<int N> class nv_ip_range : public nv_compound
 	{
 		public:
-		nv_ip_range() : nv_compound(false, 0, true) {}
+		nv_ip_range() : nv_compound(false) {}
 
-		string type() const
+		virtual string type() const override
 		{ return "ip" + ::to_string(N) + "_range"; }
 
-		string to_string(bool quote = false) const override
+		virtual string to_string(unsigned level, bool pretty) const override
 		{
-			return get("start")->to_string(quote) + "," + get("end")->to_string(quote);
+			return get("start")->to_string(level, pretty) + "," + get("end")->to_string(level, pretty);
 		}
 
 		protected:
@@ -144,7 +149,43 @@ class nv_group_rg : public nv_group
 		}
 	};
 
-	virtual list definition(int type, int maj, int min) const
+	class nv_port_range : public nv_compound
+	{
+		public:
+		nv_port_range() : nv_compound(false) {}
+
+		virtual string type() const override
+		{ return "port-range"; }
+
+		protected:
+		virtual list definition() const override
+		{
+			return {
+				NV_VAR(nv_u16, "start"),
+				NV_VAR(nv_u16, "end")
+			};
+		}
+
+	};
+
+	class nv_port_forward : public nv_compound
+	{
+		public:
+		NV_COMPOUND_DEF_CTOR_AND_TYPE(nv_port_forward, "port-forward");
+
+		protected:
+		virtual list definition() const override
+		{
+			return {
+				NV_VAR(nv_ip4, "dest"),
+				NV_VAR(nv_port_range, "ports"),
+				NV_VAR(nv_u8, "type"),
+			};
+		}
+
+	};
+
+	virtual list definition(int type, int maj, int min) const override
 	{
 		return {
 			NV_VAR(nv_u8, "byte_1", true),
@@ -158,11 +199,15 @@ class nv_group_rg : public nv_group
 			NV_VAR(nv_mac, "dmz_mac"),
 			NV_VAR(nv_data, "data_3", 7),
 			NV_VAR(nv_data, "data_4", 0x1ff),
-			NV_VAR(nv_ip_range<4>, "ip_filter.1"),
-			NV_VAR(nv_ip_range<4>, "ip_filter.2"), // XXX and so forth; make this an array
-			NV_VAR(nv_data, "data_5", 0xd7a),
-			NV_VAR(nv_data, "data_6", 4),
-			NV_VAR(nv_u8, "timeserver_count"),
+			NV_VAR(nv_array<nv_ip_range<4>>, "ip_filters", 10),
+			NV_VAR(nv_array<nv_port_range>, "port_filters", 10),
+			NV_VAR(nv_array<nv_port_forward>, "port_forwards", 10),
+			NV_VAR(nv_array<nv_mac>, "mac_filters", 10),
+			NV_VAR(nv_data, "data_5", 0xa7),
+			NV_VAR(nv_array<nv_u8>, "port_filter_types", 10),
+			NV_VAR(nv_data, "data_6", 0x53a),
+			NV_VAR(nv_data, "data_7", 2),
+			NV_VAR(nv_p8list<nv_p8string>, "timeservers"),
 		};
 	}
 };
@@ -177,9 +222,9 @@ class nv_group_cdp : public nv_group
 	class nv_ip4_typed : public nv_compound
 	{
 		public:
-		nv_ip4_typed() : nv_compound(false, 0, true) {}
+		nv_ip4_typed() : nv_compound(false) {}
 
-		string type() const
+		virtual string type() const override
 		{ return "typed_ip"; }
 
 		protected:
@@ -195,9 +240,9 @@ class nv_group_cdp : public nv_group
 	class nv_lan_addr_entry : public nv_compound
 	{
 		public:
-		nv_lan_addr_entry() : nv_compound(false, 0, true) {}
+		nv_lan_addr_entry() : nv_compound(false) {}
 
-		string type() const
+		string type() const override
 		{ return "lan_addr"; }
 
 		protected:
@@ -211,14 +256,14 @@ class nv_group_cdp : public nv_group
 				NV_VAR(nv_ip4, "ip"),
 				NV_VAR(nv_data, "ip_data", 3),
 				NV_VAR(nv_u8, "method"),
-				NV_VAR(nv_p8string, "client_id"),
+				NV_VAR(nv_p8data, "client_id"),
 				NV_VAR(nv_p8string, "hostname"),
 				NV_VAR(nv_mac, "mac")
 			};
 		}
 	};
 
-	virtual list definition(int type, int maj, int min) const
+	virtual list definition(int type, int maj, int min) const override
 	{
 		return {
 			NV_VAR(nv_data, "data_1", 7),
@@ -236,7 +281,8 @@ class nv_group_cdp : public nv_group
 			NV_VAR(nv_ip4_typed, "ip_2"),
 			NV_VAR(nv_ip4_typed, "ip_3"),
 			NV_VAR(nv_data, "data_5", 2),
-			NV_VAR(nv_lan_addr_entry, "lan_addr_1"), // XXX make this an array
+			NV_VAR(nv_array<nv_lan_addr_entry>, "lan_addrs", 3),
+			//NV_VAR(nv_lan_addr_entry, "lan_addr_1"), // XXX make this an array
 		};
 	}
 };

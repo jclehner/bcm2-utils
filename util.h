@@ -133,28 +133,28 @@ template<typename T> struct bswapper
 
 template<> struct bswapper<uint8_t>
 {
-	static uint8_t ntoh(uint8_t n)
+	static uint8_t ntoh(const uint8_t& n)
 	{ return n; }
 
-	static uint8_t hton(uint8_t n)
+	static uint8_t hton(const uint8_t& n)
 	{ return n; }
 };
 
 template<> struct bswapper<uint16_t>
 {
-	static uint16_t ntoh(uint16_t n)
+	static uint16_t ntoh(const uint16_t& n)
 	{ return ntohs(n); }
 
-	static uint16_t hton(uint16_t n)
+	static uint16_t hton(const uint16_t& n)
 	{ return htons(n); }
 };
 
 template<> struct bswapper<uint32_t>
 {
-	static uint32_t ntoh(uint32_t n)
+	static uint32_t ntoh(const uint32_t& n)
 	{ return ntohl(n); }
 
-	static uint32_t hton(uint32_t n)
+	static uint32_t hton(const uint32_t& n)
 	{ return htonl(n); }
 };
 
