@@ -96,7 +96,6 @@ ssize_t send_nosignal(int fd, const void* buf, size_t len, int flags = 0)
 #endif
 	return send(fd, buf, len, flags);
 }
-}
 
 int connect_nonblock(int fd, sockaddr* addr, socklen_t len)
 {
