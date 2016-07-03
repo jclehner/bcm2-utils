@@ -436,7 +436,10 @@ class nv_p8zstring : public nv_p8string_base
 	explicit nv_p8zstring(size_t width = 0) : nv_p8string_base(true, false, width) {}
 };
 
-template<class T, class H> class nv_num : public nv_val
+template<class T, class H,
+		T MIN = std::numeric_limits<T>::min(),
+		T MAX = std::numeric_limits<T>::max()>
+class nv_num : public nv_val
 {
 	public:
 	typedef T num_type;
@@ -448,21 +451,41 @@ template<class T, class H> class nv_num : public nv_val
 	{ m_hex = hex; }
 
 	virtual std::string type() const override
-	{ return H::type(); }
-
-	virtual std::string to_string(unsigned, bool) const override
 	{
-		if (!m_hex) {
-			return std::to_string(m_val);
-		} else {
-			return "0x" + bcm2dump::to_hex(m_val);
+		std::string name = H::name();
+		if (MIN != std::numeric_limits<T>::min() || MAX != std::numeric_limits<T>::max()) {
+			name += "<" + std::to_string(MIN) + "," + std::to_string(MAX) + ">";
 		}
+
+		return name;
+	}
+
+	virtual std::string to_string(unsigned, bool pretty) const override
+	{
+		std::string str;
+
+		if (!m_hex) {
+			str = std::to_string(m_val);
+		} else {
+			str = "0x" + bcm2dump::to_hex(m_val);
+		}
+
+		if (pretty && (m_val < MIN || m_val > MAX)) {
+			str += " (out of range)";
+		}
+
+		return str;
 	}
 
 	virtual bool parse(const std::string& str) override
 	{
 		try {
-			m_val = bcm2dump::lexical_cast<T>(str, 0);
+			T val = bcm2dump::lexical_cast<T>(str, 0);
+			if (val < MIN || val > MAX) {
+				return false;
+			}
+
+			m_val = true;
 			m_set = true;
 			return true;
 		} catch (const bcm2dump::bad_lexical_cast& e) {
@@ -501,28 +524,58 @@ template<class T, class H> class nv_num : public nv_val
 };
 
 namespace detail {
-struct nv_u8_h
+
+template<typename T> struct num_name
 {
-	static std::string type()
+	static std::string name();
+};
+
+template<> struct num_name<uint8_t>
+{
+	static std::string name()
 	{ return "u8"; }
 };
 
-struct nv_u16_h
+template<> struct num_name<uint16_t>
 {
-	static std::string type()
+	static std::string name()
 	{ return "u16"; }
 };
 
-struct nv_u32_h
+template<> struct num_name<uint32_t>
 {
-	static std::string type()
+	static std::string name()
 	{ return "u32"; }
 };
+
+template<> struct num_name<uint64_t>
+{
+	static std::string name()
+	{ return "u64"; }
+};
+
+template<typename T> struct min
+{
+	static constexpr T n = std::numeric_limits<T>::min();
+};
+
+template<typename T> struct max
+{
+	static constexpr T n = std::numeric_limits<T>::max();
+};
+
 }
 
-typedef nv_num<uint8_t, detail::nv_u8_h> nv_u8;
-typedef nv_num<uint16_t, detail::nv_u16_h> nv_u16;
-typedef nv_num<uint32_t, detail::nv_u32_h> nv_u32;
+#define NV_NUM_DEF(name, num_type) \
+	template<num_type MIN, num_type MAX> \
+	using name ## _r = nv_num<num_type, detail::num_name<num_type>, MIN, MAX>; \
+	template<num_type MAX> using name ## _m = name ## _r<0, MAX>; \
+	typedef name ## _r<std::numeric_limits<num_type>::min(), std::numeric_limits<num_type>::max()> name \
+
+NV_NUM_DEF(nv_u8, uint8_t);
+NV_NUM_DEF(nv_u16, uint16_t);
+NV_NUM_DEF(nv_u32, uint32_t);
+NV_NUM_DEF(nv_u64, uint64_t);
 
 class nv_bool : public nv_u8
 {
