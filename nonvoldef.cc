@@ -1,9 +1,9 @@
 #include "nonvol2.h"
 using namespace std;
 
-#define NV_VAR(type, name, ...) { name, make_shared<type>(__VA_ARGS__) }
-#define NV_VAR2(type, name, ...) { name, sp<type>(new type(__VA_ARGS__)) }
-#define NV_VAR3(cond, type, name, ...) { name, nv_val_disable<type>(shared_ptr<type>(new type(__VA_ARGS__)), !(cond)) }
+#define NV_VAR(type, name, ...) { name, make_shared<type >(__VA_ARGS__) }
+#define NV_VAR2(type, name, ...) { name, sp<type >(new type(__VA_ARGS__)) }
+#define NV_VAR3(cond, type, name, ...) { name, nv_val_disable<type >(shared_ptr<type>(new type(__VA_ARGS__)), !(cond)) }
 #define NV_GROUP(group, ...) make_shared<group>(__VA_ARGS__)
 #define NV_GROUP_DEF_CLONE(type) \
 		virtual type* clone() const override \
@@ -107,12 +107,15 @@ class nv_group_8021 : public nv_group
 				protected:
 				virtual list definition() const override
 				{
+					typedef nv_u16_r<0, 15> cwminmaxaifs;
+					typedef nv_u16_r<0, 8192> txop;
+
 					return {
-						NV_VAR(nv_u16, "cwmin"),
-						NV_VAR(nv_u16, "cwmax"),
-						NV_VAR(nv_u16, "aifsn"),
-						NV_VAR(nv_u16, "txop_b"),
-						NV_VAR(nv_u16, "txop_ag")
+						NV_VAR(cwminmaxaifs, "cwmin"),
+						NV_VAR(cwminmaxaifs, "cwmax"),
+						NV_VAR(cwminmaxaifs, "aifsn"),
+						NV_VAR(txop, "txop_b"),
+						NV_VAR(txop, "txop_ag")
 					};
 				}
 			};
@@ -144,9 +147,11 @@ class nv_group_8021 : public nv_group
 		if (type != type_perm) {
 			return {
 				NV_VAR(nv_zstring, "ssid", 33),
-				NV_VAR(nv_unknown, "", 2),
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_u8, "channel_b"),
+				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_u8, "basic_rates"), // XXX u16?
-				NV_VAR(nv_unknown, "", 0x29),
+				NV_VAR(nv_data, "", 0x28),
 				NV_VAR(nv_u16, "beacon_interval"),
 				NV_VAR(nv_u16, "dtim_interval"),
 				NV_VAR(nv_u16, "frag_threshold"),
@@ -158,8 +163,10 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_unknown, "", 0x20),
 				NV_VAR(nv_u8, "short_retry_limit"),
 				NV_VAR(nv_u8, "long_retry_limit"),
-				NV_VAR(nv_unknown, "", 0x6),
-				NV_VAR(nv_u16, "tx_power"), // XXX u8?
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_u8, "channel_a"),
+				NV_VAR(nv_unknown, "", 5),
+				NV_VAR(nv_u8_m<100>, "tx_power"),
 				NV_VAR(nv_p16string, "wpa_psk"),
 				NV_VAR(nv_unknown, "", 0x8),
 				NV_VAR(nv_u16, "radius_port"),
@@ -500,7 +507,7 @@ class nv_group_fire : public nv_group
 				"",
 				"",
 				"",
-				"",
+				""
 				"block_fragmented_ip",
 				"port_scan_detection",
 				"syn_flood_detection"
