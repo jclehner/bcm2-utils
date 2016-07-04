@@ -158,17 +158,12 @@ void nv_compound::set(const string& name, const string& val)
 csp<nv_val> nv_compound::find(const string& name) const
 {
 	vector<string> tok = split(name, '.', false, 2);
-
-	cout << "find: " << tok[0] << ", " << tok.back() << " (" << tok.size() << ") in " << nv_compound::name() << endl;
-
 	for (auto c : m_parts) {
-		if (c.name == tok.back()) {
-			return c.val;
-		} else if (c.val->is_compound()) {
-			auto val = nv_val_cast<nv_compound>(c.val)->find(tok.back());
-			if (val) {
-				return val;
+		if (c.name == tok[0]) {
+			if (tok.size() == 2 && c.val->is_compound()) {
+				return nv_val_cast<nv_compound>(c.val)->find(tok[1]);
 			}
+			return c.val;
 		}
 	}
 
