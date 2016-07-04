@@ -245,6 +245,20 @@ template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 		return nv_compound::write(os);
 	}
 
+	virtual void set(const std::string& name, const std::string& val)
+	{
+		I index = bcm2dump::lexical_cast<I>(name);
+		if (index < m_count) {
+			nv_array_base::set(name, val);
+		} else {
+			// set any index >= m_count to m_count. this way, we can append the
+			// list using any large index (i.e. list.99 = foo)
+			m_parts.push_back({ std::to_string(m_count), std::make_shared<T>()});
+			m_parts.back().val->parse_checked(val);
+			m_count = m_parts.size();
+		}
+	}
+
 	virtual size_t bytes() const override
 	{ return nv_compound::bytes() + (L ? sizeof(I) : 0); }
 
@@ -297,11 +311,11 @@ class nv_data : public nv_val
 {
 	public:
 	explicit nv_data(size_t width);
-
 	virtual std::string type() const override
 	{ return "data[" + std::to_string(m_buf.size()) + "]"; }
 
 	virtual std::string to_string(unsigned level, bool pretty) const override;
+
 	virtual bool parse(const std::string& str) override
 	{ return false; }
 
@@ -317,7 +331,6 @@ class nv_data : public nv_val
 
 	protected:
 	std::string m_buf;
-
 };
 
 class nv_unknown : public nv_data
@@ -451,6 +464,12 @@ class nv_p8data : public nv_p8string_base
 	nv_p8data(size_t width = 0) : nv_p8string_base(false, true, width) {}
 };
 
+class nv_p8zdata : public nv_p8string_base
+{
+	public:
+	nv_p8zdata(size_t width = 0) : nv_p8string_base(true, true, width) {}
+};
+
 // <len8><string><nul>
 class nv_p8zstring : public nv_p8string_base
 {
@@ -507,7 +526,7 @@ class nv_num : public nv_val
 				return false;
 			}
 
-			m_val = true;
+			m_val = val;
 			m_set = true;
 			return true;
 		} catch (const bcm2dump::bad_lexical_cast& e) {
@@ -611,11 +630,11 @@ template<typename T> class nv_enum_bitmask : public T
 	nv_enum_bitmask(const std::string& name, const valvec& vals) : nv_enum_bitmask(name, vals.size()) { m_vec = vals; }
 	nv_enum_bitmask(const std::string& name, const valmap& vals) : nv_enum_bitmask(name, vals.size()) { m_map = vals; }
 
-	bool str_to_num(const std::string& str, num_type& num) const
+	bool str_to_num(const std::string& str, num_type& num, bool bitmask) const
 	{
 		for (num_type i = 0; i < str.size(); ++i) {
 			if (m_vec[i] == str) {
-				num = i;
+				num = bitmask ? 1 << i : i;
 				return true;
 			}
 		}
@@ -692,7 +711,7 @@ template<class T> class nv_enum : public nv_enum_bitmask<T>
 
 	virtual bool parse(const std::string& str) override
 	{
-		return super::str_to_num(str, T::m_val);
+		return super::str_to_num(str, T::m_val, false);
 	}
 };
 
@@ -748,7 +767,7 @@ template<class T> class nv_bitmask : public nv_enum_bitmask<T>
 		if (!str.empty()) {
 			num_type n;
 			if (str[0] == '+' || str[0] == '-') {
-				if (!super::str_to_num(str.substr(1), n)) {
+				if (!super::str_to_num(str.substr(1), n, true)) {
 					return false;
 				}
 
@@ -758,7 +777,7 @@ template<class T> class nv_bitmask : public nv_enum_bitmask<T>
 					T::m_val &= ~n;
 				}
 				return true;
-			} else if(super::str_to_num(str, n)) {
+			} else if(super::str_to_num(str, n, true)) {
 				T::m_val = n;
 				return true;
 			}

@@ -98,6 +98,21 @@ string compound_to_string(const nv_compound& c, unsigned level, bool pretty,
 
 }
 
+size_t compound_size(const nv_compound& c)
+{
+	size_t size = 0;
+
+	for (auto p : c.parts()) {
+		if (p.val->is_compound()) {
+			size += compound_size(*nv_val_cast<nv_compound>(p.val));
+		} else {
+			size += p.val->bytes();
+		}
+	}
+
+	return size;
+}
+
 bool is_valid_identifier(const std::string& name)
 {
 	if (name.empty()) {
@@ -158,6 +173,7 @@ void nv_compound::set(const string& name, const string& val)
 csp<nv_val> nv_compound::find(const string& name) const
 {
 	vector<string> tok = split(name, '.', false, 2);
+
 	for (auto c : m_parts) {
 		if (c.name == tok[0]) {
 			if (tok.size() == 2 && c.val->is_compound()) {
@@ -358,7 +374,7 @@ istream& nv_p16string::read(istream& is)
 
 ostream& nv_p16string::write(ostream& os) const
 {
-	uint16_t len = htons(m_val.size() & 0xffff);
+	uint16_t len = htons(m_val.size());
 	if (!os.write(reinterpret_cast<const char*>(&len), 2)) {
 		return os;
 	}
@@ -396,12 +412,13 @@ istream& nv_p8string_base::read(istream& is)
 
 ostream& nv_p8string_base::write(ostream& os) const
 {
-	uint8_t len = m_val.size() & 0xfe;
-	if (!(os << len)) {
+	uint8_t len = m_val.size() + (m_nul ? 1 : 0);
+	if (!(os.write(reinterpret_cast<char*>(&len), 1))) {
 		return os;
 	}
 
-	return os.write(m_val.c_str(), m_val.size() + 1);
+	cout << "writing " << (len & 0xff) << m_val << endl;
+	return os.write(m_val.c_str(), len);
 }
 
 bool nv_bool::parse(const string& str)

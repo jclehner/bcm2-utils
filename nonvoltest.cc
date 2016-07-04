@@ -34,7 +34,7 @@ void print_vars(const nv_val::list& vars)
 	}
 }
 
-csp<nv_val> get(csp<nv_group> group, const string& name)
+csp<nv_val> get(sp<nv_group> group, const string& name)
 {
 	vector<string> tok = split(name, '.', false, 2);
 	if (tok[0] == group->name()) {
@@ -92,6 +92,15 @@ int main(int argc, char** argv)
 				csp<nv_val> val = get(group, argv[4]);
 				if (val) {
 					cout << argv[4] << " = " << val->to_pretty() << endl;
+					break;
+				}
+			} else if (argc == 6 && argv[3] == "set"s) {
+				sp<nv_val> val = const_pointer_cast<nv_val>(get(group, argv[4]));
+				if (val) {
+					val->parse_checked(argv[5]);
+					cout << argv[4] << " = " << val->to_pretty() << endl;
+					ofstream out("grp_mod_" + group->name() + ".bin");
+					group->write(out);
 					break;
 				}
 			} else {
