@@ -34,10 +34,33 @@ void print_vars(const nv_val::list& vars)
 	}
 }
 
+csp<nv_val> get(csp<nv_group> group, const string& name)
+{
+	vector<string> tok = split(name, '.', false, 2);
+	if (tok[0] == group->name()) {
+		if (tok.size() == 2) {
+			return group->find(tok[1]);
+		} else {
+			return group;
+		}
+	}
+
+	return nullptr;
+}
+
+string to_pretty(csp<nv_val>& val, string name)
+{
+	if (val->is_compound()) {
+		return val->to_pretty();
+	}
+
+	return name + " = " + val->to_pretty();
+}
+
 int main(int argc, char** argv)
 {
-	if (argc != 3) {
-		cerr << "usage: nonvoltest [type] [file]" << endl;
+	if (argc < 3) {
+		cerr << "usage: nonvoltest <type> <file> {get <name>, set <name> <value>}" << endl;
 		return 1;
 	}
 
@@ -67,7 +90,6 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-
 	while (in.good()) {
 		sp<nv_group> group;
 		if (nv_group::read(in, group, type) || in.eof()) {
@@ -75,9 +97,18 @@ int main(int argc, char** argv)
 				break;
 			}
 
-			cout << group->magic() << " v" << group->version() << endl;
-			print_vars(group->parts());
-			cout << endl;
+			if (argc == 5 && argv[3] == "get"s) {
+				csp<nv_val> val = get(group, argv[4]);
+				if (val) {
+					cout << to_pretty(val, argv[4]) << endl;
+					//cout << argv[4] << " = " << val->to_pretty() << endl;
+					break;
+				}
+			} else {
+				cout << group->magic() << " v" << group->version() << endl;
+				cout << group->to_pretty() << endl;
+				cout << endl;
+			}
 		} else {
 			return 1;
 		}

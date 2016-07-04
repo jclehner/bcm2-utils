@@ -19,7 +19,7 @@
 namespace bcm2dump {
 
 std::string trim(std::string str);
-std::vector<std::string> split(const std::string& str, char delim, bool empties = true);
+std::vector<std::string> split(const std::string& str, char delim, bool empties = true, size_t limit = 0);
 
 inline bool contains(const std::string& haystack, const std::string& needle)
 {

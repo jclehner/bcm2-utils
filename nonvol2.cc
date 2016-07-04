@@ -73,9 +73,9 @@ string data_to_string(const string& data, unsigned level, bool pretty)
 }
 
 string compound_to_string(const nv_compound& c, unsigned level, bool pretty,
-		const nv_array_base::is_end_func& is_end = nullptr)
+		const string& name = "", const nv_array_base::is_end_func& is_end = nullptr)
 {
-	string str = "{";
+	string str = name.empty() ? "{" : "";
 	size_t i = 0;
 
 	auto parts = c.parts();
@@ -83,16 +83,44 @@ string compound_to_string(const nv_compound& c, unsigned level, bool pretty,
 		auto v = parts[i];
 		if (is_end && is_end(v.val)) {
 			break;
+		} if (!v.val->is_compound()) {
+			if (name.empty()) {
+				str += "\n" + pad(level + 1) + v.name;
+			} else {
+				str += "\n" + name + "." + v.name;
+			}
+
+		} else {
+			csp<nv_compound> compound = dynamic_pointer_cast<nv_compound>(v.val);
+			if (compound) {
+				string cname = name;
+
+				if (!compound->name().empty()) {
+					if (!cname.empty()) {
+						cname += '.';
+					}
+					cname += compound->name();
+				}
+
+				str += compound_to_string(*compound, level +1, pretty, cname, nullptr);
+				continue;
+			}
 		}
 
-		str += "\n" + pad(level) + v.name + " = " + v.val->to_string(level + 1, pretty);
+		str += " = " + v.val->to_string(name.empty() ? level : level + 1, pretty);
 	}
 
 	if (i != parts.size() && is_end) {
-		str += "\n" + pad(level) + std::to_string(i) + ".." + (std::to_string(parts.size() - 1) + " = <empty>");
+		if (name.empty()) {
+			str += "\n" + pad(level) + std::to_string(i) + ".." + (std::to_string(parts.size() - 1) + " = <empty>");
+		}
 	}
 
-	return str + "\n" + pad(level - 1) + "}";
+	if (name.empty()) {
+		return str + "\n" + pad(level - 1) + "}";
+	}
+
+	return str;
 
 }
 
@@ -131,13 +159,6 @@ nv_val& nv_val::parse_checked(const std::string& str)
 	return *this;
 }
 
-nv_compound::nv_compound(bool partial, size_t width, bool internal) : m_partial(partial), m_width(width)
-{
-	if (!width && !internal) {
-		throw invalid_argument("width must not be 0");
-	}
-}
-
 bool nv_compound::parse(const string& str)
 {
 	throw invalid_argument("cannot directly set value of compound type " + type());
@@ -160,11 +181,20 @@ void nv_compound::set(const string& name, const string& val)
 	m_bytes += diff;
 }
 
-sp<nv_val> nv_compound::find(const string& name) const
+csp<nv_val> nv_compound::find(const string& name) const
 {
+	vector<string> tok = split(name, '.', false, 2);
+
+	cout << "find: " << tok[0] << ", " << tok.back() << " (" << tok.size() << ") in " << nv_compound::name() << endl;
+
 	for (auto c : m_parts) {
-		if (c.name == name) {
+		if (c.name == tok.back()) {
 			return c.val;
+		} else if (c.val->is_compound()) {
+			auto val = nv_val_cast<nv_compound>(c.val)->find(tok.back());
+			if (val) {
+				return val;
+			}
 		}
 	}
 
@@ -202,6 +232,12 @@ istream& nv_compound::read(istream& is)
 		} else if (v.val->is_disabled()) {
 			logger::d() << "skipping disabled " << desc(v) << endl;
 			continue;
+		}
+
+		if (!m_name.empty()) {
+			v.name = m_name + "." + v.name;
+		} else {
+			v.name = type() + "." + v.name;
 		}
 
 		try {
@@ -257,12 +293,12 @@ std::string nv_compound::to_string(unsigned level, bool pretty) const
 		return "<compound type " + type() + ">";
 	}
 
-	return compound_to_string(*this, level, pretty);
+	return compound_to_string(*this, level, pretty, name());
 }
 
 std::string nv_array_base::to_string(unsigned level, bool pretty) const
 {
-	return compound_to_string(*this, level, pretty, m_is_end);
+	return compound_to_string(*this, level, pretty, name(), m_is_end);
 }
 
 nv_data::nv_data(size_t width)
@@ -460,8 +496,8 @@ bool nv_magic::parse(const string& str)
 	return false;
 }
 
-nv_group::nv_group(const nv_magic& magic)
-: nv_compound(true), m_magic(magic)
+nv_group::nv_group(const nv_magic& magic, const std::string& name)
+: nv_compound(true, name), m_magic(magic)
 {}
 
 bool nv_group::init(bool force)
@@ -481,7 +517,7 @@ istream& nv_group::read(istream& is)
 		throw runtime_error("failed to read group version");
 	}
 
-	cout << "** " << m_magic.to_str() << " " << m_size.num() << " b, version 0x" << to_hex(m_version.num()) << endl;
+	logger::d() << "** " << m_magic.to_str() << " " << m_size.num() << " b, version 0x" << to_hex(m_version.num()) << endl;
 
 	if (nv_compound::read(is)) {
 		//m_bytes += is_versioned() ? 8 : 6;
@@ -552,7 +588,7 @@ istream& nv_group::read(istream& is, sp<nv_group>& group, int type)
 
 	auto i = s_registry.find(magic);
 	if (i == s_registry.end()) {
-		group = make_shared<nv_group_generic>();
+		group = make_shared<nv_group_generic>(magic, magic.to_str());
 	} else {
 		group.reset(i->second->clone());
 	}

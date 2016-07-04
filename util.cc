@@ -22,10 +22,14 @@ string& unescape(string& str, char delim)
 	return str;
 }
 
-void push_back(vector<string>& strings, string str, char delim, bool empties)
+void push_back(vector<string>& strings, string str, char delim, bool empties, size_t limit)
 {
 	if (empties || !str.empty()) {
-		strings.push_back(unescape(str, delim));
+		if (!limit || strings.size() < limit) {
+			strings.push_back(unescape(str, delim));
+		} else {
+			strings.back() += delim + unescape(str, delim);
+		}
 	}
 }
 
@@ -68,26 +72,26 @@ string trim(string str)
 	return str.substr(i);
 }
 
-vector<string> split(const string& str, char delim, bool empties)
+vector<string> split(const string& str, char delim, bool empties, size_t limit)
 {
 	string::size_type beg = 0, end = str.find(delim);
 	vector<string> subs;
 
 	while (end != string::npos) {
 		if (is_unescaped(str, end)) {
-			push_back(subs, str.substr(beg, end - beg), delim, empties);
+			push_back(subs, str.substr(beg, end - beg), delim, empties, limit);
 			beg = end + 1;
 		}
 
 		end = str.find(delim, end + 1);
 
 		if (end == string::npos) {
-			push_back(subs, str.substr(beg, str.size()), delim, empties);
+			push_back(subs, str.substr(beg, str.size()), delim, empties, limit);
 		}
 	}
 
 	if (subs.empty() && !str.empty()) {
-		push_back(subs, str, delim, empties);
+		push_back(subs, str, delim, empties, limit);
 	}
 
 	return subs;

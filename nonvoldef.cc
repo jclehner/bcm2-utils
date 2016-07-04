@@ -2,21 +2,25 @@
 using namespace std;
 
 #define NV_VAR(type, name, ...) { name, make_shared<type >(__VA_ARGS__) }
+#define NV_VARN(type, name, ...) { name, nv_compound_rename(make_shared<type >(__VA_ARGS__), name) }
 #define NV_VAR2(type, name, ...) { name, sp<type >(new type(__VA_ARGS__)) }
 #define NV_VAR3(cond, type, name, ...) { name, nv_val_disable<type >(shared_ptr<type>(new type(__VA_ARGS__)), !(cond)) }
+#define NV_VARN3(cond, type, name, ...) { name, nv_compound_rename(nv_val_disable<type>(shared_ptr<type>(new type(__VA_ARGS__)), !(cond)), name) }
+
 #define NV_GROUP(group, ...) make_shared<group>(__VA_ARGS__)
 #define NV_GROUP_DEF_CLONE(type) \
 		virtual type* clone() const override \
 		{ return new type(*this); }
-#define NV_GROUP_DEF_CTOR_AND_CLONE(type, magic) \
-		type() : nv_group(magic) {} \
+#define NV_GROUP_DEF_CTOR_AND_CLONE(type, magic, pretty) \
+		type() : nv_group(magic, pretty) {} \
 		\
 		NV_GROUP_DEF_CLONE(type)
-#define NV_COMPOUND_DEF_CTOR_AND_TYPE(name, typestr) \
-		name() : nv_compound(false) {} \
+#define NV_COMPOUND_DEF_CTOR_AND_TYPE(ttype, tname) \
+		ttype(const string& name = "") : nv_compound(false) \
+		{ nv_compound::rename(name); } \
 		\
 		virtual string type() const override \
-		{ return typestr; }
+		{ return tname; }
 
 namespace bcm2cfg {
 namespace {
@@ -27,10 +31,16 @@ template<class T> const sp<T>& nv_val_disable(const sp<T>& val, bool disable)
 	return val;
 }
 
+template<class T> const sp<T>& nv_compound_rename(const sp<T>& val, const std::string& name)
+{
+	val->rename(name);
+	return val;
+}
+
 class nv_group_mlog : public nv_group
 {
 	public:
-	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_mlog, "MLog")
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_mlog, "MLog", "userif");
 
 	protected:
 	virtual list definition(int type, const nv_version& ver) const override
@@ -57,7 +67,7 @@ class nv_group_mlog : public nv_group
 class nv_group_cmap : public nv_group
 {
 	public:
-	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_cmap, "CMAp")
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_cmap, "CMAp", "bfc")
 
 	protected:
 	virtual list definition(int type, const nv_version& ver) const override
@@ -75,7 +85,7 @@ class nv_group_8021 : public nv_group
 {
 	public:
 	nv_group_8021(bool card2)
-	: nv_group(card2 ? "8022" : "8021")
+	: nv_group(card2 ? "8022" : "8021", "bcmwifi"s + (card2 ? "2" : ""))
 	{}
 
 	NV_GROUP_DEF_CLONE(nv_group_8021);
@@ -107,13 +117,14 @@ class nv_group_8021 : public nv_group
 				protected:
 				virtual list definition() const override
 				{
-					typedef nv_u16_r<0, 15> cwminmaxaifs;
+					typedef nv_u16_r<0, 15> cwminaifs;
+					typedef nv_u16_r<0, 1024> cwmax;
 					typedef nv_u16_r<0, 8192> txop;
 
 					return {
-						NV_VAR(cwminmaxaifs, "cwmin"),
-						NV_VAR(cwminmaxaifs, "cwmax"),
-						NV_VAR(cwminmaxaifs, "aifsn"),
+						NV_VAR(cwminaifs, "cwmin"),
+						NV_VAR(cwmax, "cwmax"),
+						NV_VAR(cwminaifs, "aifsn"),
 						NV_VAR(txop, "txop_b"),
 						NV_VAR(txop, "txop_ag")
 					};
@@ -123,8 +134,8 @@ class nv_group_8021 : public nv_group
 			virtual list definition() const override
 			{
 				return {
-					NV_VAR(nv_wmm_params, "sta"),
-					NV_VAR(nv_wmm_params, "ap"),
+					NV_VARN(nv_wmm_params, "sta"),
+					NV_VARN(nv_wmm_params, "ap"),
 					NV_VAR(nv_u16, "data", true),
 				};
 			}
@@ -133,10 +144,10 @@ class nv_group_8021 : public nv_group
 		virtual list definition() const override
 		{
 			return {
-				NV_VAR(nv_wmm_block, "ac_be"),
-				NV_VAR(nv_wmm_block, "ac_bk"),
-				NV_VAR(nv_wmm_block, "ac_vi"),
-				NV_VAR(nv_wmm_block, "ac_vo"),
+				NV_VARN(nv_wmm_block, "ac_be"),
+				NV_VARN(nv_wmm_block, "ac_bk"),
+				NV_VARN(nv_wmm_block, "ac_vi"),
+				NV_VARN(nv_wmm_block, "ac_vo"),
 			};
 		}
 
@@ -173,9 +184,9 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_p8data, "radius_key"),
 				NV_VAR(nv_data, "", 0x3a),
-				NV_VAR(nv_wmm, "wmm"),
+				NV_VARN(nv_wmm, "wmm"),
 				//NV_VAR(nv_data, "data_7_1", 9),
-				NV_VAR3(ver.num() > 0x0015, nv_compound_def, "n", "n", {
+				NV_VARN3(ver.num() > 0x0015, nv_compound_def, "n", "n", {
 					NV_VAR(nv_u8, "bss_opmode_cap_required"),
 					NV_VAR(nv_u8, "channel"),
 					NV_VAR(nv_u8, "", true),
@@ -212,7 +223,7 @@ class nv_group_8021 : public nv_group
 class nv_group_t802 : public nv_group
 {
 	public:
-	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_t802, "T802")
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_t802, "T802", "tmmwifi")
 
 	protected:
 	virtual list definition(int type, const nv_version& ver) const override
@@ -242,7 +253,7 @@ class nv_group_t802 : public nv_group
 class nv_group_rg : public nv_group
 {
 	public:
-	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_rg, "RG..")
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_rg, "RG..", "rg")
 
 	protected:
 	template<int N> class nv_ip_range : public nv_compound
@@ -378,7 +389,7 @@ class nv_group_rg : public nv_group
 			NV_VAR(nv_mac, "dmz_mac"),
 			NV_VAR(nv_data, "", 7),
 			NV_VAR(nv_data, "", 0x1ff),
-			NV_VAR(nv_array<nv_ip4_range>, "ip_filters", 10, &nv_ip4_range::is_end),
+			NV_VAR(nv_array<nv_ip4_range>, "ip_filters", 10 , &nv_ip4_range::is_end),
 			NV_VAR(nv_array<nv_port_range>, "port_filters", 10, [] (const csp<nv_port_range>& range) {
 				return nv_port_range::is_range(range, 1, 0xffff);
 			}),
@@ -409,7 +420,7 @@ class nv_group_cdp : public nv_group
 {
 	public:
 
-	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_cdp, "CDP.")
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_cdp, "CDP.", "dhcp")
 
 	protected:
 	class nv_ip4_typed : public nv_compound
@@ -484,7 +495,7 @@ class nv_group_cdp : public nv_group
 class nv_group_fire : public nv_group
 {
 	public:
-	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_fire, "FIRE")
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_fire, "FIRE", "firewall")
 
 	protected:
 	virtual list definition(int type, const nv_version& ver) const override

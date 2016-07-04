@@ -40,6 +40,8 @@ template<class T> struct nv_type
 	}
 };
 
+template<class To, class From> sp<To> nv_val_cast(const From& from);
+
 class nv_val : public serializable
 {
 	public:
@@ -79,15 +81,7 @@ class nv_val : public serializable
 	virtual csp<nv_val> get(const std::string& name) const;
 
 	template<class T> csp<T> get_as(const std::string& name) const
-	{
-		csp<nv_val> val = get(name);
-		csp<T> ret = std::dynamic_pointer_cast<const T>(val);
-		if (!ret) {
-			throw std::invalid_argument("failed cast " + val->type() + " -> " + nv_type<T>::name());
-		}
-
-		return ret;
-	}
+	{ return nv_val_cast<const T>(get(name)); }
 
 	virtual void set(const std::string& name, const std::string& val);
 
@@ -99,6 +93,9 @@ class nv_val : public serializable
 	virtual bool is_disabled() const
 	{ return m_disabled; }
 
+	virtual bool is_compound() const
+	{ return false; }
+
 	friend std::ostream& operator<<(std::ostream& os, const nv_val& val)
 	{ return (os << val.to_pretty()); }
 
@@ -108,18 +105,33 @@ class nv_val : public serializable
 	list m_parts;
 };
 
+template<class To, class From> sp<To> nv_val_cast(const From& from)
+{
+	sp<To> p = std::dynamic_pointer_cast<To>(from);
+	if (!p) {
+		throw std::invalid_argument("failed cast: " + from->type() + " (" + from->to_str() + ") -> " + nv_type<To>::name());
+	}
+
+	return p;
+}
+
 class nv_compound : public nv_val
 {
 	public:
-	nv_compound(bool partial, size_t width)
-	: nv_compound(partial, width, false) {}
-
 	virtual std::string to_string(unsigned level, bool pretty) const override;
+
+	virtual const std::string& name() const
+	{ return m_name; }
+
+	virtual void rename(const std::string& name)
+	{ m_name = name; }
 
 	virtual bool parse(const std::string& str) override;
 
 	virtual csp<nv_val> get(const std::string& name) const override;
 	virtual void set(const std::string& name, const std::string& val) override;
+	// like get, but shouldn't throw
+	virtual csp<nv_val> find(const std::string& name) const;
 
 	virtual bool init(bool force = false);
 	virtual void clear()
@@ -131,12 +143,14 @@ class nv_compound : public nv_val
 	virtual std::istream& read(std::istream& is) override;
 	virtual std::ostream& write(std::ostream& os) const override;
 
+	virtual bool is_compound() const final
+	{ return true; }
+
 	protected:
-	nv_compound(bool partial)
-	: nv_compound(partial, 0, true) {}
-	nv_compound(bool partial, size_t width, bool internal);
-	// like get, but shouldn't throw
-	virtual sp<nv_val> find(const std::string& name) const;
+	nv_compound(bool partial, const std::string& name = "")
+	: nv_compound(partial, 0, name) {}
+	nv_compound(bool partial, size_t width, const std::string& name = "")
+	: m_partial(partial), m_width(width), m_name(name) {}
 	virtual list definition() const = 0;
 
 	bool m_partial = false;
@@ -144,23 +158,34 @@ class nv_compound : public nv_val
 	size_t m_width = 0;
 	// actual size
 	size_t m_bytes = 0;
+
+	private:
+	std::string m_name;
+};
+
+template<> struct nv_type<nv_compound>
+{
+	static std::string name()
+	{ return "nv_compound"; }
+
+	static size_t bytes()
+	{ return 0; }
 };
 
 class nv_compound_def final : public nv_compound
 {
 	public:
 	nv_compound_def(const std::string& name, const nv_compound::list& def, bool partial = false)
-	: nv_compound(partial), m_name(name), m_def(def) {}
+	: nv_compound(partial), m_def(def) { nv_compound::rename(name); }
 
 	virtual std::string type() const override
-	{ return m_name; }
+	{ return name(); }
 
 	protected:
 	virtual list definition() const override
 	{ return m_def; }
 
 	private:
-	std::string m_name;
 	nv_compound::list m_def;
 };
 
@@ -174,7 +199,7 @@ class nv_array_base : public nv_compound
 	virtual std::string to_string(unsigned level, bool pretty) const override;
 
 	protected:
-	nv_array_base(size_t width) : nv_compound(false, width, true), m_is_end(nullptr) {}
+	nv_array_base(size_t width) : nv_compound(false, width), m_is_end(nullptr) {}
 	is_end_func m_is_end;
 };
 
@@ -188,7 +213,6 @@ template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 			throw std::invalid_argument("size must not be 0");
 		}
 	}
-
 	virtual ~nv_array_generic() {}
 
 	virtual std::string type() const override
@@ -225,6 +249,7 @@ template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 	{ return nv_compound::bytes() + (L ? sizeof(I) : 0); }
 
 	protected:
+
 	virtual list definition() const override
 	{
 		list ret;
@@ -241,23 +266,19 @@ template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 	I m_count = 0;
 };
 
-template<typename T> class nv_array : public nv_array_generic<T, size_t, false>
+template<typename T, size_t N = 0> class nv_array : public nv_array_generic<T, size_t, false>
 {
 	public:
 	typedef std::function<bool(const csp<T>&)> is_end_func;
 
 	// arguments to is_end shall only be of type T, so an unchecked
 	// dynamic_cast can be safely used
-	nv_array(size_t n, const is_end_func& is_end = nullptr)
-	: nv_array_generic<T, size_t, false>(n), m_is_end(is_end)
+	nv_array(size_t n = N, const is_end_func& is_end = nullptr)
+	: nv_array_generic<T, size_t, false>(n), m_is_end(is_end), m_n(n)
 	{
-		if (!n) {
-			throw std::invalid_argument("array size must not be 0");
-		}
-
-		if (m_is_end) {
+		if (is_end) {
 			nv_array_base::m_is_end = [this] (const csp<nv_val>& val) {
-				return m_is_end(std::dynamic_pointer_cast<const T>(val));
+				return m_is_end(nv_val_cast<const T>(val));
 			};
 		}
 	}
@@ -265,6 +286,7 @@ template<typename T> class nv_array : public nv_array_generic<T, size_t, false>
 
 	private:
 	is_end_func m_is_end;
+	size_t m_n;
 };
 
 template<typename T, typename I> using nv_plist = nv_array_generic<T, I, true>;
@@ -553,19 +575,9 @@ template<> struct num_name<uint64_t>
 	static std::string name()
 	{ return "u64"; }
 };
-
-template<typename T> struct min
-{
-	static constexpr T n = std::numeric_limits<T>::min();
-};
-
-template<typename T> struct max
-{
-	static constexpr T n = std::numeric_limits<T>::max();
-};
-
 }
 
+// defines name (unlimited range), name_r (custom range) and name_m (custom maximum)
 #define NV_NUM_DEF(name, num_type) \
 	template<num_type MIN, num_type MAX> \
 	using name ## _r = nv_num<num_type, detail::num_name<num_type>, MIN, MAX>; \
@@ -577,7 +589,7 @@ NV_NUM_DEF(nv_u16, uint16_t);
 NV_NUM_DEF(nv_u32, uint32_t);
 NV_NUM_DEF(nv_u64, uint64_t);
 
-class nv_bool : public nv_u8
+class nv_bool : public nv_u8_r<0, 1>
 {
 	public:
 	virtual std::string type() const override
@@ -771,6 +783,9 @@ class nv_magic : public nv_data
 
 	virtual std::string to_string(unsigned, bool) const override;
 
+	uint32_t as_num() const
+	{ return ntohl(*reinterpret_cast<const uint32_t*>(m_buf.data())); }
+
 	bool operator<(const nv_magic& other) const
 	{ return m_buf < other.m_buf; }
 
@@ -816,14 +831,13 @@ class nv_group : public nv_compound, public cloneable
 	static constexpr int type_dyn = 2;
 	static constexpr int type_cfg = 3;
 
-	nv_group()
-	: nv_compound(true) {}
+	nv_group(uint32_t magic, const std::string& name = "")
+	: nv_group(nv_magic(magic), name) {}
 
-	nv_group(uint32_t magic)
-	: nv_group(nv_magic(magic)) {}
+	nv_group(const std::string& magic, const std::string& name = "")
+	: nv_group(nv_magic(magic), name) {}
 
-	nv_group(const std::string& magic)
-	: nv_group(nv_magic(magic)) {}
+	nv_group(const nv_magic& magic, const std::string& name);
 
 	virtual bool is_versioned() const
 	{ return true; }
@@ -849,8 +863,6 @@ class nv_group : public nv_compound, public cloneable
 	bool init(bool force) override;
 
 	protected:
-
-	nv_group(const nv_magic& magic);
 	virtual list definition() const override final;
 	virtual list definition(int type, const nv_version& ver) const;
 	virtual std::istream& read(std::istream& is) override;
@@ -860,6 +872,7 @@ class nv_group : public nv_compound, public cloneable
 	nv_version m_version;
 	int m_type = type_unknown;
 
+	private:
 	static std::map<nv_magic, csp<nv_group>> s_registry;
 
 };
@@ -867,6 +880,8 @@ class nv_group : public nv_compound, public cloneable
 class nv_group_generic : public nv_group
 {
 	public:
+	using nv_group::nv_group;
+
 	virtual nv_group_generic* clone() const override
 	{ return new nv_group_generic(*this); }
 };
