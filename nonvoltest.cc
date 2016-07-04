@@ -48,15 +48,6 @@ csp<nv_val> get(csp<nv_group> group, const string& name)
 	return nullptr;
 }
 
-string to_pretty(csp<nv_val>& val, string name)
-{
-	if (val->is_compound()) {
-		return val->to_pretty();
-	}
-
-	return name + " = " + val->to_pretty();
-}
-
 int main(int argc, char** argv)
 {
 	if (argc < 3) {
@@ -100,8 +91,7 @@ int main(int argc, char** argv)
 			if (argc == 5 && argv[3] == "get"s) {
 				csp<nv_val> val = get(group, argv[4]);
 				if (val) {
-					cout << to_pretty(val, argv[4]) << endl;
-					//cout << argv[4] << " = " << val->to_pretty() << endl;
+					cout << argv[4] << " = " << val->to_pretty() << endl;
 					break;
 				}
 			} else {
