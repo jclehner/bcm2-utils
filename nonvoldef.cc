@@ -392,6 +392,8 @@ class nv_group_rg : public nv_group
 
 	virtual list definition(int type, const nv_version& ver) const override
 	{
+		typedef nv_i32_r<-45000, 45000> timezone_offset;
+
 		return {
 			NV_VAR(nv_u8, "", true),
 			NV_VAR(nv_zstring, "http_pass", 9),
@@ -421,7 +423,8 @@ class nv_group_rg : public nv_group
 			NV_VAR(nv_data, "", 0x48a),
 			NV_VAR(nv_data, "", 4),
 			NV_VARN(nv_p8list<nv_p8string>, "timeservers"),
-			NV_VAR(nv_data, "", 0x29),
+			NV_VAR(timezone_offset, "timezone_offset"),
+			NV_VAR(nv_data, "", 0x25),
 			NV_VARN(nv_array<nv_port_forward_dport>, "port_forward_dports", 10, [] (const csp<nv_port_forward_dport>& range) {
 				return nv_port_range::is_range(range->get_as<nv_port_range>("ports"), 0, 0);
 			}),
@@ -499,7 +502,9 @@ class nv_group_cdp : public nv_group
 			NV_VAR(nv_u32, "ttl"),
 			NV_VAR(nv_data, "", 4),
 			NV_VARN(nv_ip4_typed, "ip_2"),
-			NV_VARN(nv_ip4_typed, "ip_3"),
+			NV_VAR(nv_p8string, "domain"),
+			NV_VAR(nv_data, "", 7),
+			//NV_VARN(nv_ip4_typed, "ip_3"),
 			NV_VARN(nv_array<nv_lan_addr_entry>, "lan_addrs", 3),
 			//NV_VAR(nv_lan_addr_entry, "lan_addr_1"), // XXX make this an array
 		};
@@ -517,9 +522,6 @@ class nv_group_fire : public nv_group
 	{
 		return {
 			NV_VAR(nv_data, "", 2),
-#if 0
-			NV_VAR(nv_u16, "features", true),
-#else
 			NV_VAR2(nv_bitmask<nv_u16>, "features", nv_bitmask<nv_u16>::valvec {
 				"url_keyword_blocking",
 				"url_domain_blocking",
@@ -538,7 +540,66 @@ class nv_group_fire : public nv_group
 				"port_scan_detection",
 				"syn_flood_detection"
 			}),
-#endif
+		};
+	}
+};
+
+class nv_group_cmev : public nv_group
+{
+	public:
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_cmev, "CMEV", "cmlog")
+
+	protected:
+	class nv_log_entry : public nv_compound
+	{
+		public:
+		NV_COMPOUND_DEF_CTOR_AND_TYPE(nv_log_entry, "log-entry")
+
+		static bool is_end(const csp<nv_log_entry>& log_entry)
+		{
+			return log_entry->get("msg")->bytes() == 0;
+		}
+
+		virtual list definition() const override
+		{
+			return {
+				NV_VAR(nv_data, "data", 0x10),
+				NV_VAR(nv_p16string, "msg")
+			};
+		}
+	};
+
+
+	virtual list definition(int type, const nv_version& ver) const override
+	{
+		return {
+			NV_VAR(nv_u8, "", true),
+			NV_VARN(nv_p8list<nv_log_entry>, "log"),
+		};
+	}
+};
+
+class nv_group_upc : public nv_group
+{
+	public:
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_upc, "UPC.", "upc")
+
+	virtual list definition(int type, const nv_version& ver) const override
+	{
+		return {
+			NV_VAR(nv_data, "", 10),
+			NV_VAR(nv_u16, "parental_activity_time_enable"),
+			NV_VAR(nv_zstring, "parental_password", 10),
+			NV_VAR(nv_data, "", 0x2237),
+			NV_VAR(nv_u8, "web_country"),
+			NV_VAR(nv_u8, "web_language"),
+			NV_VAR(nv_bool, "web_syslog_enable"),
+			NV_VAR(nv_u8, "web_syslog_level"),
+			NV_VAR2(nv_array<nv_mac>, "trusted_macs", 10, &is_zero_mac),
+			NV_VAR(nv_data, "", 0xd8),
+			NV_VAR(nv_array<nv_ip4>, "lan_dns4_list", 3),
+			NV_VAR(nv_array<nv_ip6>, "lan_dns6_list", 3),
+
 		};
 	}
 };
@@ -555,6 +616,8 @@ struct registrar {
 			NV_GROUP(nv_group_rg),
 			NV_GROUP(nv_group_cdp),
 			NV_GROUP(nv_group_fire),
+			NV_GROUP(nv_group_cmev),
+			NV_GROUP(nv_group_upc),
 		};
 
 		for (auto g : groups) {

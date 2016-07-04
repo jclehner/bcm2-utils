@@ -84,7 +84,7 @@ int main(int argc, char** argv)
 	while (in.good()) {
 		sp<nv_group> group;
 		if (nv_group::read(in, group, type) || in.eof()) {
-			if (!group) {
+			if (!group || group->magic().to_str() == "ffffffff") {
 				break;
 			}
 

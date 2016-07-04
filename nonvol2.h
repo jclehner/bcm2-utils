@@ -570,10 +570,22 @@ template<> struct num_name<uint8_t>
 	{ return "u8"; }
 };
 
+template<> struct num_name<int8_t>
+{
+	static std::string name()
+	{ return "i8"; }
+};
+
 template<> struct num_name<uint16_t>
 {
 	static std::string name()
 	{ return "u16"; }
+};
+
+template<> struct num_name<int16_t>
+{
+	static std::string name()
+	{ return "i16"; }
 };
 
 template<> struct num_name<uint32_t>
@@ -582,10 +594,22 @@ template<> struct num_name<uint32_t>
 	{ return "u32"; }
 };
 
+template<> struct num_name<int32_t>
+{
+	static std::string name()
+	{ return "i32"; }
+};
+
 template<> struct num_name<uint64_t>
 {
 	static std::string name()
 	{ return "u64"; }
+};
+
+template<> struct num_name<int64_t>
+{
+	static std::string name()
+	{ return "i64"; }
 };
 }
 
@@ -600,6 +624,11 @@ NV_NUM_DEF(nv_u8, uint8_t);
 NV_NUM_DEF(nv_u16, uint16_t);
 NV_NUM_DEF(nv_u32, uint32_t);
 NV_NUM_DEF(nv_u64, uint64_t);
+
+NV_NUM_DEF(nv_i8, int8_t);
+NV_NUM_DEF(nv_i16, int16_t);
+NV_NUM_DEF(nv_i32, int32_t);
+NV_NUM_DEF(nv_i64, int64_t);
 
 class nv_bool : public nv_u8_r<0, 1>
 {

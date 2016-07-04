@@ -131,6 +131,24 @@ template<typename T> struct bswapper
 	static T hton(T n);
 };
 
+#define BCM2UTILS_DEF_BSWAPPER(type, f_ntoh, f_hton) \
+	template<> struct bswapper<type> \
+	{\
+		static type ntoh(const type& n) \
+		{ return f_ntoh(n); } \
+		\
+		static type hton(const type& n) \
+		{ return f_hton(n); } \
+	}
+
+BCM2UTILS_DEF_BSWAPPER(uint8_t,,);
+BCM2UTILS_DEF_BSWAPPER(int8_t,,);
+BCM2UTILS_DEF_BSWAPPER(uint16_t, ntohs, htons);
+BCM2UTILS_DEF_BSWAPPER(int16_t, ntohs, htons);
+BCM2UTILS_DEF_BSWAPPER(uint32_t, ntohl ,htonl);
+BCM2UTILS_DEF_BSWAPPER(int32_t, ntohl, htonl);
+
+/*
 template<> struct bswapper<uint8_t>
 {
 	static uint8_t ntoh(const uint8_t& n)
@@ -157,6 +175,16 @@ template<> struct bswapper<uint32_t>
 	static uint32_t hton(const uint32_t& n)
 	{ return htonl(n); }
 };
+
+template<> struct bswapper<int32_t>
+{
+	static int32_t ntoh(const int32_t& n)
+	{ return ntohl(n); }
+
+	static int32_t hton(const int32_t& n)
+	{ return htonl(n); }
+};
+*/
 
 template<typename T> using sp = std::shared_ptr<T>;
 template<typename T> using csp = std::shared_ptr<const T>;
