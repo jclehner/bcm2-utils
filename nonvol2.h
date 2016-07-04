@@ -333,15 +333,6 @@ class nv_data : public nv_val
 	std::string m_buf;
 };
 
-class nv_unknown : public nv_data
-{
-	public:
-	nv_unknown(size_t width) : nv_data(width) {}
-
-	std::string to_string(unsigned, bool) const override
-	{ return "<" + std::to_string(bytes()) + " bytes>"; }
-};
-
 template<int N> class nv_ip : public nv_data
 {
 	static_assert(N == 4 || N == 6, "N must be either 4 or 6");
@@ -375,6 +366,8 @@ class nv_mac : public nv_data
 {
 	public:
 	nv_mac() : nv_data(6) {}
+
+	virtual bool parse(const std::string& str) override;
 };
 
 class nv_string : public nv_val
@@ -687,6 +680,7 @@ template<typename T> class nv_enum_bitmask : public T
 
 template<class T> class nv_enum : public nv_enum_bitmask<T>
 {
+	protected:
 	typedef nv_enum_bitmask<T> super;
 
 	public:

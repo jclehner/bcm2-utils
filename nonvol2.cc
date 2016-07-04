@@ -83,6 +83,8 @@ string compound_to_string(const nv_compound& c, unsigned level, bool pretty,
 		auto v = parts[i];
 		if (is_end && is_end(v.val)) {
 			break;
+		} else if (pretty && v.name[0] == '_' && false) {
+			continue;
 		}
 
 		str += "\n" + pad(level) + v.name + " = " + v.val->to_string(level + 1, pretty);
@@ -312,6 +314,26 @@ istream& nv_data::read(istream& is)
 	return is;
 }
 
+bool nv_mac::parse(const string& str)
+{
+	auto tok = split(str, ':');
+	if (tok.size() == 6) {
+		string buf;
+		for (auto s : tok) {
+			if (s.size() != 2) {
+				return false;
+			}
+
+			buf += lexical_cast<uint16_t>(s, 16);
+		}
+
+		m_buf = buf;
+		return true;
+	}
+
+	return false;
+}
+
 bool nv_string::parse(const string& str)
 {
 	if (!m_width || str.size() < m_width) {
@@ -503,7 +525,7 @@ istream& nv_group::read(istream& is)
 		//m_bytes += is_versioned() ? 8 : 6;
 
 		if (m_bytes < m_size.num()) {
-			sp<nv_val> extra = make_shared<nv_unknown>(m_size.num() - m_bytes);
+			sp<nv_val> extra = make_shared<nv_data>(m_size.num() - m_bytes);
 			if (!extra->read(is)) {
 				throw runtime_error("failed to read remaining " + std::to_string(extra->bytes()) + " bytes");
 			}
@@ -544,7 +566,7 @@ nv_val::list nv_group::definition(int type, const nv_version& ver) const
 {
 	uint16_t size = m_size.num() - (is_versioned() ? 8 : 6);
 	if (size) {
-		return {{ "data", std::make_shared<nv_unknown>(size) }};
+		return {{ "data", std::make_shared<nv_data>(size) }};
 	}
 
 	return {};

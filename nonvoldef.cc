@@ -8,6 +8,8 @@ using namespace std;
 #define NV_VAR3(cond, type, name, ...) { name, nv_val_disable<type>(shared_ptr<type>(new type(__VA_ARGS__)), !(cond)) }
 #define NV_VARN3(cond, type, name, ...) { name, nv_compound_rename(nv_val_disable<type>(shared_ptr<type>(new type(__VA_ARGS__)), !(cond)), name) }
 
+#define COMMA() ,
+
 #define NV_GROUP(group, ...) make_shared<group>(__VA_ARGS__)
 #define NV_GROUP_DEF_CLONE(type) \
 		virtual type* clone() const override \
@@ -36,6 +38,11 @@ template<class T> const sp<T>& nv_compound_rename(const sp<T>& val, const std::s
 {
 	val->rename(name);
 	return val;
+}
+
+bool is_zero_mac(const csp<nv_mac>& mac)
+{
+	return mac->to_str() == "00:00:00:00:00:00";
 }
 
 class nv_group_mlog : public nv_group
@@ -156,6 +163,11 @@ class nv_group_8021 : public nv_group
 
 	virtual list definition(int type, const nv_version& ver) const override
 	{
+		typedef nv_u16_r<20, 1024> beacon_interval;
+		typedef nv_u16_r<1, 255> dtim_interval;
+		typedef nv_u16_r<256, 2346> frag_threshold;
+		typedef nv_u16_r<1, 2347> rts_threshold;
+
 		if (type != type_perm) {
 			return {
 				NV_VAR(nv_zstring, "ssid", 33),
@@ -164,23 +176,25 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_u8, "basic_rates"), // XXX u16?
 				NV_VAR(nv_data, "", 0x28),
-				NV_VAR(nv_u16, "beacon_interval"),
-				NV_VAR(nv_u16, "dtim_interval"),
-				NV_VAR(nv_u16, "frag_threshold"),
-				NV_VAR(nv_u16, "rts_threshold"),
-				NV_VAR(nv_unknown, "", 0xe8),
+				NV_VAR(beacon_interval, "beacon_interval"),
+				NV_VAR(dtim_interval, "dtim_interval"),
+				NV_VAR(frag_threshold, "frag_threshold"),
+				NV_VAR(rts_threshold, "rts_threshold"),
+				NV_VAR(nv_data, "", 0x27),
+				NV_VAR2(nv_enum<nv_u8>, "mac_policy", "mac_policy", { "disabled", "allow", "deny" }),
+				NV_VARN(nv_array<nv_mac>, "mac_table", 32, &is_zero_mac),
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_u8, "", true),
-				NV_VAR(nv_unknown, "", 0x20),
+				NV_VAR(nv_data, "", 0x20),
 				NV_VAR(nv_u8, "short_retry_limit"),
 				NV_VAR(nv_u8, "long_retry_limit"),
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_u8, "channel_a"),
-				NV_VAR(nv_unknown, "", 5),
+				NV_VAR(nv_data, "", 5),
 				NV_VAR(nv_u8_m<100>, "tx_power"),
 				NV_VAR(nv_p16string, "wpa_psk"),
-				NV_VAR(nv_unknown, "", 0x8),
+				NV_VAR(nv_data, "", 0x8),
 				NV_VAR(nv_u16, "radius_port"),
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_p8data, "radius_key"),
@@ -203,15 +217,15 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_p8zstring, "wps_model"),
 				NV_VAR(nv_p8zstring, "wps_manufacturer"),
 				NV_VAR(nv_p8zstring, "wps_device_name"),
-				NV_VAR(nv_unknown, "", 3),
+				NV_VAR(nv_data, "", 3),
 				NV_VAR(nv_p8zstring, "wps_model_num"),
 				//NV_VAR(nv_bool, "wps_timeout"),
-				NV_VAR(nv_unknown, "", 2),
+				NV_VAR(nv_data, "", 2),
 				NV_VAR(nv_p8zstring, "wps_uuid"),
 				NV_VAR(nv_p8zstring, "wps_board_num"),
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_p8zstring, "country"),
-				NV_VAR(nv_unknown, "", 0x6),
+				NV_VAR(nv_data, "", 0x6),
 				NV_VAR(nv_u8, "pre_network_radar_check"),
 				NV_VAR(nv_u8, "in_network_radar_check")
 			};
@@ -397,7 +411,7 @@ class nv_group_rg : public nv_group
 			NV_VARN(nv_array<nv_port_forward>, "port_forwards", 10, [] (const csp<nv_port_forward>& fwd) {
 				return fwd->get("dest")->to_str() == "0.0.0.0";
 			}),
-			NV_VARN(nv_array<nv_mac>, "mac_filters", 10),
+			NV_VARN(nv_array<nv_mac>, "mac_filters", 10, &is_zero_mac),
 			NV_VAR(nv_data, "", 0x3c),
 			NV_VARN(nv_array<nv_port_trigger>, "port_triggers", 10, &nv_port_trigger::is_end),
 			NV_VAR(nv_data, "", 0x15),
