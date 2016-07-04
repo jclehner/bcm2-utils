@@ -75,7 +75,7 @@ string data_to_string(const string& data, unsigned level, bool pretty)
 string compound_to_string(const nv_compound& c, unsigned level, bool pretty,
 		const string& name = "", const nv_array_base::is_end_func& is_end = nullptr)
 {
-	string str = name.empty() ? "{" : "";
+	string str = "{";
 	size_t i = 0;
 
 	auto parts = c.parts();
@@ -83,42 +83,16 @@ string compound_to_string(const nv_compound& c, unsigned level, bool pretty,
 		auto v = parts[i];
 		if (is_end && is_end(v.val)) {
 			break;
-		} if (!v.val->is_compound()) {
-			if (name.empty()) {
-				str += "\n" + pad(level + 1) + v.name;
-			} else {
-				str += "\n" + name + "." + v.name;
-			}
-
-		} else {
-			csp<nv_compound> compound = dynamic_pointer_cast<nv_compound>(v.val);
-			if (compound) {
-				string cname = name;
-
-				if (!compound->name().empty()) {
-					if (!cname.empty()) {
-						cname += '.';
-					}
-					cname += compound->name();
-				}
-
-				str += compound_to_string(*compound, level +1, pretty, cname, nullptr);
-				continue;
-			}
 		}
 
-		str += " = " + v.val->to_string(name.empty() ? level : level + 1, pretty);
+		str += "\n" + pad(level) + v.name + " = " + v.val->to_string(level + 1, pretty);
 	}
 
 	if (i != parts.size() && is_end) {
-		if (name.empty()) {
-			str += "\n" + pad(level) + std::to_string(i) + ".." + (std::to_string(parts.size() - 1) + " = <empty>");
-		}
+		str += "\n" + pad(level) + std::to_string(i) + ".." + std::to_string(parts.size() - 1) + " = <n/a>";
 	}
 
-	if (name.empty()) {
-		return str + "\n" + pad(level - 1) + "}";
-	}
+	str += "\n" + pad(level - 1) + "}";
 
 	return str;
 
@@ -232,12 +206,6 @@ istream& nv_compound::read(istream& is)
 		} else if (v.val->is_disabled()) {
 			logger::d() << "skipping disabled " << desc(v) << endl;
 			continue;
-		}
-
-		if (!m_name.empty()) {
-			v.name = m_name + "." + v.name;
-		} else {
-			v.name = type() + "." + v.name;
 		}
 
 		try {

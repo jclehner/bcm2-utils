@@ -1,10 +1,11 @@
 #include "nonvol2.h"
 using namespace std;
 
-#define NV_VAR(type, name, ...) { name, make_shared<type >(__VA_ARGS__) }
+#define NV_VAR(type, name, ...) { name, make_shared<type>(__VA_ARGS__) }
 #define NV_VARN(type, name, ...) { name, nv_compound_rename(make_shared<type >(__VA_ARGS__), name) }
-#define NV_VAR2(type, name, ...) { name, sp<type >(new type(__VA_ARGS__)) }
-#define NV_VAR3(cond, type, name, ...) { name, nv_val_disable<type >(shared_ptr<type>(new type(__VA_ARGS__)), !(cond)) }
+#define NV_VAR2(type, name, ...) { name, sp<type>(new type(__VA_ARGS__)) }
+#define NV_VARN2(type, name, ...) { name, nv_compound_rename(sp<type>(new type(__VA_ARGS__)), name) }
+#define NV_VAR3(cond, type, name, ...) { name, nv_val_disable<type>(shared_ptr<type>(new type(__VA_ARGS__)), !(cond)) }
 #define NV_VARN3(cond, type, name, ...) { name, nv_compound_rename(nv_val_disable<type>(shared_ptr<type>(new type(__VA_ARGS__)), !(cond)), name) }
 
 #define NV_GROUP(group, ...) make_shared<group>(__VA_ARGS__)
@@ -389,25 +390,25 @@ class nv_group_rg : public nv_group
 			NV_VAR(nv_mac, "dmz_mac"),
 			NV_VAR(nv_data, "", 7),
 			NV_VAR(nv_data, "", 0x1ff),
-			NV_VAR(nv_array<nv_ip4_range>, "ip_filters", 10 , &nv_ip4_range::is_end),
-			NV_VAR(nv_array<nv_port_range>, "port_filters", 10, [] (const csp<nv_port_range>& range) {
+			NV_VARN(nv_array<nv_ip4_range>, "ip_filters", 10 , &nv_ip4_range::is_end),
+			NV_VARN(nv_array<nv_port_range>, "port_filters", 10, [] (const csp<nv_port_range>& range) {
 				return nv_port_range::is_range(range, 1, 0xffff);
 			}),
-			NV_VAR(nv_array<nv_port_forward>, "port_forwards", 10, [] (const csp<nv_port_forward>& fwd) {
+			NV_VARN(nv_array<nv_port_forward>, "port_forwards", 10, [] (const csp<nv_port_forward>& fwd) {
 				return fwd->get("dest")->to_str() == "0.0.0.0";
 			}),
-			NV_VAR(nv_array<nv_mac>, "mac_filters", 10),
+			NV_VARN(nv_array<nv_mac>, "mac_filters", 10),
 			NV_VAR(nv_data, "", 0x3c),
-			NV_VAR(nv_array<nv_port_trigger>, "port_triggers", 10, &nv_port_trigger::is_end),
+			NV_VARN(nv_array<nv_port_trigger>, "port_triggers", 10, &nv_port_trigger::is_end),
 			NV_VAR(nv_data, "", 0x15),
-			NV_VAR(nv_array<nv_proto>, "port_filter_protocols", 10),
+			NV_VARN(nv_array<nv_proto>, "port_filter_protocols", 10),
 			NV_VAR(nv_data, "", 0xaa),
-			NV_VAR(nv_array<nv_proto>, "port_trigger_protocols", 10),
+			NV_VARN(nv_array<nv_proto>, "port_trigger_protocols", 10),
 			NV_VAR(nv_data, "", 0x48a),
 			NV_VAR(nv_data, "", 4),
-			NV_VAR(nv_p8list<nv_p8string>, "timeservers"),
+			NV_VARN(nv_p8list<nv_p8string>, "timeservers"),
 			NV_VAR(nv_data, "", 0x29),
-			NV_VAR(nv_array<nv_port_forward_dport>, "port_forward_dports", 10, [] (const csp<nv_port_forward_dport>& range) {
+			NV_VARN(nv_array<nv_port_forward_dport>, "port_forward_dports", 10, [] (const csp<nv_port_forward_dport>& range) {
 				return nv_port_range::is_range(range->get_as<nv_port_range>("ports"), 0, 0);
 			}),
 			NV_VAR(nv_data, "", 0x9b),
@@ -474,18 +475,18 @@ class nv_group_cdp : public nv_group
 			NV_VAR(nv_data, "", 7),
 			NV_VAR(nv_u8, "lan_trans_threshold"),
 			NV_VAR(nv_data, "", 8),
-			NV_VAR(nv_ip4_typed, "dhcp_pool_start"),
-			NV_VAR(nv_ip4_typed, "dhcp_pool_end"),
-			NV_VAR(nv_ip4_typed, "dhcp_subnet_mask"),
+			NV_VARN(nv_ip4_typed, "dhcp_pool_start"),
+			NV_VARN(nv_ip4_typed, "dhcp_pool_end"),
+			NV_VARN(nv_ip4_typed, "dhcp_subnet_mask"),
 			NV_VAR(nv_data, "", 4),
-			NV_VAR(nv_ip4_typed, "router"),
-			NV_VAR(nv_ip4_typed, "dns"),
-			NV_VAR(nv_ip4_typed, "syslog"),
+			NV_VARN(nv_ip4_typed, "router"),
+			NV_VARN(nv_ip4_typed, "dns"),
+			NV_VARN(nv_ip4_typed, "syslog"),
 			NV_VAR(nv_u32, "ttl"),
 			NV_VAR(nv_data, "", 4),
-			NV_VAR(nv_ip4_typed, "ip_2"),
-			NV_VAR(nv_ip4_typed, "ip_3"),
-			NV_VAR(nv_array<nv_lan_addr_entry>, "lan_addrs", 3),
+			NV_VARN(nv_ip4_typed, "ip_2"),
+			NV_VARN(nv_ip4_typed, "ip_3"),
+			NV_VARN(nv_array<nv_lan_addr_entry>, "lan_addrs", 3),
 			//NV_VAR(nv_lan_addr_entry, "lan_addr_1"), // XXX make this an array
 		};
 	}
