@@ -120,6 +120,8 @@ uint16_t crc16_ccitt(const void* buf, size_t size);
 inline uint16_t crc16_ccitt(const std::string& buf)
 { return crc16_ccitt(buf.data(), buf.size()); }
 
+//uint32_t crc32(const std::string& buf);
+
 inline unsigned elapsed_millis(std::clock_t start, std::clock_t now = std::clock())
 {
 	return 1000 * (now - start) / CLOCKS_PER_SEC;

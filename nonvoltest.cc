@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include "gwsettings.h"
 #include "nonvol2.h"
 #include "util.h"
 using namespace bcm2cfg;
@@ -65,22 +66,35 @@ int main(int argc, char** argv)
 
 	int type;
 
-	if (argv[1] == "group"s) {
+	if (argv[1] == "group"s && false) {
 		type = nv_group::type_dyn;
 	} else if (argv[1] == "dyn"s) {
 		type = nv_group::type_dyn;
-		in.seekg(0xd2);
+		//in.seekg(0xd2);
 	} else if (argv[1] == "gwsettings"s) {
 		type = nv_group::type_dyn;
-		in.seekg(0x60);
+		//in.seekg(0x60);
 	} else if (argv[1] == "perm"s) {
 		type = nv_group::type_perm;
-		in.seekg(0xd2);
+		//in.seekg(0xd2);
 	} else {
 		cerr << "invalid type " << argv[1] << endl;
 		return 1;
 	}
 
+	sp<settings> cfg = settings::read(in, type, nullptr, "");
+	if (argc >= 5 && argv[3] == "get"s) {
+		csp<nv_val> val = cfg->get(argv[4]);
+		if (val) {
+			cout << argv[4] << " = " << val->to_pretty() << endl;
+		}
+	} else if (argc >= 6 && argv[3] == "set"s) {
+		cfg->set(argv[4], argv[5]);
+	} else {
+		cout << cfg->to_pretty() << endl;
+	}
+
+#if 0
 	while (in.good()) {
 		sp<nv_group> group;
 		if (nv_group::read(in, group, type) || in.eof()) {
@@ -112,6 +126,7 @@ int main(int argc, char** argv)
 			return 1;
 		}
 	}
+#endif
 
 	return 0;
 }

@@ -176,7 +176,7 @@ csp<nv_val> nv_compound::find(const string& name) const
 {
 	vector<string> tok = split(name, '.', false, 2);
 
-	for (auto c : m_parts) {
+	for (auto c : parts()) {
 		if (c.name == tok[0]) {
 			if (tok.size() == 2 && c.val->is_compound()) {
 				return nv_val_cast<nv_compound>(c.val)->find(tok[1]);
@@ -579,13 +579,20 @@ void nv_group::registry_add(const csp<nv_group>& group)
 	s_registry[group->m_magic] = group;
 }
 
-istream& nv_group::read(istream& is, sp<nv_group>& group, int type)
+istream& nv_group::read(istream& is, sp<nv_group>& group, int type, size_t maxsize)
 {
 	nv_u16 size;
 	nv_magic magic;
 
+	logger::v() << "nv_group::read: " << maxsize << endl;
+
 	if (!read_group_header(is, size, magic)) {
 		return is;
+	} else if (size.num() > maxsize) {
+		throw runtime_error("size of group " + magic.to_str() + " " + size.to_str()
+				+ " exceeds " + std::to_string(maxsize));
+		//is.setstate(ios::failbit);
+		//return is;
 	}
 
 	auto i = s_registry.find(magic);

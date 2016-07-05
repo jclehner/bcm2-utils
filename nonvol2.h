@@ -85,9 +85,6 @@ class nv_val : public serializable
 
 	virtual void set(const std::string& name, const std::string& val);
 
-	virtual const list& parts() const
-	{ return m_parts; }
-
 	virtual void disable(bool disable)
 	{ m_disabled = disable; }
 	virtual bool is_disabled() const
@@ -102,7 +99,6 @@ class nv_val : public serializable
 	protected:
 	bool m_disabled = false;
 	bool m_set = false;
-	list m_parts;
 };
 
 template<class To, class From> sp<To> nv_val_cast(const From& from)
@@ -115,6 +111,7 @@ template<class To, class From> sp<To> nv_val_cast(const From& from)
 	return p;
 }
 
+// TODO split this into nv_compound and nv_compound_base
 class nv_compound : public nv_val
 {
 	public:
@@ -146,6 +143,9 @@ class nv_compound : public nv_val
 	virtual bool is_compound() const final
 	{ return true; }
 
+	virtual const list& parts() const
+	{ return m_parts; }
+
 	protected:
 	nv_compound(bool partial, const std::string& name = "")
 	: nv_compound(partial, 0, name) {}
@@ -159,6 +159,8 @@ class nv_compound : public nv_val
 	// actual size
 	size_t m_bytes = 0;
 
+	list m_parts;
+
 	private:
 	std::string m_name;
 };
@@ -171,6 +173,9 @@ template<> struct nv_type<nv_compound>
 	static size_t bytes()
 	{ return 0; }
 };
+
+template<class From> sp<nv_compound> nv_compound_cast(const From& from)
+{ return nv_val_cast<nv_compound>(from); }
 
 class nv_compound_def final : public nv_compound
 {
@@ -245,7 +250,7 @@ template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 		return nv_compound::write(os);
 	}
 
-	virtual void set(const std::string& name, const std::string& val)
+	virtual void set(const std::string& name, const std::string& val) override
 	{
 		I index = bcm2dump::lexical_cast<I>(name);
 		if (index < m_count) {
@@ -889,7 +894,7 @@ class nv_group : public nv_compound, public cloneable
 
 	virtual std::ostream& write(std::ostream& os) const override;
 
-	static std::istream& read(std::istream& is, sp<nv_group>& group, int type);
+	static std::istream& read(std::istream& is, sp<nv_group>& group, int type, size_t maxsize);
 	static void registry_add(const csp<nv_group>& group);
 	static const auto& registry()
 	{ return s_registry; }

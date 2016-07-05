@@ -505,7 +505,7 @@ class nv_group_cdp : public nv_group
 			NV_VAR(nv_p8string, "domain"),
 			NV_VAR(nv_data, "", 7),
 			//NV_VARN(nv_ip4_typed, "ip_3"),
-			NV_VARN(nv_array<nv_lan_addr_entry>, "lan_addrs", 3),
+			NV_VARN(nv_array<nv_lan_addr_entry>, "lan_addrs", 16),
 			//NV_VAR(nv_lan_addr_entry, "lan_addr_1"), // XXX make this an array
 		};
 	}
@@ -599,7 +599,6 @@ class nv_group_upc : public nv_group
 			NV_VAR(nv_data, "", 0xd8),
 			NV_VAR(nv_array<nv_ip4>, "lan_dns4_list", 3),
 			NV_VAR(nv_array<nv_ip6>, "lan_dns6_list", 3),
-
 		};
 	}
 };
