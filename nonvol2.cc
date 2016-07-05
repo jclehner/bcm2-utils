@@ -96,7 +96,7 @@ string compound_to_string(const nv_compound& c, unsigned level, bool pretty,
 		auto v = parts[i];
 		if (is_end && is_end(v.val)) {
 			break;
-		} else if (pretty && v.name[0] == '_' && false) {
+		} else if (v.val->is_disabled() || (pretty && v.name[0] == '_' && false)) {
 			continue;
 		}
 
