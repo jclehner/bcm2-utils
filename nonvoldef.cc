@@ -66,6 +66,8 @@ class nv_group_mlog : public nv_group
 	protected:
 	virtual list definition(int type, const nv_version& ver) const override
 	{
+		typedef nv_bitmask<nv_u8> nv_ipstacks;
+
 		return {
 			NV_VAR(nv_p16string, "http_user", 32),
 			NV_VAR(nv_p16string, "http_pass", 32),
@@ -75,13 +77,13 @@ class nv_group_mlog : public nv_group
 			NV_VAR(nv_zstring, "remote_acc_user", 16),
 			NV_VAR(nv_zstring, "remote_acc_pass", 16),
 			NV_VAR(nv_u8, "telnet_ip_stacks", true),
-			NV_VAR(nv_u8, "ssh_ip_stacks", true),
+			NV_VAR(nv_ipstacks, "ssh_ip_stacks"),
 			NV_VAR(nv_u8, "ssh_enabled"),
 			NV_VAR(nv_u8, "http_enabled"),
 			NV_VAR3(ver.num() > 0x0006, nv_u16, "remote_acc_timeout"),
 			NV_VAR3(ver.num() <= 0x0006, nv_data, "", 2),
-			NV_VAR(nv_u8, "http_ipstacks", true),
-			NV_VAR(nv_u8, "http_adv_ipstacks", true)
+			NV_VAR(nv_ipstacks, "http_ipstacks", true),
+			NV_VAR(nv_ipstacks, "http_adv_ipstacks", true)
 		};
 	}
 };
