@@ -46,6 +46,18 @@ bool is_zero_mac(const csp<nv_mac>& mac)
 	return mac->to_str() == "00:00:00:00:00:00";
 }
 
+class nv_timestamp : public nv_u32
+{
+	public:
+	virtual string to_string(unsigned, bool) const override
+	{
+		char buf[128];
+		time_t time = num();
+		strftime(buf, sizeof(buf) - 1, "%F %R", localtime(&time));
+		return buf;
+	}
+};
+
 class nv_group_mlog : public nv_group
 {
 	public:
@@ -599,7 +611,7 @@ class nv_group_xxxl : public nv_group
 		virtual list definition() const override
 		{
 			return {
-				NV_VAR(nv_data, "", 4),
+				NV_VAR(nv_timestamp, "time"),
 				NV_VAR(nv_p16istring, "msg"),
 				NV_VAR(nv_data, "", 2)
 			};
