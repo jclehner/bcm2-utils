@@ -128,24 +128,17 @@ uint16_t crc16_ccitt(const void* buf, size_t size)
 	return crc & 0xffff;
 }
 
-/*
-uint32_t crc32(const string& buf)
+std::string transform(const std::string& str, std::function<int(int)> f)
 {
-	uint32_t poly = 0xedb88320;
-	uint32_t crc = 0;
+	string ret;
+	ret.reserve(str.size());
 
-	for (size_t i = 0; i < buf.size(); ++i) {
-		uint8_t a = (crc & 0xff) ^ buf[i];
-		for (size_t k = 0; k < 8; ++k) {
-			a = ((a & 1) ? 0 : poly) ^ (a >> 1);
-		}
-		a ^= 0xff000000;
-
-
+	for (int c : str) {
+		ret += f(c);
 	}
-	return crc<uint32_t, 0x4b0bbe37>(buf.data(), buf.size(), 0xffffffff) ^ 0xffffffff;
+
+	return ret;
 }
-*/
 
 ofstream logger::s_bucket;
 int logger::s_loglevel = logger::info;

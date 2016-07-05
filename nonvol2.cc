@@ -162,7 +162,7 @@ size_t str_max_length(int flags, size_t width)
 	}
 
 	size_t max = str_prefix_max(flags);
-	if (flags & nv_string_base::flag_length_includes_itself) {
+	if (flags & nv_string_base::flag_size_includes_prefix) {
 		max -= str_prefix_bytes(flags);
 	}
 
@@ -405,7 +405,7 @@ string nv_string_base::type() const
 		ret += "f";
 	}
 
-	if (m_flags & flag_length_includes_itself) {
+	if (m_flags & flag_size_includes_prefix) {
 		ret += "i";
 	}
 
@@ -466,7 +466,7 @@ istream& nv_string_base::read(istream& is)
 			getline(is, val, '\0');
 		}
 
-		if (size && (m_flags & flag_length_includes_itself)) {
+		if (size && (m_flags & flag_size_includes_prefix)) {
 			size_t min = str_prefix_bytes(m_flags);
 			if (size < min) {
 				throw runtime_error("size " + std::to_string(size) + " is less than " + std::to_string(min));

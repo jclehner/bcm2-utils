@@ -1,4 +1,5 @@
 #include "nonvol2.h"
+#include "util.h"
 using namespace std;
 
 #define NV_VAR(type, name, ...) { name, make_shared<type>(__VA_ARGS__) }
@@ -573,8 +574,43 @@ class nv_group_cmev : public nv_group
 	virtual list definition(int type, const nv_version& ver) const override
 	{
 		return {
-			NV_VAR(nv_u8, "", true),
+			NV_VAR(nv_u8, "", true), // maybe a p16list??
 			NV_VARN(nv_p8list<nv_log_entry>, "log"),
+		};
+	}
+};
+
+class nv_group_xxxl : public nv_group
+{
+	public:
+	nv_group_xxxl(const string& magic)
+	: nv_group(magic, bcm2dump::transform(magic, ::tolower))
+	{}
+
+	NV_GROUP_DEF_CLONE(nv_group_xxxl)
+
+	protected:
+	class nv_log_entry : public nv_compound
+	{
+		public:
+		NV_COMPOUND_DEF_CTOR_AND_TYPE(nv_log_entry, "log-entry")
+
+		protected:
+		virtual list definition() const override
+		{
+			return {
+				NV_VAR(nv_data, "", 4),
+				NV_VAR(nv_p16istring, "msg"),
+				NV_VAR(nv_data, "", 2)
+			};
+		}
+	};
+
+	virtual list definition(int type, const nv_version& ver) const override
+	{
+		return {
+			NV_VAR(nv_data, "", 1),
+			NV_VARN(nv_p8list<nv_log_entry>, "log")
 		};
 	}
 };
@@ -617,6 +653,9 @@ struct registrar {
 			NV_GROUP(nv_group_fire),
 			NV_GROUP(nv_group_cmev),
 			NV_GROUP(nv_group_upc),
+			NV_GROUP(nv_group_xxxl, "RSTL"),
+			NV_GROUP(nv_group_xxxl, "CMBL"),
+			NV_GROUP(nv_group_xxxl, "EMBL")
 		};
 
 		for (auto g : groups) {
