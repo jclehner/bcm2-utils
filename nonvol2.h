@@ -293,7 +293,7 @@ template<typename T, size_t N = 0> class nv_array : public nv_array_generic<T, s
 	// arguments to is_end shall only be of type T, so an unchecked
 	// dynamic_cast can be safely used
 	nv_array(size_t n = N, const is_end_func& is_end = nullptr)
-	: nv_array_generic<T, size_t, false>(n), m_is_end(is_end), m_n(n)
+	: nv_array_generic<T, size_t, false>(n), m_is_end(is_end)
 	{
 		if (is_end) {
 			nv_array_base::m_is_end = [this] (const csp<nv_val>& val) {
@@ -305,7 +305,6 @@ template<typename T, size_t N = 0> class nv_array : public nv_array_generic<T, s
 
 	private:
 	is_end_func m_is_end;
-	size_t m_n;
 };
 
 template<typename T, typename I> using nv_plist = nv_array_generic<T, I, true>;
