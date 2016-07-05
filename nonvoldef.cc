@@ -78,7 +78,8 @@ class nv_group_mlog : public nv_group
 			NV_VAR(nv_u8, "ssh_ip_stacks", true),
 			NV_VAR(nv_u8, "ssh_enabled"),
 			NV_VAR(nv_u8, "http_enabled"),
-			NV_VAR(nv_u16, "remote_acc_timeout"),
+			NV_VAR3(ver.num() > 0x0006, nv_u16, "remote_acc_timeout"),
+			NV_VAR3(ver.num() <= 0x0006, nv_data, "", 2),
 			NV_VAR(nv_u8, "http_ipstacks", true),
 			NV_VAR(nv_u8, "http_adv_ipstacks", true)
 		};
