@@ -13,6 +13,19 @@ std::string desc(const nv_val::named& var)
 	return var.name + " (" + var.val->type() + ")";
 }
 
+template<typename T> T read_num(istream& is)
+{
+	T num;
+	is.read(reinterpret_cast<char*>(&num), sizeof(T));
+	return bswapper<T>::ntoh(num);
+}
+
+template<typename T> void write_num(ostream& os, T num)
+{
+	num = bswapper<T>::hton(num);
+	os.write(reinterpret_cast<const char*>(&num), sizeof(T));
+}
+
 string pad(unsigned level)
 {
 	return string(2 * (level + 1), ' ');
@@ -113,6 +126,48 @@ size_t compound_size(const nv_compound& c)
 	}
 
 	return size;
+}
+
+size_t str_prefix_max(int flags)
+{
+	if (flags & nv_string_base::flag_prefix_u8) {
+		return 0xff;
+	} else if (flags & nv_string_base::flag_prefix_u16) {
+		return 0xffff;
+	}
+
+	return string::npos -1;
+}
+
+size_t str_prefix_bytes(int flags)
+{
+	if (flags & nv_string_base::flag_prefix_u8) {
+		return 1;
+	} else if (flags & nv_string_base::flag_prefix_u16) {
+		return 2;
+	}
+
+	return 0;
+}
+
+size_t str_extra_bytes(int flags)
+{
+	return flags & nv_string_base::flag_require_nul ? 1 : 0;
+}
+
+size_t str_max_length(int flags, size_t width)
+{
+	if (width) {
+		return width - str_extra_bytes(flags);
+	}
+
+	size_t max = str_prefix_max(flags);
+	if (flags & nv_string_base::flag_length_includes_itself) {
+		max -= str_prefix_bytes(flags);
+	}
+
+	return max - str_extra_bytes(flags);
+
 }
 
 bool is_valid_identifier(const std::string& name)
@@ -334,113 +389,142 @@ bool nv_mac::parse(const string& str)
 	return false;
 }
 
-bool nv_string::parse(const string& str)
+nv_string_base::nv_string_base(int flags, size_t width)
+: m_flags(flags | ((width && !str_prefix_bytes(flags)) ? flag_fixed_width : 0)), m_width(width)
+{}
+
+string nv_string_base::type() const
 {
-	if (!m_width || str.size() < m_width) {
-		m_val = str;
-		m_set = true;
-		return true;
+	string ret;
+
+	if (m_flags & flag_prefix_u8) {
+		ret += "p8";
+	} else if (m_flags & flag_prefix_u16) {
+		ret += "p16";
+	} else if (m_flags & flag_fixed_width) {
+		ret += "f";
 	}
 
-	return false;
-}
+	if (m_flags & flag_length_includes_itself) {
+		ret += "i";
+	}
 
-istream& nv_zstring::read(istream& is)
-{
-	string val;
+	if (m_flags & flag_require_nul) {
+		ret += "z";
+	}
+
+	if (m_flags & flag_is_data) {
+		ret += "data";
+	} else {
+		ret += "string";
+	}
 
 	if (m_width) {
-		val.resize(m_width);
-		if (!is.read(&val[0], val.size())) {
-			return is;
-		}
-		// reduce the string to its actual size
-		val = string(val.c_str());
+		ret += "[" + std::to_string(m_width) + "]";
+	}
 
+	return ret;
+}
+
+string nv_string_base::to_string(unsigned level, bool pretty) const
+{
+	if (m_flags & flag_is_data) {
+		return data_to_string(m_val, level, pretty);
 	} else {
-		if (!getline(is, val, '\0')) {
-			return is;
+		string val;
+		if (m_flags & flag_optional_nul) {
+			val = m_val.c_str();
+		} else {
+			val = m_val;
+		}
+
+		return pretty ? '"' + val + '"' : val;
+	}
+}
+
+bool nv_string_base::parse(const string& str)
+{
+	if (str.size() > str_max_length(m_flags, m_width)) {
+		return false;
+	}
+
+	m_val = str;
+	m_set = true;
+	return true;
+}
+
+istream& nv_string_base::read(istream& is)
+{
+	string val;
+	size_t size = (m_flags & flag_fixed_width) ? m_width : 0;
+	if (!size) {
+		if (m_flags & flag_prefix_u8) {
+			size = read_num<uint8_t>(is);
+		} else if (m_flags & flag_prefix_u16) {
+			size = read_num<uint16_t>(is);
+		} else {
+			getline(is, val, '\0');
+		}
+
+		if (size && (m_flags & flag_length_includes_itself)) {
+			size_t min = str_prefix_bytes(m_flags);
+			if (size < min) {
+				throw runtime_error("size " + std::to_string(size) + " is less than " + std::to_string(min));
+			}
+
+			size -= min;
 		}
 	}
 
-	parse_checked(val);
-
-	return is;
-}
-
-ostream& nv_zstring::write(ostream& os) const
-{
-	string val = m_val;
-	val.resize(m_width ? m_width : val.size() + 1);
-	return os.write(val.data(), val.size());
-}
-
-istream& nv_p16string::read(istream& is)
-{
-	uint16_t len;
-	if (!is.read(reinterpret_cast<char*>(&len), 2)) {
-		return is;
+	if (size) {
+		val.resize(size);
+		is.read(&val[0], val.size());
 	}
 
-	len = ntohs(len);
-
-	string val(len, '\0');
-	if (!is.read(&val[0], val.size())) {
-		throw runtime_error("failed to read " + std::to_string(len) + " bytes");
+	if (!is) {
+		throw runtime_error("error while reading " + type());
 	}
 
-	parse_checked(val);
-
-	return is;
-}
-
-ostream& nv_p16string::write(ostream& os) const
-{
-	uint16_t len = htons(m_val.size());
-	if (!os.write(reinterpret_cast<const char*>(&len), 2)) {
-		return os;
-	}
-
-	return os.write(m_val.data(), m_val.size());
-}
-
-string nv_p8string_base::to_string(unsigned level, bool pretty) const
-{
-	return !m_data ? nv_string::to_string(level, pretty) : data_to_string(m_val, level, pretty);
-}
-
-istream& nv_p8string_base::read(istream& is)
-{
-	uint8_t len;
-	if (!is.read(reinterpret_cast<char*>(&len), 1)) {
-		return is;
-	}
-
-	string val(len, '\0');
-	if (!is.read(&val[0], val.size())) {
-		throw runtime_error("failed to read " + std::to_string(len) + " bytes");
-	} else if (m_nul && val.back() != '\0') {
-		throw runtime_error("expected terminating null byte in '" + val + "'");
-	}
-
-	if (m_nul) {
+	if (m_flags & flag_require_nul) {
+		if (val.back() != '\0' && !((m_flags & flag_fixed_width) && val.find('\0') != string::npos)) {
+			throw runtime_error("expected terminating nul byte in " + data_to_string(val, 0, false) + ", " + std::to_string(val.find('\0')));
+		}
 		val = val.c_str();
 	}
 
 	parse_checked(val);
-
 	return is;
 }
 
-ostream& nv_p8string_base::write(ostream& os) const
+ostream& nv_string_base::write(ostream& os) const
 {
-	uint8_t len = m_val.size() + (m_nul ? 1 : 0);
-	if (!(os.write(reinterpret_cast<char*>(&len), 1))) {
-		return os;
+	string val = m_val;
+	if (m_width && val.size() < m_width) {
+		val.resize(m_width);
+	} else if (m_flags & flag_require_nul) {
+		val.resize(val.size() + 1);
 	}
 
-	cout << "writing " << (len & 0xff) << m_val << endl;
-	return os.write(m_val.c_str(), len);
+	if (m_flags & flag_prefix_u8) {
+		write_num<uint8_t>(os, val.size());
+	} else if (m_flags & flag_prefix_u16) {
+		write_num<uint16_t>(os, val.size());
+	}
+
+	if (!(os << val)) {
+		throw runtime_error("failed to write " + type());
+	}
+
+	return os;
+}
+
+size_t nv_string_base::bytes() const
+{
+	if (m_flags & flag_fixed_width) {
+		return m_width;
+	}
+
+	return m_val.size() + str_prefix_bytes(m_flags) + str_extra_bytes(m_flags);
 }
 
 bool nv_bool::parse(const string& str)
@@ -531,8 +615,8 @@ istream& nv_group::read(istream& is)
 			}
 
 			logger::d() << "read " << m_bytes << " b so far, but group size is " << m_size.num() << "; extra data size is " << extra->bytes() << "b" << endl;
-
 			m_parts.push_back(named("extra", extra));
+			logger::d() << extra->to_pretty() << endl;
 			m_bytes += extra->bytes();
 		}
 	}
@@ -583,8 +667,6 @@ istream& nv_group::read(istream& is, sp<nv_group>& group, int type, size_t maxsi
 {
 	nv_u16 size;
 	nv_magic magic;
-
-	logger::v() << "nv_group::read: " << maxsize << endl;
 
 	if (!read_group_header(is, size, magic)) {
 		return is;

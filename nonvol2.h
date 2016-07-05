@@ -375,105 +375,70 @@ class nv_mac : public nv_data
 	virtual bool parse(const std::string& str) override;
 };
 
-class nv_string : public nv_val
+class nv_string_base : public nv_val
 {
 	public:
-	explicit nv_string(size_t width = 0) : m_width(width) {}
+	static constexpr int flag_require_nul = 1;
+	static constexpr int flag_optional_nul = 1 << 1;
+	static constexpr int flag_is_data = 1 << 2;
+	static constexpr int flag_size_includes_prefix = 1 << 3;
+	static constexpr int flag_prefix_u8 = 1 << 4;
+	static constexpr int flag_prefix_u16 = 1 << 5;
+	static constexpr int flag_fixed_width = 1 << 6;
 
-	// it doesn't matter to the user whether it's a nv_pstring or a nv_zstring
-	virtual std::string type() const override
-	{ return "string" + (m_width ? "[" + std::to_string(m_width) + "]" : ""); }
-
-	virtual std::string to_string(unsigned, bool pretty) const override
-	{ return pretty ? '"' + m_val + '"' : m_val; }
+	virtual std::string type() const override;
 
 	virtual bool parse(const std::string& str) override;
-
-	bool operator!=(const nv_string& other)
-	{ return m_val == other.m_val; }
-
-	protected:
-	size_t m_width;
-	std::string m_val;
-};
-
-// <string><nul>
-class nv_zstring : public nv_string
-{
-	public:
-	explicit nv_zstring(size_t width = 0) : nv_string(width) {}
-
-	virtual std::istream& read(std::istream& is) override;
-	virtual std::ostream& write(std::ostream& os) const override;
-
-	virtual size_t bytes() const override
-	{ return m_width ? m_width : m_val.size() + 1; }
-};
-
-// <len16><string>
-class nv_p16string : public nv_string
-{
-	public:
-	explicit nv_p16string(size_t width = 0) : nv_string(width) {}
-
-	virtual bool parse(const std::string& str) override
-	{ return str.size() <= 0xffff ? nv_string::parse(str) : false; }
-
-	virtual std::istream& read(std::istream& is) override;
-	virtual std::ostream& write(std::ostream& os) const override;
-
-	virtual size_t bytes() const override
-	{ return 2 + m_val.size(); }
-};
-
-class nv_p8string_base : public nv_string
-{
-	public:
-	virtual std::istream& read(std::istream& is) override;
-	virtual std::ostream& write(std::ostream& os) const override;
-	virtual bool parse(const std::string& str) override
-	{ return str.size() <= 0xfe ? nv_string::parse(str) : false; }
-
 	virtual std::string to_string(unsigned level, bool pretty) const override;
 
-	virtual size_t bytes() const override
-	{ return 1 + m_val.size() + (m_nul ? 1 : 0); }
+	virtual std::istream& read(std::istream& is) override;
+	virtual std::ostream& write(std::ostream& os) const override;
+
+	virtual size_t bytes() const override;
 
 	protected:
-	nv_p8string_base(bool nul, bool data, size_t width = 0) : nv_string(width), m_nul(nul), m_data(data) {}
-	bool m_nul;
-	bool m_data;
+	nv_string_base(int flags, size_t width);
+
+	private:
+	int m_flags;
+	size_t m_width;
+	std::string m_val;
 
 	//{ return m_val.empty() ? 1 : 2 + m_val.size(); }
 };
 
-
-// <len8><string>[<nul>]
-class nv_p8string : public nv_p8string_base
+namespace detail {
+template<int FLAGS, size_t WIDTH = 0> class nv_string_tmpl : public nv_string_base
 {
 	public:
-	nv_p8string(size_t width = 0) : nv_p8string_base(false, false, width) {}
-};
+	nv_string_tmpl(size_t width = WIDTH) : nv_string_base(FLAGS, width) {}
 
-// <len8><string>
-class nv_p8data : public nv_p8string_base
-{
-	public:
-	nv_p8data(size_t width = 0) : nv_p8string_base(false, true, width) {}
+	virtual std::string type() const override
+	{ return (WIDTH ? "f" : "") + nv_string_base::type(); }
 };
+}
 
-class nv_p8zdata : public nv_p8string_base
-{
-	public:
-	nv_p8zdata(size_t width = 0) : nv_p8string_base(true, true, width) {}
-};
+// a fixed-width string, with optional NUL byte (with width 6, "foo" 6 is "66:6f:6f:00:XX:XX)
+template<size_t WIDTH> using nv_fstring = detail::nv_string_tmpl<nv_string_base::flag_optional_nul, WIDTH>;
+// a fixed-width string, with mandatory NUL byte (maximum length is thus WIDTH - 1)
+template<size_t WIDTH> using nv_fzstring = detail::nv_string_tmpl<nv_string_base::flag_require_nul, WIDTH>;
 
-// <len8><string><nul>
-class nv_p8zstring : public nv_p8string_base
-{
-	public:
-	explicit nv_p8zstring(size_t width = 0) : nv_p8string_base(true, false, width) {}
-};
+// a standard C string
+typedef detail::nv_string_tmpl<nv_string_base::flag_require_nul> nv_zstring;
+// a u8-prefixed string (u8) with optional NUL terminator ("foo" is 04:66:6f:00 or 03:66:6f:6f)
+typedef detail::nv_string_tmpl<nv_string_base::flag_optional_nul | nv_string_base::flag_prefix_u8> nv_p8string;
+// a u8-prefixed string (u8) where the length includes the prefix itself ( "foo" is 04:66:6f:6f)
+typedef detail::nv_string_tmpl<nv_string_base::flag_size_includes_prefix | nv_string_base::flag_prefix_u8> nv_p8istring;
+// a u8-prefixed string with mandatory NUL byte ("foo" is 04:66:6f:6f:00)
+typedef detail::nv_string_tmpl<nv_string_base::flag_require_nul | nv_string_base::flag_prefix_u8> nv_p8zstring;
+// a u8-prefixed string that is to be interpreted as data
+typedef detail::nv_string_tmpl<nv_string_base::flag_is_data | nv_string_base::flag_prefix_u8> nv_p8data;
+// u16-prefixed string with optional NUL terminator ("foo" is 00:04:66:6f:00 or 00:03:66:6f:6f)
+typedef detail::nv_string_tmpl<nv_string_base::flag_optional_nul | nv_string_base::flag_prefix_u16> nv_p16string;
+// a u8-prefixed string (u8) where the length includes the prefix itself ( "foo" is 00:05:66:6f:6f)
+typedef detail::nv_string_tmpl<nv_string_base::flag_size_includes_prefix | nv_string_base::flag_prefix_u16> nv_p16istring;
+// a u8-prefixed string with mandatory NUL byte ("foo" is 00:04:66:6f:6f:00)
+typedef detail::nv_string_tmpl<nv_string_base::flag_require_nul | nv_string_base::flag_prefix_u16> nv_p16zstring;
 
 template<class T, class H,
 		T MIN = std::numeric_limits<T>::min(),

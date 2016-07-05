@@ -245,20 +245,20 @@ class nv_group_t802 : public nv_group
 	{
 		return {
 			NV_VAR(nv_data, "wifi_sleep", 14),
-			NV_VAR(nv_zstring, "ssid_24", 33),
-			NV_VAR(nv_zstring, "ssid_50", 33),
+			NV_VAR(nv_fzstring<33>, "ssid_24"),
+			NV_VAR(nv_fzstring<33>, "ssid_50"),
 			NV_VAR(nv_u8, "", true),
 			NV_VAR(nv_p8string, "wpa_psk_24"),
 			NV_VAR(nv_u8, "", true),
 			NV_VAR(nv_p8string, "wpa_psk_50"),
 			NV_VAR(nv_data, "", 4),
-			NV_VAR(nv_zstring, "wifi_opt60_replace", 33),
+			NV_VAR(nv_fzstring<33>, "wifi_opt60_replace"),
 			NV_VAR(nv_data, "", 8),
-			NV_VAR(nv_zstring, "card1_prefix", 33),
+			NV_VAR(nv_fstring<33>, "card1_prefix"),
 			// the firmware refers to this as "Card-1 Ramdon"
-			NV_VAR(nv_zstring, "card1_random", 33),
-			NV_VAR(nv_zstring, "card2_prefix", 33),
-			NV_VAR(nv_zstring, "card2_random", 33),
+			NV_VAR(nv_fzstring<33>, "card1_random"),
+			NV_VAR(nv_fzstring<33>, "card2_prefix"),
+			NV_VAR(nv_fzstring<33>, "card2_random"),
 			NV_VAR(nv_u8, "card1_regul_rev"),
 			NV_VAR(nv_u8, "card2_regul_rev"),
 		};
