@@ -76,14 +76,14 @@ class nv_group_mlog : public nv_group
 			NV_VAR(nv_bool, "telnet_enabled"),
 			NV_VAR(nv_zstring, "remote_acc_user", 16),
 			NV_VAR(nv_zstring, "remote_acc_pass", 16),
-			NV_VAR(nv_u8, "telnet_ip_stacks", true),
-			NV_VAR(nv_ipstacks, "ssh_ip_stacks"),
-			NV_VAR(nv_u8, "ssh_enabled"),
-			NV_VAR(nv_u8, "http_enabled"),
+			NV_VAR(nv_ipstacks, "telnet_ipstacks"),
+			NV_VAR3(ver.num() > 0x0006, nv_ipstacks, "ssh_ip_stacks"),
+			NV_VAR3(ver.num() > 0x0006, nv_u8, "ssh_enabled"),
+			NV_VAR3(ver.num() > 0x0006, nv_u8, "http_enabled"),
 			NV_VAR3(ver.num() > 0x0006, nv_u16, "remote_acc_timeout"),
-			NV_VAR3(ver.num() <= 0x0006, nv_data, "", 2),
-			NV_VAR(nv_ipstacks, "http_ipstacks", true),
-			NV_VAR(nv_ipstacks, "http_adv_ipstacks", true)
+			//NV_VAR3(ver.num() <= 0x0006, nv_data, "", 2),
+			NV_VAR2(nv_ipstacks, "http_ipstacks"),
+			NV_VAR2(nv_ipstacks, "http_adv_ipstacks")
 		};
 	}
 };
@@ -100,7 +100,7 @@ class nv_group_cmap : public nv_group
 			NV_VAR(nv_bool, "stop_at_console"),
 			NV_VAR(nv_bool, "skip_driver_init_prompt"),
 			NV_VAR(nv_bool, "stop_at_console_prompt"),
-			NV_VAR(nv_u8, "serial_console_mode")
+			NV_VAR2(nv_enum<nv_u8>, "serial_console_mode", "serial_console_mode", { "disabled", "ro", "rw", "factory" }),
 		};
 	}
 };

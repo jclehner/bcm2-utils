@@ -305,7 +305,6 @@ const string gwsettings::s_magic = "6u9E9eWF0bt9Y8Rw690Le4669JYe4d-056T9p4ijm4EA
 
 istream& settings::read(istream& is)
 {
-	size_t size = 0;
 	sp<nv_group> group;
 	size_t remaining = data_bytes();
 
@@ -340,7 +339,7 @@ sp<settings> settings::read(istream& is, int type, const csp<bcm2dump::profile>&
 	sp<settings> ret;
 	if (start == string(16, '\xff')) {
 		if (type == nv_group::type_dyn || type == nv_group::type_perm) {
-			ret = sp<permdyn>(new permdyn(false, p));
+			ret = sp<permdyn>(new permdyn(type == nv_group::type_dyn, p));
 		} else {
 			logger::w() << "file looks like a permnv/dynnv file, but no type was specified" << endl;
 		}

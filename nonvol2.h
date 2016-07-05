@@ -620,6 +620,7 @@ template<typename T> class nv_enum_bitmask : public T
 	protected:
 	nv_enum_bitmask(const std::string& name, const valvec& vals) : nv_enum_bitmask(name, vals.size()) { m_vec = vals; }
 	nv_enum_bitmask(const std::string& name, const valmap& vals) : nv_enum_bitmask(name, vals.size()) { m_map = vals; }
+	nv_enum_bitmask(const std::string& name) : nv_enum_bitmask(name, 0) {}
 
 	bool str_to_num(const std::string& str, num_type& num, bool bitmask) const
 	{
@@ -713,8 +714,8 @@ template<class T> class nv_bitmask : public nv_enum_bitmask<T>
 	typedef nv_enum_bitmask<T> super;
 
 	public:
-	nv_bitmask()
-	: nv_bitmask("", typename super::valvec {}) {}
+	nv_bitmask(const std::string& name = "")
+	: super(name) {}
 	nv_bitmask(const typename super::valmap& vals)
 	: super("", vals) {}
 	nv_bitmask(const typename super::valvec& vals)

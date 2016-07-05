@@ -619,6 +619,8 @@ istream& nv_group::read(istream& is)
 			logger::d() << extra->to_pretty() << endl;
 			m_bytes += extra->bytes();
 		}
+	} else {
+		throw runtime_error(type() + ": unspecified error while reading data");
 	}
 
 #if 0

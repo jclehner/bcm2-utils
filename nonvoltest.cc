@@ -56,7 +56,7 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	logger::loglevel(logger::verbose);
+	logger::loglevel(logger::debug);
 
 	ifstream in(argv[2]);
 	if (!in.good()) {
@@ -90,7 +90,7 @@ int main(int argc, char** argv)
 		}
 	} else if (argc >= 6 && argv[3] == "set"s) {
 		cfg->set(argv[4], argv[5]);
-	} else {
+	} else if (argv[3] != "test"s) {
 		cout << cfg->to_pretty() << endl;
 	}
 
