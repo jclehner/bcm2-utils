@@ -326,6 +326,7 @@ istream& settings::read(istream& is)
 {
 	sp<nv_group> group;
 	size_t remaining = data_bytes();
+	unsigned mult = 1;
 
 	while (remaining && !is.eof()) {
 		if (!nv_group::read(is, group, m_type, remaining) && !is.eof()) {
@@ -336,10 +337,12 @@ istream& settings::read(istream& is)
 			is.clear(ios::eofbit);
 			break;
 		} else {
-			if (find(group->name())) {
-				throw runtime_error("multiple definitions of " + group->name());
+			string name = group->name();
+			if (find(name)) {
+				name += "_" + std::to_string(++mult);
+				logger::v() << "redefinition of " << group->name() << " renamed to " << name << endl;
 			}
-			m_groups.push_back( { group->name(), group });
+			m_groups.push_back( { name, group });
 			remaining -= group->bytes();
 		}
 	}
