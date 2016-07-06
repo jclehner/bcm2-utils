@@ -222,8 +222,32 @@ csp<nv_val> nv_compound::get(const string& name) const
 
 void nv_compound::set(const string& name, const string& val)
 {
-	int diff = get(name)->bytes();
-	diff -= const_pointer_cast<nv_val>(get(name))->parse_checked(val).bytes();
+	sp<nv_val> v = const_pointer_cast<nv_val>(get(name));
+	if (!v->is_set()) {
+		string preceding_unset_name;
+
+		for (auto p : parts()) {
+			if (!p.val->is_disabled()) {
+				if (p.name == name) {
+					break;
+				}
+
+				if (p.val->is_set()) {
+					preceding_unset_name.clear();
+				} else {
+					preceding_unset_name = p.name;
+				}
+			}
+		}
+
+		if (!preceding_unset_name.empty()) {
+			throw user_error("cannot set '" + name + "' because the previous" +
+					+ "element '" + preceding_unset_name + "' is not set");
+		}
+	}
+
+	ssize_t diff = get(name)->bytes();
+	diff -= v->parse_checked(val).bytes();
 	m_bytes += diff;
 }
 
@@ -232,7 +256,9 @@ csp<nv_val> nv_compound::find(const string& name) const
 	vector<string> tok = split(name, '.', false, 2);
 
 	for (auto c : parts()) {
-		if (c.name == tok[0]) {
+		if (c.val->is_disabled()) {
+			continue;
+		} else if (c.name == tok[0]) {
 			if (tok.size() == 2 && c.val->is_compound()) {
 				return nv_val_cast<nv_compound>(c.val)->find(tok[1]);
 			}
