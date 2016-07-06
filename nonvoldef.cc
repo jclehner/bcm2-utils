@@ -160,8 +160,8 @@ class nv_group_8021 : public nv_group
 				return {
 					NV_VARN(nv_wmm_params, "sta"),
 					NV_VARN(nv_wmm_params, "ap"),
-					NV_VAR(nv_u8, "", true), // probably sta_discard_oldest_first
-					NV_VAR(nv_bool, "ap_discard_oldest_first"),
+					NV_VAR(nv_bool, "ap_adm_control"),
+					NV_VAR(nv_bool, "ap_oldest_first"),
 				};
 			}
 		};
@@ -185,6 +185,16 @@ class nv_group_8021 : public nv_group
 		typedef nv_u16_r<256, 2346> frag_threshold;
 		typedef nv_u16_r<1, 2347> rts_threshold;
 
+		// known versions
+		// 0x0015: TWG850
+		// 0x001d: TWG870
+		// 0x0021: TCW770
+		// 0x0024: TC7200
+		//
+		// in its current form, only 0x0015 needs special care, whereas
+		// 0x001d-0x0024 appear to be the same, at least until
+		// in_network_radar_check
+
 		if (type != type_perm) {
 			return {
 				NV_VAR(nv_zstring, "ssid", 33),
@@ -193,22 +203,6 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_u8, "basic_rates"), // XXX u16?
 				NV_VAR(nv_data, "", 3),
-				// 0x05 = psk1/2
-				// 0x02 = psk1 only
-				// 0x03 = psk2 only
-
-				// 0x03 = tkip
-				// 0x04 = aes
-				// 0x05 = tkip+aes
-
-
-				// 0x03 = wpa1 / wpa2
-				// 0x00 = disabled
-
-				// 0x04 = psk1/2 + aes
-				// 0x01 = wep64
-				// 0x02 = wep128
-
 				NV_VAR2(nv_enum<nv_u8>, "encryption", "encryption", {
 						"none", "wep64", "wep128", "tkip", "aes", "tkip_aes"
 				}),
@@ -224,7 +218,7 @@ class nv_group_8021 : public nv_group
 				NV_VAR2(nv_enum<nv_u8>, "mac_policy", "mac_policy", { "disabled", "allow", "deny" }),
 				NV_VARN(nv_array<nv_mac>, "mac_table", 32, &is_zero_mac),
 				NV_VAR(nv_u8, "", true),
-				NV_VAR(nv_bool, "closed_network"),
+				NV_VAR(nv_bool, "hide_ssid"),
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_data, "", 0x20),
 				NV_VAR(nv_u8, "short_retry_limit"),
@@ -240,15 +234,10 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_u16, "radius_port"),
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_p8string, "radius_key"),
-				NV_VAR(nv_data, "", ver.num() <= 0x0015 ? 0x56 : 0x2a),
-				// 0x0a = wpa1+2
-				// 0x10 = psk1+2
-
-				// 0x02 = wpa1
-				// 0x04 = psk1
-				// 0x08 = wpa2
-				// 0x10 = psk2
-				// 0x00 = none
+				NV_VAR(nv_data, "", (ver.num() <= 0x0015 ? 0x56 : 0x2a) - 0x1d),
+				NV_VAR(nv_bool, "wds_enabled"),
+				NV_VAR(nv_array<nv_mac>, "wds_list", 4),
+				NV_VAR(nv_data, "", 4),
 				NV_VAR2(nv_bitmask<nv_u8>, "wpa", "wpa", { "", "wpa1", "psk1", "wpa2", "psk2" }),
 				NV_VAR(nv_data, "", 2),
 				NV_VAR(nv_u16, "wpa_reauth_interval"),
