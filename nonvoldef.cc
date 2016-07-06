@@ -263,7 +263,7 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_u8, "channel_a"),
 				// 1 = auto, 4 = performance, 5 = lrs
 				NV_VAR2(nv_enum<nv_u8>, "g_mode", "g_mode", { "disabled", "auto", "", "", "", "performance", "lrs" }),
-				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_bool, "radio_disabled"),
 				NV_VAR(nv_bool, "g_protection"),
 				NV_VAR(nv_data, "", 1),
 				NV_VAR2(nv_enum<nv_u8>, "g_rate_mbps", "rate_mbps", rates),
@@ -316,7 +316,7 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_p8zstring, "wps_board_num"),
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_p8zstring, "country"),
-				NV_VAR(nv_bool, "radio_enabled"),
+				NV_VAR(nv_bool, ""), // radio_enabled_n ??
 				NV_VAR(nv_data, "", 0x5),
 				NV_VAR(nv_u8, "pre_network_radar_check"),
 				NV_VAR(nv_u8, "in_network_radar_check")
@@ -493,11 +493,10 @@ class nv_group_rg : public nv_group
 			NV_VAR(nv_data, "", 7),
 			NV_VAR(nv_data, "", 3),
 			NV_VAR(nv_ip4, "dmz_ip"),
-			// the next two are pure speculation
-			NV_VAR(nv_zstring, "dmz_hostname", 256),
-			NV_VAR(nv_mac, "dmz_mac"),
-			NV_VAR(nv_data, "", 7),
-			NV_VAR(nv_data, "", 0x1ff),
+			NV_VAR(nv_ip4, "wan_ip"),
+			NV_VAR(nv_ip4, "wan_mask"),
+			NV_VAR(nv_ip4, "wan_gateway"),
+			NV_VAR(nv_data, "", 0x300),
 			NV_VARN(nv_array<nv_ip4_range>, "ip_filters", 10 , &nv_ip4_range::is_end),
 			NV_VARN(nv_array<nv_port_range>, "port_filters", 10, [] (const csp<nv_port_range>& range) {
 				return nv_port_range::is_range(range, 1, 0xffff);
@@ -578,6 +577,21 @@ class nv_group_cdp : public nv_group
 		}
 	};
 
+	class nv_wan_dns_entry : public nv_compound
+	{
+		public:
+		NV_COMPOUND_DEF_CTOR_AND_TYPE(nv_wan_dns_entry, "wan-dns-entry")
+
+		protected:
+		virtual list definition() const override
+		{
+			return {
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_ip4, "ip")
+			};
+		}
+	};
+
 	virtual list definition(int type, const nv_version& ver) const override
 	{
 		return {
@@ -599,6 +613,8 @@ class nv_group_cdp : public nv_group
 			//NV_VARN(nv_ip4_typed, "ip_3"),
 			NV_VARN(nv_array<nv_lan_addr_entry>, "lan_addrs", 16),
 			//NV_VAR(nv_lan_addr_entry, "lan_addr_1"), // XXX make this an array
+			NV_VAR(nv_data, "", 0x37a),
+			NV_VAR(nv_array<nv_wan_dns_entry>, "wan_dns", 3),
 		};
 	}
 };
