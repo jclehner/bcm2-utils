@@ -56,7 +56,7 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	logger::loglevel(logger::verbose);
+	logger::loglevel(logger::debug);
 
 	ifstream in(argv[2]);
 	if (!in.good()) {

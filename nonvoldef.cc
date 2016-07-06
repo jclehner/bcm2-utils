@@ -197,6 +197,11 @@ class nv_group_8021 : public nv_group
 				// 0x02 = psk1 only
 				// 0x03 = psk2 only
 
+				// 0x03 = tkip
+				// 0x04 = aes
+				// 0x05 = tkip+aes
+
+
 				// 0x03 = wpa1 / wpa2
 				// 0x00 = disabled
 
@@ -204,8 +209,8 @@ class nv_group_8021 : public nv_group
 				// 0x01 = wep64
 				// 0x02 = wep128
 
-				NV_VAR2(nv_bitmask<nv_u8>, "security", "wifi_security", {
-						{ "psk", }
+				NV_VAR2(nv_enum<nv_u8>, "encryption", "encryption", {
+						"none", "wep64", "wep128", "tkip", "aes", "tkip_aes"
 				}),
 				NV_VAR(nv_data, "", 2),
 				NV_VAR(nv_array<nv_cdata<5>>, "wep64_keys", 4),
@@ -235,7 +240,17 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_u16, "radius_port"),
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_p8string, "radius_key"),
-				NV_VAR(nv_data, "", ver.num() <= 0x0015 ? 0x59 : 0x2d),
+				NV_VAR(nv_data, "", ver.num() <= 0x0015 ? 0x56 : 0x2a),
+				// 0x0a = wpa1+2
+				// 0x10 = psk1+2
+
+				// 0x02 = wpa1
+				// 0x04 = psk1
+				// 0x08 = wpa2
+				// 0x10 = psk2
+				// 0x00 = none
+				NV_VAR2(nv_bitmask<nv_u8>, "wpa", "wpa", { "", "wpa1", "psk1", "wpa2", "psk2" }),
+				NV_VAR(nv_data, "", 2),
 				NV_VAR(nv_u16, "wpa_reauth_interval"),
 				NV_VAR(nv_data, "", 4),
 				NV_VAR(nv_bool, "wmm_enabled"),
