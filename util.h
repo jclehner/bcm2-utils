@@ -1,9 +1,29 @@
+/**
+ * bcm2-utils
+ * Copyright (C) 2016 Joseph Lehner <joseph.c.lehner@gmail.com>
+ *
+ * bcm2-utils is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * bcm2-utils is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with bcm2-utils.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
 #ifndef BCM2UTILS_UTIL_H
 #define BCM2UTILS_UTIL_H
 #include <type_traits>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <functional>
 #include <stdexcept>
 #include <typeinfo>
 #include <iostream>
@@ -11,6 +31,7 @@
 #include <netdb.h>
 #include <fstream>
 #include <sstream>
+#include <memory>
 #include <cerrno>
 #include <vector>
 #include <string>
