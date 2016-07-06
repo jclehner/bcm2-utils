@@ -94,6 +94,14 @@ struct bcm2_profile bcm2_profiles[] = {
 		}
 	},
 	{
+		.name = "tcw770",
+		.pretty = "Thomson TCW770",
+		.cfg_md5key = "544d4d5f544357373730000000000000",
+		.spaces = {
+				{ .name = "ram" },
+		},
+	},
+	{
 		.name = "twg870",
 		.pretty = "Thomson TWG870",
 		.baudrate = 115200,
