@@ -90,7 +90,7 @@ class permdyn : public settings
 	static uint32_t crc32(const string& buf)
 	{
 		boost::crc_32_type crc;
-		return for_each(buf.begin(), buf.end(), crc)();
+		return for_each(buf.begin(), buf.end(), crc)() ^ 0xffffffff;
 	}
 
 	nv_u32 m_size;
