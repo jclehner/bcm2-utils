@@ -160,7 +160,8 @@ class nv_group_8021 : public nv_group
 				return {
 					NV_VARN(nv_wmm_params, "sta"),
 					NV_VARN(nv_wmm_params, "ap"),
-					NV_VAR(nv_u16, "data", true),
+					NV_VAR(nv_u8, "", true), // probably sta_discard_oldest_first
+					NV_VAR(nv_bool, "ap_discard_oldest_first"),
 				};
 			}
 		};
@@ -191,16 +192,34 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_u8, "channel_b"),
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_u8, "basic_rates"), // XXX u16?
-				NV_VAR(nv_data, "", 0x28),
+				NV_VAR(nv_data, "", 3),
+				// 0x05 = psk1/2
+				// 0x02 = psk1 only
+				// 0x03 = psk2 only
+
+				// 0x03 = wpa1 / wpa2
+				// 0x00 = disabled
+
+				// 0x04 = psk1/2 + aes
+				// 0x01 = wep64
+				// 0x02 = wep128
+
+				NV_VAR2(nv_bitmask<nv_u8>, "security", "wifi_security", {
+						{ "psk", }
+				}),
+				NV_VAR(nv_data, "", 2),
+				NV_VAR(nv_array<nv_cdata<5>>, "wep64_keys", 4),
+				NV_VAR(nv_u8, "wep_key_idx"),
+				NV_VAR(nv_cdata<13>, "wep128_key_1"),
 				NV_VAR(beacon_interval, "beacon_interval"),
 				NV_VAR(dtim_interval, "dtim_interval"),
 				NV_VAR(frag_threshold, "frag_threshold"),
 				NV_VAR(rts_threshold, "rts_threshold"),
-				NV_VAR(nv_data, "", 0x27),
+				NV_VAR(nv_array<nv_cdata<13>>, "wep128_keys", 3),
 				NV_VAR2(nv_enum<nv_u8>, "mac_policy", "mac_policy", { "disabled", "allow", "deny" }),
 				NV_VARN(nv_array<nv_mac>, "mac_table", 32, &is_zero_mac),
 				NV_VAR(nv_u8, "", true),
-				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_bool, "closed_network"),
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_data, "", 0x20),
 				NV_VAR(nv_u8, "short_retry_limit"),
@@ -210,11 +229,21 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_data, "", 5),
 				NV_VAR(nv_u8_m<100>, "tx_power"),
 				NV_VAR(nv_p16string, "wpa_psk"),
-				NV_VAR(nv_data, "", 0x8),
+				NV_VAR(nv_data, "", 0x2),
+				NV_VAR(nv_u16, "group_key_rotation_interval"),
+				NV_VAR(nv_ip4, "radius_ip"),
 				NV_VAR(nv_u16, "radius_port"),
 				NV_VAR(nv_u8, "", true),
-				NV_VAR(nv_p8data, "radius_key"),
-				NV_VAR(nv_data, "", 0x3a),
+				NV_VAR(nv_p8string, "radius_key"),
+				NV_VAR(nv_data, "", ver.num() <= 0x0015 ? 0x59 : 0x2d),
+				NV_VAR(nv_u16, "wpa_reauth_interval"),
+				NV_VAR(nv_data, "", 4),
+				NV_VAR(nv_bool, "wmm_enabled"),
+				NV_VAR(nv_bool, "wmm_nak"),
+				NV_VAR(nv_bool, "wmm_powersave"),
+				NV_VAR(nv_data, "", 4),
+				//NV_VAR(nv_data, "", 3),
+				//NV_VAR(nv_data, "", ver.num() > 0x0015 ? 0x3a : 0x66),
 				NV_VARN(nv_wmm, "wmm"),
 				//NV_VAR(nv_data, "data_7_1", 9),
 				NV_VARN3(ver.num() > 0x0015, nv_compound_def, "n", "n", {
@@ -226,9 +255,9 @@ class nv_group_8021 : public nv_group
 					NV_VAR(nv_u8, "", true),
 					NV_VAR(nv_u8, "", true),
 				}),
-				NV_VAR3(ver.num() <= 0x0015, nv_data, "", 0x33),
+				NV_VAR3(ver.num() <= 0x0015, nv_data, "", 7),
 				NV_VAR(nv_bool, "wps_enabled"),
-				NV_VAR(nv_bool, "wps_cfg_state"),
+				NV_VAR(nv_u8, "wps_cfg_state_or_tkip", true),
 				NV_VAR(nv_p8zstring, "wps_device_pin"),
 				NV_VAR(nv_p8zstring, "wps_model"),
 				NV_VAR(nv_p8zstring, "wps_manufacturer"),
@@ -241,7 +270,8 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_p8zstring, "wps_board_num"),
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_p8zstring, "country"),
-				NV_VAR(nv_data, "", 0x6),
+				NV_VAR(nv_bool, "radio_enabled"),
+				NV_VAR(nv_data, "", 0x5),
 				NV_VAR(nv_u8, "pre_network_radar_check"),
 				NV_VAR(nv_u8, "in_network_radar_check")
 			};
