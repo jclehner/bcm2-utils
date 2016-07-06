@@ -124,6 +124,28 @@ class nv_group_cmap : public nv_group
 	}
 };
 
+class nv_group_thom : public nv_group
+{
+	public:
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_thom, "THOM", "thombfc")
+
+	protected:
+	virtual list definition(int type, const nv_version& ver) const override
+	{
+		return {
+			// 0x6 = rw (0x4 = write, 0x2 = read)
+			// 0x6 = rw (0x4 = rw, 0x2 = enable (?), 0x1 = factory (?))
+			NV_VAR(nv_bitmask<nv_u8>, "serial_console_mode"),
+			//NV_VAR(nv_u8, "serial_console_mode", true),
+			NV_VAR(nv_data, "", 0x1f),
+			NV_VAR(nv_bool, "early_console_enable"), // ?
+			NV_VAR(nv_u16, "early_console_bufsize", true),
+			NV_VAR(nv_u8, "", true) // maybe this is early_console_enable?
+		};
+	}
+
+};
+
 class nv_group_8021 : public nv_group
 {
 	public:
@@ -501,7 +523,7 @@ class nv_group_rg : public nv_group
 			// 0x0020 = ipsec_passthrough
 			// 0x0010 = wan_blocking
 			// 0x0004 = static (or lt2p_static?)
-			NV_VAR(nv_bitmask<nv_u16>, "wan_conn_type", true),
+			NV_VAR(nv_bitmask<nv_u16>, "wan_conn_type"),
 			NV_VAR(nv_data, "", 1),
 			NV_VAR(nv_ip4, "dmz_ip"),
 			NV_VAR(nv_ip4, "wan_ip"),
@@ -809,7 +831,8 @@ struct registrar {
 			NV_GROUP(nv_group_upc),
 			NV_GROUP(nv_group_xxxl, "RSTL"),
 			NV_GROUP(nv_group_xxxl, "CMBL"),
-			NV_GROUP(nv_group_xxxl, "EMBL")
+			NV_GROUP(nv_group_xxxl, "EMBL"),
+			NV_GROUP(nv_group_thom),
 		};
 
 		for (auto g : groups) {
