@@ -5,7 +5,7 @@
 
 **Util**ities for **B**road**c**o**m**-based **c**able **m**odems.
 
-* [bcm2dump](#bcm2dump): A utility to dump ram/flash via a serial console
+* [bcm2dump](#bcm2dump): A utility to dump ram/flash, primarily intended as a firmware dump tool for Broadcom based Cable Modems. Works over serial connection (bootloader, firmware) and telnet (firmware).
 * [bcm2cfg](#bcm2cfg): A utility to modify/encrypt/decrypt the configuration
    dump (aka `GatewaySettings.bin`).
 
@@ -14,6 +14,10 @@ Fully supported devices:
 * Technicolor TC7200 (bootloader, shell)
 * Thomson TWG850-4 (shell)
 * Thomson TWG870 (shell)
+
+Partially supported:
+
+* Thomson TCW770 (`bcm2cfg` only)
 
 It should be easy to add support for other devices. Some pointers can
 be found [below](#writing-a-device-profile).
