@@ -26,7 +26,7 @@
 #include "rwx.h"
 #include "ps.h"
 
-#define BFC_FLASH_READ_DIRECT
+//#define BFC_FLASH_READ_DIRECT
 
 using namespace std;
 
