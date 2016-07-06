@@ -214,12 +214,29 @@ class nv_group_8021 : public nv_group
 		// 0x001d-0x0024 appear to be the same, at least until
 		// in_network_radar_check
 
+		const nv_enum<nv_u8>::valmap rates = {
+				{ 0x00, "auto" },
+				{ 0x02, "1" },
+				{ 0x04, "2" },
+				{ 0x0b, "5.5" },
+				{ 0x0c, "6" },
+				{ 0x12, "9" },
+				{ 0x16, "11" },
+				{ 0x18, "12" },
+				{ 0x24, "18" },
+				{ 0x30, "24" },
+				{ 0x48, "36" },
+				{ 0x60, "48" },
+				{ 0x6c, "54" }
+		};
+
 		if (type != type_perm) {
 			return {
 				NV_VAR(nv_zstring, "ssid", 33),
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_u8, "channel_b"),
 				NV_VAR(nv_u8, "", true),
+				// 0x0f = all
 				NV_VAR(nv_u8, "basic_rates"), // XXX u16?
 				NV_VAR(nv_data, "", 3),
 				NV_VAR2(nv_enum<nv_u8>, "encryption", "encryption", {
@@ -227,7 +244,7 @@ class nv_group_8021 : public nv_group
 				}),
 				NV_VAR(nv_data, "", 2),
 				NV_VAR(nv_array<nv_cdata<5>>, "wep64_keys", 4),
-				NV_VAR(nv_u8, "wep_key_idx"),
+				NV_VAR(nv_u8, "wep_key_num"),
 				NV_VAR(nv_cdata<13>, "wep128_key_1"),
 				NV_VAR(beacon_interval, "beacon_interval"),
 				NV_VAR(dtim_interval, "dtim_interval"),
@@ -244,7 +261,12 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_u8, "long_retry_limit"),
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_u8, "channel_a"),
-				NV_VAR(nv_data, "", 5),
+				// 1 = auto, 4 = performance, 5 = lrs
+				NV_VAR2(nv_enum<nv_u8>, "g_mode", "g_mode", { "disabled", "auto", "", "", "", "performance", "lrs" }),
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_bool, "g_protection"),
+				NV_VAR(nv_data, "", 1),
+				NV_VAR2(nv_enum<nv_u8>, "g_rate_mbps", "rate_mbps", rates),
 				NV_VAR(nv_u8_m<100>, "tx_power"),
 				NV_VAR(nv_p16string, "wpa_psk"),
 				NV_VAR(nv_data, "", 0x2),
@@ -256,7 +278,8 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_data, "", (ver.num() <= 0x0015 ? 0x56 : 0x2a) - 0x1d),
 				NV_VAR(nv_bool, "wds_enabled"),
 				NV_VAR(nv_array<nv_mac>, "wds_list", 4),
-				NV_VAR(nv_data, "", 4),
+				NV_VAR(nv_bool, "enable_afterburner"),
+				NV_VAR(nv_data, "", 3),
 				NV_VAR2(nv_bitmask<nv_u8>, "wpa", "wpa", { "", "wpa1", "psk1", "wpa2", "psk2" }),
 				NV_VAR(nv_data, "", 2),
 				NV_VAR(nv_u16, "wpa_reauth_interval"),

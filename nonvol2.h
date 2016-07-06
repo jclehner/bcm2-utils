@@ -710,6 +710,9 @@ template<class T> class nv_enum : public nv_enum_bitmask<T>
 	typedef nv_enum_bitmask<T> super;
 
 	public:
+	nv_enum()
+	: super("") {}
+
 	nv_enum(const std::string& name, const typename super::valmap& vals)
 	: super(name, vals) {}
 	nv_enum(const std::string& name, const typename super::valvec& vals)
