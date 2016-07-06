@@ -886,6 +886,15 @@ class nv_group : public nv_compound, public cloneable
 
 };
 
+template<> struct nv_type<nv_group>
+{
+	static std::string name()
+	{ return "nv_group"; }
+
+	static size_t bytes()
+	{ return 0; }
+};
+
 class nv_group_generic : public nv_group
 {
 	public:
