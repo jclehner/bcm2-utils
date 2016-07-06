@@ -490,13 +490,21 @@ class nv_group_rg : public nv_group
 			NV_VAR(nv_u8, "", true),
 			NV_VAR(nv_zstring, "http_pass", 9),
 			NV_VAR(nv_zstring, "http_realm", 256),
-			NV_VAR(nv_data, "", 7),
-			NV_VAR(nv_data, "", 3),
+			NV_VAR(nv_mac, "spoofed_mac"),
+			// ? something about l2p in the 3rd byte?
+			NV_VAR(nv_data, "", 2),
+			// 0xf0: static / dhcp
+			// 0x34: l2tp_static
+			// 0x30: l2tp
+			NV_VAR(nv_u8, "wan_conn_type", true),
+			NV_VAR(nv_data, "", 1),
 			NV_VAR(nv_ip4, "dmz_ip"),
 			NV_VAR(nv_ip4, "wan_ip"),
 			NV_VAR(nv_ip4, "wan_mask"),
 			NV_VAR(nv_ip4, "wan_gateway"),
-			NV_VAR(nv_data, "", 0x300),
+			NV_VAR(nv_fzstring<0x100>, "wan_dhcp_hostname"),
+			NV_VAR(nv_fzstring<0x100>, "syslog_email"),
+			NV_VAR(nv_fzstring<0x100>, "syslog_smtp"),
 			NV_VARN(nv_array<nv_ip4_range>, "ip_filters", 10 , &nv_ip4_range::is_end),
 			NV_VARN(nv_array<nv_port_range>, "port_filters", 10, [] (const csp<nv_port_range>& range) {
 				return nv_port_range::is_range(range, 1, 0xffff);
@@ -511,15 +519,22 @@ class nv_group_rg : public nv_group
 			NV_VARN(nv_array<nv_proto>, "port_filter_protocols", 10),
 			NV_VAR(nv_data, "", 0xaa),
 			NV_VARN(nv_array<nv_proto>, "port_trigger_protocols", 10),
-			NV_VAR(nv_data, "", 0x48a),
-			NV_VAR(nv_data, "", 4),
+			NV_VAR(nv_data, "", 0x48a - 3),
+			NV_VAR(nv_p8string, "l2tp_username"),
+			NV_VAR(nv_p8string, "l2tp_password"),
+			NV_VAR(nv_data, "", 5),
 			NV_VARN(nv_p8list<nv_p8string>, "timeservers"),
 			NV_VAR(timezone_offset, "timezone_offset"),
-			NV_VAR(nv_data, "", 0x25),
-			NV_VARN(nv_array<nv_port_forward_dport>, "port_forward_dports", 10, [] (const csp<nv_port_forward_dport>& range) {
+			NV_VARN3(ver.num() > 0x0015, nv_array<nv_port_forward_dport>, "port_forward_dports", 10, [] (const csp<nv_port_forward_dport>& range) {
 				return nv_port_range::is_range(range->get_as<nv_port_range>("ports"), 0, 0);
 			}),
-			NV_VAR(nv_data, "", 0x9b),
+			NV_VAR(nv_data, "", 10),
+			NV_VAR(nv_u16, "mtu"),
+			NV_VAR(nv_data, "", 3),
+			// 0 = enabled, 2 = disabled?
+			NV_VAR(nv_u8, "l2tp_unknown", true),
+			NV_VAR(nv_ip4, "l2tp_server_ip"),
+			NV_VAR(nv_p8istring, "l2tp_server_name"), // could also be a p8zstring
 
 		};
 	}
@@ -602,9 +617,9 @@ class nv_group_cdp : public nv_group
 			NV_VARN(nv_ip4_typed, "dhcp_pool_end"),
 			NV_VARN(nv_ip4_typed, "dhcp_subnet_mask"),
 			NV_VAR(nv_data, "", 4),
-			NV_VARN(nv_ip4_typed, "router"),
-			NV_VARN(nv_ip4_typed, "dns"),
-			NV_VARN(nv_ip4_typed, "syslog"),
+			NV_VARN(nv_ip4_typed, "router_ip"),
+			NV_VARN(nv_ip4_typed, "dns_ip"),
+			NV_VARN(nv_ip4_typed, "syslog_ip"),
 			NV_VAR(nv_u32, "ttl"),
 			NV_VAR(nv_data, "", 4),
 			NV_VARN(nv_ip4_typed, "ip_2"),
@@ -648,6 +663,31 @@ class nv_group_fire : public nv_group
 				"port_scan_detection",
 				"syn_flood_detection"
 			}),
+			NV_VAR(nv_data, "", 2),
+			// 0x80 = ? (default)
+			// 0x01 = email alerts
+			NV_VAR(nv_bitmask<nv_u8>, "logging"),
+			NV_VAR(nv_data, "", 0x8e5),
+			NV_VAR(nv_data, "", 1),
+			// 0x00 = all (!)
+			// 0x01 = sunday
+			// 0x40 = saturday
+			NV_VAR(nv_bitmask<nv_u8>, "tod_filter_days"),
+			NV_VAR(nv_data, "", 1),
+			NV_VAR(nv_u8_m<23>, "tod_filter_begin_h"),
+			NV_VAR(nv_u8_m<23>, "tod_filter_end_h"),
+			NV_VAR(nv_u8_m<59>, "tod_filter_begin_m"),
+			NV_VAR(nv_u8_m<59>, "tod_filter_end_m"),
+			NV_VAR(nv_data, "", 0x2a80),
+			NV_VAR(nv_ip, "", "syslog_ip"),
+			NV_VAR(nv_data, "", 2),
+			// or nv_u8?
+			// 0x08 = product config events
+			// 0x04 = "known internet attacks"
+			// 0x02 = blocked connections
+			// 0x01 = permitted connections
+			NV_VAR(nv_bitmask<nv_u16>, "syslog_events"),
+
 		};
 	}
 };

@@ -326,13 +326,16 @@ istream& nv_compound::read(istream& is)
 				if (!m_partial) {
 					throw runtime_error("pos " + ::to_string(m_bytes) + ": failed to read " + desc(v));
 				} else {
-					logger::d() << "pos " << m_bytes << ": stopped parsing at " << desc(v) << ", stream=" << !!is << endl;
+					logger::d() << "pos " << m_bytes << ": stopped parsing at " << desc(v) << ", stream=" << !!is
+							<< " width=" << m_width << " bytes=" << m_bytes << " val=" << v.val->bytes() << " bytes" << endl;
 				}
 				break;
 			} else {
+
 				// check again, because a successful read may have changed the
 				// byte count (e.g. an nv_pstring)
 				if ((m_width && m_bytes + v.val->bytes() > m_width)) {
+					logger::d() << v.val->bytes() << endl;
 					throw runtime_error("pos " + ::to_string(m_bytes) + ": variable ends outside of group: " + desc(v));
 				}
 				logger::d() << "pos " << m_bytes  << ": " + desc(v) << " = " << v.val->to_pretty() << " (" << v.val->bytes() << " b)"<< endl;
