@@ -604,11 +604,14 @@ NV_NUM_DEF(nv_i16, int16_t);
 NV_NUM_DEF(nv_i32, int32_t);
 NV_NUM_DEF(nv_i64, int64_t);
 
-class nv_bool : public nv_u8_r<0, 1>
+class nv_bool : public nv_u8_m<1>
 {
 	public:
 	virtual std::string type() const override
 	{ return "bool"; }
+
+	virtual std::string to_string(unsigned level, bool pretty) const override
+	{ return m_val <= 1 ? (m_val ? "true" : "false") : nv_u8_m<1>::to_string(level, pretty); }
 
 	virtual bool parse(const std::string& str) override;
 };
