@@ -492,11 +492,16 @@ class nv_group_rg : public nv_group
 			NV_VAR(nv_zstring, "http_realm", 256),
 			NV_VAR(nv_mac, "spoofed_mac"),
 			// ? something about l2p in the 3rd byte?
-			NV_VAR(nv_data, "", 2),
-			// 0xf0: static / dhcp
-			// 0x34: l2tp_static
-			// 0x30: l2tp
-			NV_VAR(nv_u8, "wan_conn_type", true),
+			NV_VAR(nv_data, "", 1),
+			// bitmask:
+			// 0x2000 = upnp_enable (also multicast?)
+			// 0x0200 = multicast_enable
+			// 0x0080 = remote_cfg_mgmt
+			// 0x0040 = pptp_passthrough
+			// 0x0020 = ipsec_passthrough
+			// 0x0010 = wan_blocking
+			// 0x0004 = static (or lt2p_static?)
+			NV_VAR(nv_bitmask<nv_u16>, "wan_conn_type", true),
 			NV_VAR(nv_data, "", 1),
 			NV_VAR(nv_ip4, "dmz_ip"),
 			NV_VAR(nv_ip4, "wan_ip"),
@@ -646,8 +651,8 @@ class nv_group_fire : public nv_group
 		return {
 			NV_VAR(nv_data, "", 2),
 			NV_VAR2(nv_bitmask<nv_u16>, "features", nv_bitmask<nv_u16>::valvec {
-				"url_keyword_blocking",
-				"url_domain_blocking",
+				"keyword_blocking",
+				"domain_blocking",
 				"http_proxy_blocking",
 				"disable_cookies",
 				"disable_java_applets",
@@ -663,12 +668,14 @@ class nv_group_fire : public nv_group
 				"port_scan_detection",
 				"syn_flood_detection"
 			}),
-			NV_VAR(nv_data, "", 2),
-			// 0x80 = ? (default)
-			// 0x01 = email alerts
-			NV_VAR(nv_bitmask<nv_u8>, "logging"),
-			NV_VAR(nv_data, "", 0x8e5),
-			NV_VAR(nv_data, "", 1),
+			NV_VAR(nv_data, "", 4),
+			NV_VAR(nv_u8, "word_filter_count"),
+			NV_VAR(nv_data, "", 3),
+			NV_VAR(nv_u8, "domain_filter_count"),
+			NV_VAR2(nv_array<nv_fstring<0x20>>, "word_filters", 16),
+			NV_VAR2(nv_array<nv_fstring<0x40>>, "domain_filters", 16),
+			NV_VAR(nv_data, "", 0x2d4), // this theoretically gives room for 11 more domain filters
+			NV_VAR(nv_data, "", 0xc),
 			// 0x00 = all (!)
 			// 0x01 = sunday
 			// 0x40 = saturday
@@ -679,7 +686,7 @@ class nv_group_fire : public nv_group
 			NV_VAR(nv_u8_m<59>, "tod_filter_begin_m"),
 			NV_VAR(nv_u8_m<59>, "tod_filter_end_m"),
 			NV_VAR(nv_data, "", 0x2a80),
-			NV_VAR(nv_ip, "", "syslog_ip"),
+			NV_VAR(nv_ip4, "syslog_ip"),
 			NV_VAR(nv_data, "", 2),
 			// or nv_u8?
 			// 0x08 = product config events
