@@ -411,9 +411,6 @@ template<int FLAGS, size_t WIDTH = 0> class nv_string_tmpl : public nv_string_ba
 {
 	public:
 	nv_string_tmpl(size_t width = WIDTH) : nv_string_base(FLAGS, width) {}
-
-	virtual std::string type() const override
-	{ return (WIDTH ? "f" : "") + nv_string_base::type(); }
 };
 }
 
