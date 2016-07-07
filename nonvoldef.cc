@@ -445,6 +445,7 @@ class nv_group_rg : public nv_group
 	class nv_proto : public nv_enum<nv_u8>
 	{
 		public:
+		// FIXME in RG 0x0016, TCP and UDP are reversed!
 		nv_proto() : nv_enum<nv_u8>("protocol", {
 			{ 0x3, "TCP" },
 			{ 0x4, "UDP" },
@@ -508,23 +509,78 @@ class nv_group_rg : public nv_group
 	{
 		typedef nv_i32_r<-45000, 45000> timezone_offset;
 
+		// TWG870: version 0x0016 (0.22)
+
 		return {
 			NV_VAR(nv_u8, "", true),
 			NV_VAR(nv_zstring, "http_pass", 9),
 			NV_VAR(nv_zstring, "http_realm", 256),
 			NV_VAR(nv_mac, "spoofed_mac"),
-			// ? something about l2p in the 3rd byte?
-			NV_VAR(nv_data, "", 1),
-			// bitmask:
-			// 0x2000 = upnp_enable (also multicast?)
-			// 0x0200 = multicast_enable
-			// 0x0080 = remote_cfg_mgmt
-			// 0x0040 = pptp_passthrough
-			// 0x0020 = ipsec_passthrough
-			// 0x0010 = wan_blocking
-			// 0x0004 = static (or lt2p_static?)
-			NV_VAR(nv_bitmask<nv_u16>, "wan_conn_type"),
-			NV_VAR(nv_data, "", 1),
+			// 0x00000001 = wan_conn_pppoe
+			// 0x00000002 = ?
+			// 0x00000004 = feature_ip_filters
+			// 0x00000008 = feature_port_filters
+			// 0x00000010 = feature_wan_blocking
+			// 0x00000020 = feature_ipsec_passthrough
+			// 0x00000040 = feature_pptp_passthrough
+			// 0x00000080 = wan_remote_mgmt
+			// 0x00000100 =
+			// 0x00000200 =
+			// 0x00000400 = wan_conn_static
+			// 0x00000800 = feature_nat_debug
+			// 0x00001000 = lan_dhcp_server
+			// 0x00002000 = lan_http_server
+			// 0x00004000 = primary_default_override
+			// 0x00008000 = feature_mac_filters
+			// 0x00010000 = feature_port_triggers
+			// 0x00020000 = feature_multicast
+			// 0x00040000 = wan_rip
+			// 0x00080000 = ?
+			// 0x00100000 = ?
+			// 0x00200000 = lan_upnp
+			// 0x00400000 = lan_routed_subnet
+			// 0x00800000 = ???
+			// 0x01000000 = wan_capt_skip_dhcp (skip wan dhcp in passthrough mode)
+			// 0x02000000 = ?
+			// 0x04000000 = ?
+			// 0x08000000 = wan_sntp
+			// 0x10000000 = wan_conn_pptp
+			// 0x20000000 = wan_pptp_server
+			// 0x40000000 = feature_ddns
+
+			NV_VAR2(nv_bitmask<nv_u32>, "features1", nv_bitmask<nv_u32>::valvec {
+				"wan_conn_pppoe",
+				"",
+				"feature_ip_filters",
+				"feature_port_filters",
+				"wan_block_pings",
+				"feature_ipsec_passthrough",
+				"feature_pptp_passthrough",
+				"wan_remote_cfg_mgmt",
+				"",
+				"",
+				"wan_conn_static",
+				"feature_nat_debug",
+				"lan_dhcp_server",
+				"lan_http_server",
+				"primary_default_override",
+				"feature_mac_filters",
+				"feature_port_triggers",
+				"feature_multicast",
+				"wan_rip",
+				"",
+				"",
+				"lan_upnp",
+				"lan_routed_subnet",
+				"",
+				"wan_passthrough_skip_dhcp",
+				"",
+				"",
+				"wan_sntp",
+				"wan_conn_pptp",
+				"wan_pptp_server",
+				"feature_ddns",
+			}),
 			NV_VAR(nv_ip4, "dmz_ip"),
 			NV_VAR(nv_ip4, "wan_ip"),
 			NV_VAR(nv_ip4, "wan_mask"),
@@ -539,27 +595,39 @@ class nv_group_rg : public nv_group
 			NV_VARN(nv_array<nv_port_forward>, "port_forwards", 10, [] (const csp<nv_port_forward>& fwd) {
 				return fwd->get("dest")->to_str() == "0.0.0.0";
 			}),
-			NV_VARN(nv_array<nv_mac>, "mac_filters", 10, &is_zero_mac),
-			NV_VAR(nv_data, "", 0x3c),
+			NV_VARN(nv_array<nv_mac>, "mac_filters", 20, &is_zero_mac),
 			NV_VARN(nv_array<nv_port_trigger>, "port_triggers", 10, &nv_port_trigger::is_end),
 			NV_VAR(nv_data, "", 0x15),
 			NV_VARN(nv_array<nv_proto>, "port_filter_protocols", 10),
 			NV_VAR(nv_data, "", 0xaa),
 			NV_VARN(nv_array<nv_proto>, "port_trigger_protocols", 10),
+			// immediately before l2tp_username:
+			// 3x
+			// <net>
+			// <gw>
+			// <netmask>
+			//
+			// <gw>
+			// <dns 1>
+			// <dns 2>
+			// <dns 3>
 			NV_VAR(nv_data, "", 0x48a - 3),
 			NV_VAR(nv_p8string, "l2tp_username"),
 			NV_VAR(nv_p8string, "l2tp_password"),
 			NV_VAR(nv_data, "", 5),
 			NV_VARN(nv_p8list<nv_p8string>, "timeservers"),
 			NV_VAR(timezone_offset, "timezone_offset"),
-			NV_VARN3(ver.num() > 0x0015, nv_array<nv_port_forward_dport>, "port_forward_dports", 10, [] (const csp<nv_port_forward_dport>& range) {
+			NV_VARN3(ver.num() > 0x0016, nv_array<nv_port_forward_dport>, "port_forward_dports", 10, [] (const csp<nv_port_forward_dport>& range) {
 				return nv_port_range::is_range(range->get_as<nv_port_range>("ports"), 0, 0);
 			}),
 			NV_VAR(nv_data, "", 10),
 			NV_VAR(nv_u16, "mtu"),
 			NV_VAR(nv_data, "", 3),
-			// 0 = enabled, 2 = disabled?
-			NV_VAR(nv_u8, "l2tp_unknown", true),
+			// 0x01 = wan_l2tp_server , 0x02 = wan_conn_l2tp (?)
+			NV_VAR2(nv_bitmask<nv_u8>, "features2", nv_bitmask<nv_u8>::valvec {
+				"wan_l2tp_server",
+				"wan_conn_l2tp"
+			}),
 			NV_VAR(nv_ip4, "l2tp_server_ip"),
 			NV_VAR(nv_p8istring, "l2tp_server_name"), // could also be a p8zstring
 
