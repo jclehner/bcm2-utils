@@ -130,17 +130,35 @@ class nv_group_thom : public nv_group
 	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_thom, "THOM", "thombfc")
 
 	protected:
+	class nv_eth_ports : public nv_bitmask<nv_u32>
+	{
+		public:
+		nv_eth_ports()
+		: nv_bitmask<nv_u32>("eth-ports", {
+			{ 0x02000, "eth1" },
+			{ 0x04000, "eth2" },
+			{ 0x08000, "eth3" },
+			{ 0x10000, "eth4" },
+		}) {}
+	};
+
 	virtual list definition(int type, const nv_version& ver) const override
 	{
 		return {
 			// 0x6 = rw (0x4 = write, 0x2 = read)
 			// 0x6 = rw (0x4 = rw, 0x2 = enable (?), 0x1 = factory (?))
 			NV_VAR(nv_bitmask<nv_u8>, "serial_console_mode"),
-			//NV_VAR(nv_u8, "serial_console_mode", true),
-			NV_VAR(nv_data, "", 0x1f),
+#if 0
 			NV_VAR(nv_bool, "early_console_enable"), // ?
 			NV_VAR(nv_u16, "early_console_bufsize", true),
-			NV_VAR(nv_u8, "", true) // maybe this is early_console_enable?
+			NV_VAR(nv_u8, "", true), // maybe this is early_console_enable?
+			NV_VAR(nv_data, "", 3),
+			// 1 = lan_access
+			NV_VAR(nv_bitmask<nv_u8>, "features"),
+			NV_VAR(nv_data, "", 4),
+			NV_VAR(nv_eth_ports, "pt_interfacemask"),
+			NV_VAR(nv_eth_ports, "pt_interfaces"),
+#endif
 		};
 	}
 
@@ -325,7 +343,7 @@ class nv_group_8021 : public nv_group
 				}),
 				NV_VAR3(ver.num() <= 0x0015, nv_data, "", 7),
 				NV_VAR(nv_bool, "wps_enabled"),
-				NV_VAR(nv_u8, "wps_cfg_state_or_tkip", true),
+				NV_VAR(nv_u8, "wps_cfg_state", true),
 				NV_VAR(nv_p8zstring, "wps_device_pin"),
 				NV_VAR(nv_p8zstring, "wps_model"),
 				NV_VAR(nv_p8zstring, "wps_manufacturer"),
@@ -533,15 +551,15 @@ class nv_group_rg : public nv_group
 			NV_VAR(nv_mac, "spoofed_mac"),
 			NV_VAR2(nv_bitmask<nv_u32>, "features1", nv_bitmask<nv_u32>::valvec {
 				"wan_conn_pppoe",
-				"", // 0x02
+				"", // 0x02 (unset by default, automatically removed if set)
 				"feature_ip_filters",
 				"feature_port_filters",
 				"wan_block_pings",
 				"feature_ipsec_passthrough",
 				"feature_pptp_passthrough",
 				"wan_remote_cfg_mgmt",
-				"", // 0x0100
-				"", // 0x0200
+				"feature_ip_forwarding", // 0x0100 (unset by default)
+				"feature_dmz",
 				"wan_conn_static",
 				"feature_nat_debug",
 				"lan_dhcp_server",
@@ -551,8 +569,8 @@ class nv_group_rg : public nv_group
 				"feature_port_triggers",
 				"feature_multicast",
 				"wan_rip",
-				"", // 0x080000
-				"", // 0x100000
+				"", // 0x080000 (unset by default)
+				"feature_dmz_by_hostname",
 				"lan_upnp",
 				"lan_routed_subnet",
 				"lan_routed_subnet_dhcp",
@@ -585,12 +603,16 @@ class nv_group_rg : public nv_group
 			NV_VARN(nv_array<nv_proto>, "port_filter_protocols", 10),
 			NV_VAR(nv_data, "", 0xaa),
 			NV_VARN(nv_array<nv_proto>, "port_trigger_protocols", 10),
-			NV_VAR(nv_data, "", 0x453),
+			NV_VAR(nv_data, "", 0x443),
+			NV_VAR(nv_data, "", 3),
+			NV_VAR(nv_p8string, "rip_key"),
+			NV_VAR(nv_u16, "rip_reporting_interval"),
+			NV_VAR(nv_data, "", 0xa),
 			NV_VAR(nv_route<true>, "route1"),
 			NV_VAR(nv_route<false>, "route2"),
 			NV_VAR(nv_route<false>, "route3"),
-			NV_VAR(nv_ip4, "nat_routing_gateway"),
-			NV_VAR(nv_array<nv_ip4>, "nat_routing_dns", 3),
+			NV_VAR(nv_ip4, "nat_route_gateway"),
+			NV_VAR(nv_array<nv_ip4>, "nat_route_dns", 3),
 			NV_VAR(nv_p8string, "l2tp_username"),
 			NV_VAR(nv_p8string, "l2tp_password"),
 			NV_VAR(nv_data, "", 5),
@@ -599,7 +621,10 @@ class nv_group_rg : public nv_group
 			NV_VARN3(ver.num() > 0x0016, nv_array<nv_port_forward_dport>, "port_forward_dports", 10, [] (const csp<nv_port_forward_dport>& range) {
 				return nv_port_range::is_range(range->get_as<nv_port_range>("ports"), 0, 0);
 			}),
-			NV_VAR(nv_data, "", 10),
+			NV_VAR(nv_p16string, "ddns_username"),
+			NV_VAR(nv_p16string, "ddns_password"),
+			NV_VAR(nv_p16string, "ddns_hostname"),
+			NV_VAR(nv_data, "", 4),
 			NV_VAR(nv_u16, "mtu"),
 			NV_VAR(nv_data, "", 3),
 			// 0x01 = wan_l2tp_server , 0x02 = wan_conn_l2tp (?)
@@ -608,7 +633,7 @@ class nv_group_rg : public nv_group
 				"wan_conn_l2tp"
 			}),
 			NV_VAR(nv_ip4, "l2tp_server_ip"),
-			NV_VAR(nv_p8istring, "l2tp_server_name"), // could also be a p8zstring
+			NV_VAR(nv_p8string, "l2tp_server_name"), // could also be a p8zstring
 
 		};
 	}
