@@ -119,7 +119,12 @@ string compound_to_string(const nv_compound& c, unsigned level, bool pretty,
 			continue;
 		}
 
-		str += "\n" + pad(level) + v.name + " = " + v.val->to_string(level + 1, pretty);
+		str += "\n" + pad(level) + v.name + " = ";
+		if (v.val->is_set()) {
+			str += v.val->to_string(level + 1, pretty);
+		} else {
+			str += "<n/a>";
+		}
 	}
 
 	if (i != parts.size() && is_end) {
@@ -307,11 +312,15 @@ istream& nv_compound::read(istream& is)
 	std::set<string> names;
 	unsigned unk = 0;
 
+	// do this for all parts, regardless of whether they
+	// are found in the config file
 	for (auto& v : m_parts) {
 		if (v.name.empty()) {
 			v.name = "_unk_" + std::to_string(++unk);
 		}
+	}
 
+	for (auto& v : m_parts) {
 		if (!names.insert(v.name).second) {
 			throw runtime_error("redefinition of member " + v.name);
 		} else if (!is_valid_identifier(v.name)) {
