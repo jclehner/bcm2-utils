@@ -446,9 +446,9 @@ class nv_group_rg : public nv_group
 	{
 		public:
 		// FIXME in RG 0x0016, TCP and UDP are reversed!
-		nv_proto() : nv_enum<nv_u8>("protocol", {
-			{ 0x3, "TCP" },
-			{ 0x4, "UDP" },
+		nv_proto(bool reversed = false) : nv_enum<nv_u8>("protocol", {
+			{ 0x3, reversed ? "UDP" : "TCP" },
+			{ 0x4, reversed ? "TCP" : "UDP" },
 			{ 0xfe, "TCP+UDP" }
 		}) {}
 	};
@@ -501,7 +501,22 @@ class nv_group_rg : public nv_group
 				NV_VAR(nv_port_range, "trigger"),
 				NV_VAR(nv_port_range, "target"),
 			};
+		}
+	};
 
+	template<bool ROUTE1> class nv_route : public nv_compound
+	{
+		public:
+		NV_COMPOUND_DEF_CTOR_AND_TYPE(nv_route, "route");
+
+		protected:
+		virtual list definition() const override
+		{
+			return {
+				NV_VAR(nv_ip4, ROUTE1 ? "netmask" : "network"),
+				NV_VAR(nv_ip4, ROUTE1 ? "network" : "gateway"),
+				NV_VAR(nv_ip4, ROUTE1 ? "gateway" : "netmask"),
+			};
 		}
 	};
 
@@ -516,49 +531,17 @@ class nv_group_rg : public nv_group
 			NV_VAR(nv_zstring, "http_pass", 9),
 			NV_VAR(nv_zstring, "http_realm", 256),
 			NV_VAR(nv_mac, "spoofed_mac"),
-			// 0x00000001 = wan_conn_pppoe
-			// 0x00000002 = ?
-			// 0x00000004 = feature_ip_filters
-			// 0x00000008 = feature_port_filters
-			// 0x00000010 = feature_wan_blocking
-			// 0x00000020 = feature_ipsec_passthrough
-			// 0x00000040 = feature_pptp_passthrough
-			// 0x00000080 = wan_remote_mgmt
-			// 0x00000100 =
-			// 0x00000200 =
-			// 0x00000400 = wan_conn_static
-			// 0x00000800 = feature_nat_debug
-			// 0x00001000 = lan_dhcp_server
-			// 0x00002000 = lan_http_server
-			// 0x00004000 = primary_default_override
-			// 0x00008000 = feature_mac_filters
-			// 0x00010000 = feature_port_triggers
-			// 0x00020000 = feature_multicast
-			// 0x00040000 = wan_rip
-			// 0x00080000 = ?
-			// 0x00100000 = ?
-			// 0x00200000 = lan_upnp
-			// 0x00400000 = lan_routed_subnet
-			// 0x00800000 = ???
-			// 0x01000000 = wan_capt_skip_dhcp (skip wan dhcp in passthrough mode)
-			// 0x02000000 = ?
-			// 0x04000000 = ?
-			// 0x08000000 = wan_sntp
-			// 0x10000000 = wan_conn_pptp
-			// 0x20000000 = wan_pptp_server
-			// 0x40000000 = feature_ddns
-
 			NV_VAR2(nv_bitmask<nv_u32>, "features1", nv_bitmask<nv_u32>::valvec {
 				"wan_conn_pppoe",
-				"",
+				"", // 0x02
 				"feature_ip_filters",
 				"feature_port_filters",
 				"wan_block_pings",
 				"feature_ipsec_passthrough",
 				"feature_pptp_passthrough",
 				"wan_remote_cfg_mgmt",
-				"",
-				"",
+				"", // 0x0100
+				"", // 0x0200
 				"wan_conn_static",
 				"feature_nat_debug",
 				"lan_dhcp_server",
@@ -568,18 +551,19 @@ class nv_group_rg : public nv_group
 				"feature_port_triggers",
 				"feature_multicast",
 				"wan_rip",
-				"",
-				"",
+				"", // 0x080000
+				"", // 0x100000
 				"lan_upnp",
 				"lan_routed_subnet",
-				"",
+				"lan_routed_subnet_dhcp",
 				"wan_passthrough_skip_dhcp",
-				"",
-				"",
+				"lan_routed_subnet_nat",
+				"", // 0x04000000
 				"wan_sntp",
 				"wan_conn_pptp",
 				"wan_pptp_server",
 				"feature_ddns",
+				"", // 0x80000000
 			}),
 			NV_VAR(nv_ip4, "dmz_ip"),
 			NV_VAR(nv_ip4, "wan_ip"),
@@ -601,17 +585,12 @@ class nv_group_rg : public nv_group
 			NV_VARN(nv_array<nv_proto>, "port_filter_protocols", 10),
 			NV_VAR(nv_data, "", 0xaa),
 			NV_VARN(nv_array<nv_proto>, "port_trigger_protocols", 10),
-			// immediately before l2tp_username:
-			// 3x
-			// <net>
-			// <gw>
-			// <netmask>
-			//
-			// <gw>
-			// <dns 1>
-			// <dns 2>
-			// <dns 3>
-			NV_VAR(nv_data, "", 0x48a - 3),
+			NV_VAR(nv_data, "", 0x453),
+			NV_VAR(nv_route<true>, "route1"),
+			NV_VAR(nv_route<false>, "route2"),
+			NV_VAR(nv_route<false>, "route3"),
+			NV_VAR(nv_ip4, "nat_routing_gateway"),
+			NV_VAR(nv_array<nv_ip4>, "nat_routing_dns", 3),
 			NV_VAR(nv_p8string, "l2tp_username"),
 			NV_VAR(nv_p8string, "l2tp_password"),
 			NV_VAR(nv_data, "", 5),
