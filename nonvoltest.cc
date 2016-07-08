@@ -70,6 +70,8 @@ csp<nv_val> get(sp<nv_group> group, const string& name)
 
 int main(int argc, char** argv)
 {
+	ios::sync_with_stdio();
+
 	if (argc < 3) {
 		cerr << "usage: nonvoltest <type> <file> {get <name>, set <name> <value>}" << endl;
 		return 1;
@@ -113,12 +115,16 @@ int main(int argc, char** argv)
 		in.close();
 		ofstream out(argv[2]);
 		cfg->write(out);
-	} else if (argc >= 4 && argv[3] == "info"s){
+	} else if (argc >= 4 && argv[3] == "info"s) {
 		cout << argv[2] << endl;
 		cout << cfg->header_to_string() << endl;
 		for (auto p : cfg->parts()) {
 			csp<nv_group> g = nv_val_cast<nv_group>(p.val);
-			cout << g->name() << ": " << g->magic().to_pretty() << ", v" << g->version().to_pretty() << endl;
+			string ugly = g->magic().to_str();
+			string pretty = g->magic().to_pretty();
+			cout << ugly << "  " << (ugly == pretty ? "    " : pretty) << "  ";
+			string version = g->version().to_pretty();
+			printf("%-6s  %-12s  %5zu b\n", version.c_str(), g->name().c_str(), g->bytes());
 		}
 		cout << endl;
 	} else {
