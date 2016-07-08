@@ -43,6 +43,8 @@ class settings : public nv_compound
 	virtual const list& parts() const override
 	{ return m_groups; }
 
+	virtual std::string header_to_string() const = 0;
+
 	static sp<settings> read(std::istream& is, int type, const csp<bcm2dump::profile>& profile, const std::string& key);
 
 	protected:

@@ -75,7 +75,7 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	logger::loglevel(logger::debug);
+	logger::loglevel(logger::verbose);
 
 	ifstream in(argv[2]);
 	if (!in.good()) {
@@ -114,10 +114,13 @@ int main(int argc, char** argv)
 		ofstream out(argv[2]);
 		cfg->write(out);
 	} else if (argc >= 4 && argv[3] == "info"s){
+		cout << argv[2] << endl;
+		cout << cfg->header_to_string() << endl;
 		for (auto p : cfg->parts()) {
 			csp<nv_group> g = nv_val_cast<nv_group>(p.val);
 			cout << g->name() << ": " << g->magic().to_pretty() << ", v" << g->version().to_pretty() << endl;
 		}
+		cout << endl;
 	} else {
 		cout << cfg->to_pretty() << endl;
 	}

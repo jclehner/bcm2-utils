@@ -44,6 +44,26 @@ string read_stream(istream& is)
 	return ret;
 }
 
+string group_header_to_string(const string& type, const string& checksum, bool is_chksum_valid, size_t size, bool is_size_valid,
+		const string& key, bool is_encrypted, const string& profile, bool is_auto_profile)
+{
+	ostringstream ostr;
+	ostr << "type    : " << type << endl;
+	ostr << "profile : ";
+	if (profile.empty()) {
+		ostr << " (unknown)" << endl;
+	} else {
+		ostr << profile << (is_auto_profile ? "" : " (forced)") << endl;
+	}
+	ostr << "checksum: " << checksum << (is_chksum_valid ? "" : " (bad)") << endl;
+	ostr << "size    : " << size << (is_size_valid ? "" : " (bad)") << endl;
+	if (is_encrypted) {
+		ostr << "key     :" << (key.empty() ? "(unknown)" : to_hex(key)) << endl;
+	}
+
+	return ostr.str();
+}
+
 class permdyn : public settings
 {
 	public:
@@ -105,6 +125,12 @@ class permdyn : public settings
 		return os;
 	}
 
+	virtual string header_to_string() const override
+	{
+		return group_header_to_string("permdyn", to_hex(m_checksum.num()), m_checksum_valid,
+				m_size.num(), true, "", false, "", false);
+	}
+
 	private:
 	static uint32_t crc32(const string& buf)
 	{
@@ -114,6 +140,7 @@ class permdyn : public settings
 
 	nv_u32 m_size;
 	nv_u32 m_checksum;
+	bool m_checksum_valid = false;
 };
 
 class gwsettings : public settings
@@ -137,10 +164,9 @@ class gwsettings : public settings
 		string magic = buf.substr(0, s_magic.size());
 		validate_checksum_and_detect_profile(buf);
 		m_magic_valid = (magic == s_magic);
-		cout << "magic valid: " << m_magic_valid << endl;
 
 		if (!m_magic_valid && !decrypt_and_detect_profile(buf)) {
-			cout << "decryption successful: " << m_magic_valid << endl;
+			m_encrypted = true;
 			return is;
 		}
 
@@ -149,9 +175,14 @@ class gwsettings : public settings
 			throw runtime_error("error while reading header");
 		}
 
-		cout << "version " << m_version.to_str() << ", size " << m_size.to_str() << endl;
-		m_padded = m_size.num() < buf.size();
-		cout << "padded: " << m_padded << endl;
+		m_size_valid = m_size.num() == buf.size();
+
+		if (!m_size_valid) {
+			if (m_size.num() + 16 == buf.size()) {
+				m_padded = true;
+				m_size_valid = true;
+			}
+		}
 
 		settings::read(istr);
 		return is;
@@ -195,6 +226,13 @@ class gwsettings : public settings
 		return os;
 	}
 
+	virtual string header_to_string() const override
+	{
+		return group_header_to_string("gwsettings", to_hex(m_checksum), m_checksum_valid,
+				m_size.num(), m_size_valid, m_key, m_encrypted, profile() ? profile()->name() : "",
+				m_is_auto_profile);
+	}
+
 	private:
 	string m_checksum;
 
@@ -207,6 +245,7 @@ class gwsettings : public settings
 				if (validate_checksum(buf, p)) {
 					m_is_auto_profile = true;
 					m_profile = p;
+					break;
 				}
 			}
 		}
@@ -319,6 +358,8 @@ class gwsettings : public settings
 	bool m_is_auto_profile = false;
 	bool m_checksum_valid = false;
 	bool m_magic_valid = false;
+	bool m_size_valid = false;
+	bool m_encrypted = false;
 	nv_version m_version;
 	nv_u32 m_size;
 	string m_key;
