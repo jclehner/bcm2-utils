@@ -167,10 +167,13 @@ class gwsettings : public settings
 		settings::write(ostr);
 		string buf = ostr.str();
 
-		ostr.str(s_magic);
+		ostr.str("");
+		ostr.write(s_magic.data(), s_magic.size());
 		m_version.write(ostr);
 		// 2 bytes for version, 4 for size
-		nv_u32(s_magic.size() + 6 + buf.size()).write(ostr);
+		nv_u32(s_magic.size() + 6 + buf.size(), false).write(ostr);
+
+		cout << "ostr.str() = " << to_hex(ostr.str()) << endl;
 
 		buf = ostr.str() + buf;
 		if (!m_key.empty()) {
@@ -183,6 +186,10 @@ class gwsettings : public settings
 
 		if (!(os.write(buf.data(), buf.size()))) {
 			throw runtime_error("error while writing data");
+		}
+
+		if (m_padded && !(os << string(16, '\0'))) {
+			throw runtime_error("error while writing padding");
 		}
 
 		return os;

@@ -365,16 +365,31 @@ istream& nv_compound::read(istream& is)
 
 ostream& nv_compound::write(ostream& os) const
 {
-	if (m_parts.empty()) {
-		throw runtime_error("attempted to serialize uninitialized compound");
+	if (parts().empty()) {
+		throw runtime_error("attempted to serialize uninitialized compound " + name() + " " + type());
 	}
 
-	for (auto v : m_parts) {
-		if (m_partial && !v.val->is_set()) {
-			break;
-		} else if (!v.val->write(os)) {
+	size_t pos = 0;
+
+	for (auto v : parts()) {
+		logger::d() << "pos " << pos << ": ";
+		if (v.val->is_disabled()) {
+			logger::d() << v.name << " (disabled)" << endl;
+			continue;
+		} else if (!v.val->is_set()) {
+			if (m_partial) {
+				logger::d() << v.name << " (unset)" << endl;
+				continue;
+			}
+			logger::d() << "writing unset " << name() << "." << v.name << endl;
+		}
+
+		if (!v.val->write(os)) {
 			throw runtime_error("failed to write " + desc(v));
 		}
+
+		logger::d() << desc(v) << " = " << v.val->to_pretty() << endl;
+		pos += v.val->bytes();
 	}
 
 	return os;
@@ -556,7 +571,7 @@ istream& nv_string_base::read(istream& is)
 ostream& nv_string_base::write(ostream& os) const
 {
 	string val = m_val;
-	if (m_width && val.size() < m_width) {
+	if ((m_flags & flag_fixed_width) && val.size() < m_width) {
 		val.resize(m_width);
 	} else if (m_flags & flag_require_nul) {
 		val.resize(val.size() + 1);
@@ -671,7 +686,7 @@ istream& nv_group::read(istream& is)
 				throw runtime_error("failed to read remaining " + std::to_string(extra->bytes()) + " bytes");
 			}
 
-			logger::d() << "read " << m_bytes << " b so far, but group size is " << m_size.num() << "; extra data size is " << extra->bytes() << "b" << endl;
+			logger::d() << "  read " << m_bytes << " b , group size is " << m_size.num() << "; extra data size is " << extra->bytes() << "b" << endl;
 			m_parts.push_back(named("extra", extra));
 			logger::d() << extra->to_pretty() << endl;
 			m_bytes += extra->bytes();
@@ -691,9 +706,8 @@ istream& nv_group::read(istream& is)
 
 ostream& nv_group::write(ostream& os) const
 {
-	if (!m_size.write(os) || !m_magic.write(os)) {
-		return os;
-	} else if (is_versioned() && !m_version.write(os)) {
+	if (!m_size.write(os) || !m_magic.write(os) || (is_versioned() && !m_version.write(os))) {
+		throw runtime_error(type() + ": error while writing group header");
 		return os;
 	}
 
