@@ -45,6 +45,15 @@ struct bcm2_profile bcm2_profiles[] = {
 		},
 	},
 	{
+		.name = "cg3000",
+		.pretty = "Netgear CG3000",
+		.pssig = 0xa0f7,
+		.cfg_md5key = "3250736c633b752865676d64302d2778",
+		.spaces = {
+				{ .name = "ram" },
+		},
+	},
+	{
 		.name = "twg850",
 		.pretty = "Thomson TWG850-4",
 		.baudrate = 115200,
