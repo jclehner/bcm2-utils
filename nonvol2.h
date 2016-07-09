@@ -20,6 +20,7 @@
 #ifndef BCM2CFG_NONVOL_H
 #define BCM2CFG_NONVOL_H
 #include <arpa/inet.h>
+#include <type_traits>
 #include <iostream>
 #include <limits>
 #include <vector>
@@ -59,7 +60,7 @@ template<class T> struct nv_type
 	}
 };
 
-template<class To, class From> sp<To> nv_val_cast(const From& from);
+template<class To, class From, class ToType> sp<To> nv_val_cast(const From& from);
 
 class nv_val : public serializable
 {
@@ -120,11 +121,13 @@ class nv_val : public serializable
 	bool m_set = false;
 };
 
-template<class To, class From> sp<To> nv_val_cast(const From& from)
+template<class To, class From, class ToType = nv_type<To>> std::shared_ptr<To> nv_val_cast(const std::shared_ptr<From>& from)
 {
+
 	sp<To> p = std::dynamic_pointer_cast<To>(from);
 	if (!p) {
-		throw std::invalid_argument("failed cast: " + from->type() + " (" + from->to_str() + ") -> " + nv_type<To>::name());
+		throw std::invalid_argument("failed cast: " + from->type() + " (" + from->to_str() + ") -> " +
+				ToType::name());
 	}
 
 	return p;
@@ -193,8 +196,8 @@ template<> struct nv_type<nv_compound>
 	{ return 0; }
 };
 
-template<class From> sp<nv_compound> nv_compound_cast(const From& from)
-{ return nv_val_cast<nv_compound>(from); }
+template<class From> csp<nv_compound> nv_compound_cast(const std::shared_ptr<From>& from)
+{ return nv_val_cast<const nv_compound, From, nv_type<nv_compound>>(from); }
 
 class nv_compound_def final : public nv_compound
 {
@@ -823,7 +826,7 @@ class nv_magic : public nv_data
 
 	virtual bool parse(const std::string& str) override;
 
-	virtual std::string to_string(unsigned, bool) const override;
+	virtual std::string to_string(unsigned, bool pretty) const override;
 
 	uint32_t as_num() const
 	{ return ntohl(*reinterpret_cast<const uint32_t*>(m_buf.data())); }

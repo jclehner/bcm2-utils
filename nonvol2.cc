@@ -614,10 +614,10 @@ bool nv_bool::parse(const string& str)
 	return false;
 }
 
-string nv_magic::to_string(unsigned, bool) const
+string nv_magic::to_string(unsigned, bool pretty) const
 {
 	string str;
-	bool ascii = isprint(m_buf[0]) || isprint(m_buf[1]);
+	bool ascii = pretty && (isprint(m_buf[0]) || isprint(m_buf[1]));
 
 	for (size_t i = 0; i < 4; ++i) {
 		if (!ascii) {
@@ -752,7 +752,9 @@ istream& nv_group::read(istream& is, sp<nv_group>& group, int type, size_t maxsi
 
 	auto i = s_registry.find(magic);
 	if (i == s_registry.end()) {
-		group = make_shared<nv_group_generic>(magic, magic.to_str());
+		string name = magic.to_pretty();
+		name = transform(name.substr(0, name.find('.')), ::tolower);
+		group = make_shared<nv_group_generic>(magic, "grp_" + name);
 	} else {
 		group.reset(i->second->clone());
 	}

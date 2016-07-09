@@ -92,7 +92,7 @@ int main(int argc, char** argv)
 	} else if (argv[1] == "dyn"s) {
 		type = nv_group::type_dyn;
 		//in.seekg(0xd2);
-	} else if (argv[1] == "gwsettings"s) {
+	} else if (argv[1] == "gws"s) {
 		type = nv_group::type_dyn;
 		//in.seekg(0x60);
 	} else if (argv[1] == "perm"s) {
@@ -127,6 +127,17 @@ int main(int argc, char** argv)
 			printf("%-6s  %-12s  %5zu b\n", version.c_str(), g->name().c_str(), g->bytes());
 		}
 		cout << endl;
+	} else if (argc >= 5 && (argv[3] == "list"s || argv[3] == "ls"s)) {
+		csp<nv_val> val = cfg->get(argv[4]);
+		if (val) {
+			if (!val->is_compound()) {
+				cout << argv[3] << endl;
+			} else {
+				for (auto p : nv_compound_cast(val)->parts()) {
+					cout << p.name << (p.val->is_compound() ? ".*" : "") << endl;
+				}
+			}
+		}
 	} else {
 		cout << cfg->to_pretty() << endl;
 	}
