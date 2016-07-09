@@ -185,7 +185,7 @@ struct bcm2_profile bcm2_profiles[] = {
 				.parts = {
 					{ "bootloader", 0x00000, 0x10000 },
 					{ "permnv",     0x10000, 0x10000, "perm" },
-					{ "dynnv",      0x20000, 0xe0000, "dyn" }
+					{ "dynnv",      0xe0000, 0x20000, "dyn" }
 				},
 				.read = {
 					{
