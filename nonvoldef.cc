@@ -812,7 +812,9 @@ class nv_group_cmev : public nv_group
 		virtual list definition() const override
 		{
 			return {
-				NV_VAR(nv_data, "data", 0x10),
+				NV_VAR(nv_data, "data", 8),
+				NV_VAR(nv_timestamp, "time1"),
+				NV_VAR(nv_timestamp, "time2"),
 				NV_VAR(nv_p16string, "msg")
 			};
 		}
