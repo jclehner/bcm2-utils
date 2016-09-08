@@ -114,7 +114,7 @@ class permdyn : public settings
 			throw runtime_error("failed to write magic");
 		}
 
-		if (!nv_u32(8 + buf.size()).write(os) || !nv_u32(crc32(buf)).write(os)) {
+		if (!nv_u32::write(os, 8 + buf.size()) || !nv_u32::write(os, crc32(buf))) {
 			throw runtime_error("failed to write header");
 		}
 
@@ -202,7 +202,7 @@ class gwsettings : public settings
 		ostr.write(s_magic.data(), s_magic.size());
 		m_version.write(ostr);
 		// 2 bytes for version, 4 for size
-		nv_u32(s_magic.size() + 6 + buf.size(), false).write(ostr);
+		nv_u32::write(ostr, s_magic.size() + 6 + buf.size());
 
 		cout << "ostr.str() = " << to_hex(ostr.str()) << endl;
 

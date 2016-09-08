@@ -337,6 +337,7 @@ istream& nv_compound::read(istream& is)
 				} else {
 					logger::d() << "pos " << m_bytes << ": stopped parsing at " << desc(v) << ", stream=" << !!is
 							<< " width=" << m_width << " bytes=" << m_bytes << " val=" << v.val->bytes() << " bytes" << endl;
+					m_set = true;
 				}
 				break;
 			} else {
@@ -577,10 +578,12 @@ ostream& nv_string_base::write(ostream& os) const
 		val.resize(val.size() + 1);
 	}
 
+	size_t size = val.size() + ((m_flags & flag_size_includes_prefix) ? str_prefix_bytes(m_flags) : 0);
+
 	if (m_flags & flag_prefix_u8) {
-		write_num<uint8_t>(os, val.size());
+		write_num<uint8_t>(os, size);
 	} else if (m_flags & flag_prefix_u16) {
-		write_num<uint16_t>(os, val.size());
+		write_num<uint16_t>(os, size);
 	}
 
 	if (!(os << val)) {
@@ -675,7 +678,7 @@ istream& nv_group::read(istream& is)
 		throw runtime_error("failed to read group version");
 	}
 
-	logger::d() << "** " << m_magic.to_str() << " " << m_size.num() << " b, version 0x" << to_hex(m_version.num()) << endl;
+	logger::d() << "** " << m_magic.to_str() << " " << m_magic.to_pretty() << " " << m_size.num() << " b, version 0x" << to_hex(m_version.num()) << endl;
 
 	if (nv_compound::read(is)) {
 		//m_bytes += is_versioned() ? 8 : 6;

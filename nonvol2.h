@@ -153,7 +153,7 @@ class nv_compound : public nv_val
 	virtual csp<nv_val> find(const std::string& name) const;
 
 	virtual bool init(bool force = false);
-	virtual void clear()
+	virtual void clear() final
 	{ init(true); }
 
 	virtual size_t bytes() const override
@@ -257,7 +257,13 @@ template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 			m_count = bcm2dump::bswapper<I>::ntoh(m_count);
 		}
 
-		return nv_compound::read(is);
+		nv_compound::read(is);
+
+		if (L && !m_count) {
+			m_set = true;
+		}
+
+		return is;
 	}
 
 	virtual std::ostream& write(std::ostream& os) const override
@@ -265,6 +271,10 @@ template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 		if (L) {
 			I count = bcm2dump::bswapper<I>::hton(m_count);
 			if (!os.write(reinterpret_cast<const char*>(&count), sizeof(I))) {
+				return os;
+			}
+
+			if (!m_count) {
 				return os;
 			}
 		}
@@ -534,10 +544,7 @@ class nv_num : public nv_val
 	}
 
 	virtual std::ostream& write(std::ostream& os) const override
-	{
-		T swapped = bcm2dump::bswapper<T>::hton(m_val);
-		return os.write(reinterpret_cast<const char*>(&swapped), sizeof(T));
-	}
+	{ return write(os, m_val); }
 
 	virtual size_t bytes() const override
 	{ return sizeof(T); }
@@ -547,6 +554,12 @@ class nv_num : public nv_val
 
 	bool operator!=(const nv_num<T, H>& other)
 	{ return m_val == other.m_val; }
+
+	static std::ostream& write(std::ostream& os, const T& num)
+	{
+		T swapped = bcm2dump::bswapper<T>::hton(num);
+		return os.write(reinterpret_cast<const char*>(&swapped), sizeof(T));
+	}
 
 	protected:
 	T m_val;
@@ -560,53 +573,24 @@ template<typename T> struct num_name
 	static std::string name();
 };
 
-template<> struct num_name<uint8_t>
-{
-	static std::string name()
-	{ return "u8"; }
-};
+#define NV_NUM_NAME_DEF(t, n, h) \
+	template<> struct num_name<t> \
+	{ \
+		static std::string name() \
+		{ return n; } \
+		\
+		static bool hex() \
+		{ return h; } \
+	}
 
-template<> struct num_name<int8_t>
-{
-	static std::string name()
-	{ return "i8"; }
-};
+#define NV_NUM_NAMES_DEF(bits) \
+	NV_NUM_NAME_DEF(uint ## bits ## _t, "u" #bits, false); \
+	NV_NUM_NAME_DEF(int ## bits ## _t, "i" #bits, false)
 
-template<> struct num_name<uint16_t>
-{
-	static std::string name()
-	{ return "u16"; }
-};
-
-template<> struct num_name<int16_t>
-{
-	static std::string name()
-	{ return "i16"; }
-};
-
-template<> struct num_name<uint32_t>
-{
-	static std::string name()
-	{ return "u32"; }
-};
-
-template<> struct num_name<int32_t>
-{
-	static std::string name()
-	{ return "i32"; }
-};
-
-template<> struct num_name<uint64_t>
-{
-	static std::string name()
-	{ return "u64"; }
-};
-
-template<> struct num_name<int64_t>
-{
-	static std::string name()
-	{ return "i64"; }
-};
+NV_NUM_NAMES_DEF(8);
+NV_NUM_NAMES_DEF(16);
+NV_NUM_NAMES_DEF(32);
+NV_NUM_NAMES_DEF(64);
 }
 
 // defines name (unlimited range), name_r (custom range) and name_m (custom maximum)
