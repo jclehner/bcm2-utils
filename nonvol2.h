@@ -923,51 +923,6 @@ class nv_group_generic : public nv_group
 	virtual nv_group_generic* clone() const override
 	{ return new nv_group_generic(*this); }
 };
-
-/*
-class nv_group : public serializable
-{
-	public:
-	typedef std::shared_ptr<nv_group> sp;
-	struct var
-	{
-		var(const std::string& name, const nv_val::sp& val)
-		: name(name), val(val) {}
-
-		const std::string name;
-		nv_val::sp val;
-	};
-
-	virtual std::string description() const;
-
-	virtual const nv_magic& magic() const
-	{ return m_magic; }
-
-	virtual const nv_version& version() const
-	{ return m_version; }
-
-	virtual uint16_t bytes() const override
-	{ return m_size.get(); }
-
-
-	virtual const std::vector<var>& vars() const
-	{ return m_vars; }
-
-	protected:
-	virtual std::vector<var> perm(uint8_t maj, uint8_t min) const
-
-	virtual std::vector<var> dyn(uint8_t maj, uint8_t min) const
-	{ return {{ "data", std::make_shared<nv_data>(bytes()) }}; }
-
-	nv_magic m_magic;
-	nv_version m_version;
-	nv_u16 m_size;
-	std::vector<var> m_vars;
-	bool m_dynamic = true;
-};
-*/
-
-// nv_vals: bool, nv_u8, nv_u16, nv_u32, nv_u64, ip4, ip6, mac, 
 }
 
 template struct bcm2dump_def_comparison_operators<bcm2cfg::nv_version>;

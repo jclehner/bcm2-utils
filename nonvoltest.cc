@@ -68,6 +68,15 @@ csp<nv_val> get(sp<nv_group> group, const string& name)
 	return nullptr;
 }
 
+#if 0
+void usage()
+{
+	cerr <<
+		"Usage: bcm2cfg [options] <command> 
+
+}
+#endif
+
 int main(int argc, char** argv)
 {
 	ios::sync_with_stdio();
@@ -77,7 +86,7 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	logger::loglevel(logger::verbose);
+	logger::loglevel(logger::debug);
 
 	ifstream in(argv[2]);
 	if (!in.good()) {
