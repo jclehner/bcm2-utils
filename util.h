@@ -105,6 +105,14 @@ template<class T> T lexical_cast(const std::string& str, unsigned base = 10)
 	throw bad_lexical_cast("conversion failed: '" + str + "' -> " + std::string(typeid(T).name()));
 }
 
+// without these, istr >> t will read only one char instead of parsing the number
+
+template<> inline int8_t lexical_cast<int8_t>(const std::string& str, unsigned base)
+{ return lexical_cast<int16_t>(str, base) & 0xff; }
+
+template<> inline uint8_t lexical_cast<uint8_t>(const std::string& str, unsigned base)
+{ return lexical_cast<uint16_t>(str, base) & 0xff; }
+
 template<class T> std::string to_hex(const T& t, size_t width = sizeof(T) * 2)
 {
 	std::ostringstream ostr;
