@@ -204,8 +204,6 @@ class gwsettings : public settings
 		// 2 bytes for version, 4 for size
 		nv_u32::write(ostr, s_magic.size() + 6 + buf.size());
 
-		cout << "ostr.str() = " << to_hex(ostr.str()) << endl;
-
 		buf = ostr.str() + buf;
 		if (!m_key.empty()) {
 			buf = crypt(buf, m_key, false, m_padded);
