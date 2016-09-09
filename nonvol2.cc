@@ -530,6 +530,8 @@ istream& nv_string_base::read(istream& is)
 {
 	string val;
 	size_t size = (m_flags & flag_fixed_width) ? m_width : 0;
+	bool zstring = false;
+
 	if (!size) {
 		if (m_flags & flag_prefix_u8) {
 			size = read_num<uint8_t>(is);
@@ -537,6 +539,7 @@ istream& nv_string_base::read(istream& is)
 			size = read_num<uint16_t>(is);
 		} else {
 			getline(is, val, '\0');
+			zstring = true;
 		}
 
 		if (size && (m_flags & flag_size_includes_prefix)) {
@@ -558,7 +561,7 @@ istream& nv_string_base::read(istream& is)
 		throw runtime_error("error while reading " + type());
 	}
 
-	if (m_flags & flag_require_nul) {
+	if (!zstring && (m_flags & flag_require_nul)) {
 		if (val.back() != '\0' && !((m_flags & flag_fixed_width) && val.find('\0') != string::npos)) {
 			throw runtime_error("expected terminating nul byte in " + data_to_string(val, 0, false) + ", " + std::to_string(val.find('\0')));
 		}
