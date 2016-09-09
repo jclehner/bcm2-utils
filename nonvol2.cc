@@ -246,6 +246,7 @@ csp<nv_val> nv_compound::get(const string& name) const
 
 void nv_compound::set(const string& name, const string& val)
 {
+	// FIXME this function is completely broken
 	sp<nv_val> v = const_pointer_cast<nv_val>(get(name));
 	if (!v->is_set()) {
 		string preceding_unset_name;
