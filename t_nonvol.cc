@@ -152,9 +152,11 @@ void test_enum_bitmask(nv_enum_bitmask<nv_u16>& enbm, vector<enum_bitmask_test> 
 		try {
 			enbm.parse_checked(t.str);
 		} catch (const std::exception& e) {
-			if (!t.exception) {
-				throw failed_test(enbm.type() + ": '" + t.str + "'\n" + e.what());
+			if (t.exception) {
+				continue;
 			}
+
+			throw failed_test(enbm.type() + ": '" + t.str + "'\n" + e.what());
 		}
 
 		if (t.exception) {
