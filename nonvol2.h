@@ -446,7 +446,7 @@ template<int FLAGS, size_t WIDTH = 0> class nv_string_tmpl : public nv_string_ba
 };
 }
 
-// a fixed-width string, with optional NUL byte (with width 6, "foo" 6 is "66:6f:6f:00:XX:XX, with width 3 it's 66:6f:6f)
+// a fixed-width string, with optional NUL byte (with width 6, "foo" is 66:6f:6f:00:XX:XX, with width 3 it's 66:6f:6f)
 template<size_t WIDTH> using nv_fstring = detail::nv_string_tmpl<nv_string_base::flag_optional_nul, WIDTH>;
 
 // a fixed-width string, with mandatory NUL byte (maximum length is thus WIDTH - 1)
