@@ -62,6 +62,8 @@ template<class T> struct nv_type
 
 template<class To, class From, class ToType> sp<To> nv_val_cast(const From& from);
 
+class nv_compound;
+
 class nv_val : public serializable
 {
 	public:
@@ -113,12 +115,22 @@ class nv_val : public serializable
 	virtual bool is_compound() const
 	{ return false; }
 
+	const nv_compound* parent() const
+	{ return m_parent; }
+
+	void parent(const nv_compound* parent)
+	{ m_parent = parent; }
+
 	friend std::ostream& operator<<(std::ostream& os, const nv_val& val)
 	{ return (os << val.to_pretty()); }
 
 	protected:
+
 	bool m_disabled = false;
 	bool m_set = false;
+
+	private:
+	const nv_compound* m_parent = nullptr;
 };
 
 template<class To, class From, class ToType = nv_type<To>> std::shared_ptr<To> nv_val_cast(const std::shared_ptr<From>& from)

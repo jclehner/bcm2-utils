@@ -47,6 +47,15 @@ inline bool contains(const std::string& haystack, const std::string& needle)
 	return haystack.find(needle) != std::string::npos;
 }
 
+inline bool ends_with(const std::string& haystack, const std::string& needle)
+{
+	if (haystack.size() < needle.size()) {
+		return false;
+	} else {
+		return haystack.substr(haystack.size() - needle.size()) == needle;
+	}
+}
+
 inline bool is_bfc_prompt(const std::string& str, const std::string& prompt)
 {
 	return str.find(prompt + ">") != std::string::npos || str.find(prompt + "/") != std::string::npos;

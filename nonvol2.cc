@@ -249,25 +249,26 @@ void nv_compound::set(const string& name, const string& val)
 	// FIXME this function is completely broken
 	sp<nv_val> v = const_pointer_cast<nv_val>(get(name));
 	if (!v->is_set()) {
-		string preceding_unset_name;
-
-		for (auto p : parts()) {
-			if (!p.val->is_disabled()) {
-				if (p.name == name) {
-					break;
-				}
-
-				if (p.val->is_set()) {
-					preceding_unset_name.clear();
-				} else {
-					preceding_unset_name = p.name;
-				}
-			}
+		const nv_compound* parent = v->parent();
+		while (parent && !parent->is_set()) {
+			parent = parent->parent();
 		}
 
-		if (!preceding_unset_name.empty()) {
-			throw user_error("cannot set '" + name + "' because the previous" +
-					+ "element '" + preceding_unset_name + "' is not set");
+		string preceding_unset_name;
+
+		if (parent) {
+			for (auto p : parent->parts()) {
+				if (!p.val->is_disabled()) {
+					if (p.name == name /*|| ends_with(name, "." + p.name)*/) {
+						break;
+					}
+
+					if (!p.val->is_set()) {
+						throw user_error("cannot set '" + name + 
+								"' without setting '" + p.name + "' first");
+					}
+				}
+			}
 		}
 	}
 
@@ -298,6 +299,9 @@ bool nv_compound::init(bool force)
 {
 	if (m_parts.empty() || force) {
 		m_parts = definition();
+		for (auto part : m_parts) {
+			part.val->parent(this);
+		}
 		//m_bytes = 0;
 		m_set = false;
 		return true;
