@@ -901,7 +901,7 @@ string bfc_cmcfg::parse_chunk_line(const string& line, uint32_t offset)
 }
 
 unsigned rwx::s_count = 0;
-sighandler_t rwx::s_sighandler_orig = nullptr;
+sig_t rwx::s_sighandler_orig = nullptr;
 volatile sig_atomic_t rwx::s_sigint = 0;
 
 rwx::rwx()

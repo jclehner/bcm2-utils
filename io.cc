@@ -432,7 +432,7 @@ tcp::tcp(const string& addr, uint16_t port)
 
 void tcp::write(const string& str)
 {
-	if (send(m_fd, str.data(), str.size(), MSG_NOSIGNAL) != str.size()) {
+	if (send_nosignal(m_fd, str.data(), str.size()) != str.size()) {
 		throw errno_error("send");
 	}
 	#ifdef DEBUG
@@ -442,7 +442,7 @@ void tcp::write(const string& str)
 
 ssize_t tcp::read1(char& c)
 {
-	return recv(m_fd, &c, 1, MSG_DONTWAIT);
+	return recv_dontwait(m_fd, &c, 1);
 }
 
 string tcp::read(size_t length, bool all)

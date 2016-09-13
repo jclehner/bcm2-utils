@@ -29,22 +29,22 @@ namespace {
 
 void ntoh_header(ps_header::raw& raw)
 {
-#define NTOHL(x) raw.x = ntohl(raw.x)
-#define NTOHS(x) raw.x = ntohs(raw.x)
-	NTOHS(signature);
-	NTOHS(control);
-	NTOHS(ver_maj);
-	NTOHS(ver_min);
-	NTOHL(timestamp);
-	NTOHL(length);
-	NTOHL(loadaddr);
-	NTOHL(length1);
-	NTOHL(length2);
-	NTOHS(hcs);
-	NTOHS(reserved);
-	NTOHL(crc);
-#undef NTOHL
-#undef NTOHS
+#define BCM2_NTOHL(x) raw.x = ntohl(raw.x)
+#define BCM2_NTOHS(x) raw.x = ntohs(raw.x)
+	BCM2_NTOHS(signature);
+	BCM2_NTOHS(control);
+	BCM2_NTOHS(ver_maj);
+	BCM2_NTOHS(ver_min);
+	BCM2_NTOHL(timestamp);
+	BCM2_NTOHL(length);
+	BCM2_NTOHL(loadaddr);
+	BCM2_NTOHL(length1);
+	BCM2_NTOHL(length2);
+	BCM2_NTOHS(hcs);
+	BCM2_NTOHS(reserved);
+	BCM2_NTOHL(crc);
+#undef BCM2_NTOHL
+#undef BCM2_NTOHS
 }
 }
 
