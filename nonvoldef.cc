@@ -545,7 +545,7 @@ class nv_group_rg : public nv_group
 		// TWG870: version 0x0016 (0.22)
 
 		return {
-			NV_VAR(nv_u8, "", true),
+			NV_VAR(nv_bool, "router_mode"),
 			NV_VAR(nv_zstring, "http_pass", 9),
 			NV_VAR(nv_zstring, "http_realm", 256),
 			NV_VAR(nv_mac, "spoofed_mac"),
