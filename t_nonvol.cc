@@ -12,7 +12,9 @@ namespace {
 class failed_test : public runtime_error
 {
 	public:
-	failed_test(const string& msg) : runtime_error(msg) {}
+	explicit failed_test(const string& msg) : runtime_error(msg) {}
+	failed_test(const string& msg, const exception& e)
+	: failed_test(msg + ":\n" + e.what()) {}
 };
 
 void unserialize(const std::string& str, sp<nv_val> val)
@@ -60,9 +62,6 @@ void test_group()
 		}
 	};
 
-	nv_array<nv_zstring, 3> testarr;
-	cerr << testarr.bytes() << endl;
-
 	nv_group::registry_add(make_shared<test>());
 
 	string data1 =
@@ -79,19 +78,56 @@ void test_group()
 	sp<nv_group> group;
 	stringstream istr(data1);
 
-	logger::loglevel(logger::debug);
 	nv_group::read(istr, group, nv_group::type_unknown, data1.size());
-	logger::loglevel(logger::verbose);
 
 	if (!group) {
+		istr.str(data1);
+		logger::loglevel(logger::debug);
+		nv_group::read(istr, group, nv_group::type_unknown, data1.size());
+		logger::loglevel(logger::verbose);
 		throw failed_test("failed to read group");
+	}
+
+	string data2 = serialize(group);
+	if (data1 != data2) {
+		throw failed_test(group->type() + ": serialized data does not match original\n"
+				"expected: " + to_hex(data1) + "\n"
+				"  actual: " + to_hex(data2));
 	}
 
 	struct {
 		std::string name;
 		std::string value;
 		bool exception = false;
-	} tests[] = {
+	} tests_set[] = {
+		{ "byte", "90" },
+		{ "strlist.0", "", true },
+		{ "strarray.4", "", true },
+		{ "barazoodox", "", true },
+		{ "strlist.-1", "first" },
+		{ "strlist.-1", "second" },
+		{ "strlist.-1", "third" },
+	};
+
+	for (auto t : tests_set) {
+		try {
+			group->set(t.name, t.value);
+		} catch (const exception& e) {
+			if (!t.exception) {
+				throw failed_test("set: " + t.name, e);
+			} else {
+				continue;
+			}
+		}
+	}
+
+	struct {
+		std::string name;
+		std::string value;
+		bool exception = false;
+	} tests_get[] = {
+		{ "strlist.-1", "", true },
+		{ "strlist.-1", "", true },
 		{ "shortarray.3", "", true },
 		{ "shmoobar", "", true },
 		{ "byte", "90" },
@@ -103,14 +139,14 @@ void test_group()
 		{ "shortarray.2", "43690" },
 	};
 
-	for (auto t : tests) {
+	for (auto t : tests_get) {
 		csp<nv_val> v;
 
 		try {
 			v = group->get(t.name);
 		} catch (const exception& e) {
 			if (!t.exception) {
-				throw e;
+				throw failed_test("get: " + t.name, e);
 			} else {
 				continue;
 			}
