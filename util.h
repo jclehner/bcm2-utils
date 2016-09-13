@@ -256,6 +256,25 @@ class scoped_ios_exceptions
 	std::ios::iostate m_saved;
 };
 
+class cleaner
+{
+	public:
+	cleaner(std::function<void()> init, std::function<void()> cleanup)
+	: m_cleanup(cleanup)
+	{
+		if (init) {
+			init();
+		}
+	}
+
+	cleaner(std::function<void()> cleanup) : cleaner(nullptr, cleanup) {}
+	~cleaner()
+	{ m_cleanup(); }
+
+	private:
+	std::function<void()> m_cleanup;
+};
+
 class logger
 {
 	public:

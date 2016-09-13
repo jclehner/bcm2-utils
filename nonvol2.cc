@@ -246,7 +246,16 @@ csp<nv_val> nv_compound::get(const string& name) const
 
 void nv_compound::set(const string& name, const string& val)
 {
-	// FIXME this function is completely broken
+	auto parts = split(name, '.', 2);
+	if (parts.empty()) {
+		// to throw an exception
+		get(name);
+		return;
+	} else if (parts.size() == 2) {
+		const_pointer_cast<nv_val>(get(parts[0]))->set(parts[1], val);
+		return;
+	}
+
 	sp<nv_val> v = const_pointer_cast<nv_val>(get(name));
 	if (!v->is_set()) {
 		const nv_compound* parent = v->parent();
@@ -259,7 +268,7 @@ void nv_compound::set(const string& name, const string& val)
 		if (parent) {
 			for (auto p : parent->parts()) {
 				if (!p.val->is_disabled()) {
-					if (p.name == name /*|| ends_with(name, "." + p.name)*/) {
+					if (p.name == name || ends_with(name, "." + p.name)) {
 						break;
 					}
 
@@ -274,6 +283,7 @@ void nv_compound::set(const string& name, const string& val)
 
 	ssize_t diff = get(name)->bytes();
 	diff -= v->parse_checked(val).bytes();
+	v->parent(this);
 	m_bytes += diff;
 }
 
@@ -351,7 +361,8 @@ istream& nv_compound::read(istream& is)
 				// byte count (e.g. an nv_pstring)
 				if ((m_width && m_bytes + v.val->bytes() > m_width)) {
 					logger::d() << v.val->bytes() << endl;
-					throw runtime_error("pos " + ::to_string(m_bytes) + ": variable ends outside of group: " + desc(v));
+					throw runtime_error("pos " + ::to_string(m_bytes) + ": variable ends outside of group: " + desc(v) +
+							" b=" + ::to_string(m_bytes) + "+" + ::to_string(v.val->bytes()) + ", w=" + ::to_string(m_width));
 				}
 				logger::d() << "pos " << m_bytes  << ": " + desc(v) << " = " << v.val->to_pretty() << " (" << v.val->bytes() << " b)"<< endl;
 				m_bytes += v.val->bytes();
@@ -362,7 +373,7 @@ istream& nv_compound::read(istream& is)
 				}
 			}
 		} catch (const exception& e) {
-			throw runtime_error("failed at pos " + std::to_string(m_bytes) + " while reading " + desc(v) + ": " + e.what());
+			throw runtime_error("failed at pos " + std::to_string(m_bytes) + " while reading " + desc(v) + ":\n" + e.what());
 		}
 	}
 

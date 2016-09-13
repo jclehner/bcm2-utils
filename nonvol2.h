@@ -246,7 +246,7 @@ template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 {
 	public:
 	nv_array_generic(I n = 0)
-	: nv_array_base(n * nv_type<T>::bytes()), m_memb(), m_count(n)
+	: nv_array_base(n * nv_type<T>::bytes()), m_count(n)
 	{
 		if (!L && !n) {
 			throw std::invalid_argument("size must not be 0");
@@ -256,7 +256,7 @@ template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 
 	virtual std::string type() const override
 	{
-		return std::string(L ? "list" : "array") + "<" + m_memb.type() + ">"
+		return std::string(L ? "list" : "array") + "<" + nv_type<T>::name() + ">"
 			+ (m_count ? "[" + std::to_string(m_count) + "]" : "");
 	}
 
@@ -267,6 +267,13 @@ template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 				return is;
 			}
 			m_count = bcm2dump::bswapper<I>::ntoh(m_count);
+		}
+
+		// FIXME ugly workaround for parsing an array of elements with non-constant width
+		size_t min_width = m_width;
+		bcm2dump::cleaner c([this, min_width]() { m_width = min_width; });
+		if (!L) {
+			m_width = 0;
 		}
 
 		nv_compound::read(is);
@@ -300,11 +307,17 @@ template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 		if (index < m_count) {
 			nv_array_base::set(name, val);
 		} else {
-			// set any index >= m_count to m_count. this way, we can append the
-			// list using any large index (i.e. list.99 = foo)
-			m_parts.push_back({ std::to_string(m_count), std::make_shared<T>()});
-			m_parts.back().val->parse_checked(val);
-			m_count = m_parts.size();
+			if (L && name == "-1") {
+				if (m_parts.size() >= std::numeric_limits<I>::max()) {
+					throw bcm2dump::user_error("maximum list size reached");
+				}
+				m_parts.push_back({ std::to_string(m_count), std::make_shared<T>()});
+				m_count = m_parts.size();
+				nv_array_base::set(std::to_string(m_count - 1), val);
+			} else {
+				// this will throw an exception
+				get(name);
+			}
 		}
 	}
 
@@ -325,7 +338,6 @@ template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 	}
 
 	private:
-	T m_memb;
 	I m_count = 0;
 };
 
