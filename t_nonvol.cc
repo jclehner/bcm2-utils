@@ -1,4 +1,5 @@
 #include "nonvol2.h"
+#include "nonvoldef.h"
 #include "util.h"
 using namespace std;
 using namespace bcm2dump;
@@ -31,6 +32,103 @@ string serialize(const sp<nv_val>& val)
 	}
 
 	return ostr.str();
+}
+
+void test_group()
+{
+	class test : public nv_group
+	{
+		public:
+		test() : nv_group("TEST", "test") {}
+
+		virtual test* clone() const override
+		{ return new test(*this); }
+
+		virtual list definition(int type, const nv_version& ver) const override
+		{
+			if (ver.num() == 0) {
+				return {};
+			}
+
+			return {
+				NV_VAR(nv_u8, "byte"),
+				NV_VAR(nv_fstring<8>, "str"),
+				NV_VAR2(nv_array<nv_zstring>, "strarray", 3),
+				NV_VAR(nv_p8list<nv_zstring>, "strlist"),
+				NV_VAR2(nv_array<nv_u16>, "shortarray", 3),
+			};
+		}
+	};
+
+	nv_array<nv_zstring, 3> testarr;
+	cerr << testarr.bytes() << endl;
+
+	nv_group::registry_add(make_shared<test>());
+
+	string data1 =
+		"\x00\x00TEST\x00\x01" // group header
+		"\x5a" // u8
+		"foobar\x00\x11" // fstring<8>
+		"\x00\x00 bazfoo\x00" // array<zstring, 3>
+		"\x00" // p8list<zstring>
+		"\xf0\x0f\x55\x55\xaa\xaa"s // nv_array<nv_i16, 3>
+		;
+
+	patch(data1, 0, htons(data1.size()));
+
+	sp<nv_group> group;
+	stringstream istr(data1);
+
+	logger::loglevel(logger::debug);
+	nv_group::read(istr, group, nv_group::type_unknown, data1.size());
+	logger::loglevel(logger::verbose);
+
+	if (!group) {
+		throw failed_test("failed to read group");
+	}
+
+	struct {
+		std::string name;
+		std::string value;
+		bool exception = false;
+	} tests[] = {
+		{ "shortarray.3", "", true },
+		{ "shmoobar", "", true },
+		{ "byte", "90" },
+		{ "str", "foobar" },
+		{ "strarray.0", "" },
+		{ "strarray.1", "" },
+		{ "strarray.2", " bazfoo" },
+		{ "shortarray.0", "61455" },
+		{ "shortarray.2", "43690" },
+	};
+
+	for (auto t : tests) {
+		csp<nv_val> v;
+
+		try {
+			v = group->get(t.name);
+		} catch (const exception& e) {
+			if (!t.exception) {
+				throw e;
+			} else {
+				continue;
+			}
+		}
+
+		string value = v->to_str();
+		if (t.exception) {
+			throw failed_test(t.name + ": expected exception, got (" + v->type() + ") " + value);
+		}
+
+		if (value != t.value) {
+			throw failed_test(t.name + ": unexpected value\n"
+					"expected: '" + t.value + "'\n"
+					"  actual: '" + value + "'");
+		}
+	}
+
+	cout << "OK group" << endl;
 }
 
 void test_string_types()
@@ -122,7 +220,7 @@ template<class T> void test_int_type()
 					"expected: " + to_hex(data) + "\n"
 					"  actual: " + to_hex(data2));
 		}
-	}		
+	}
 
 	cout << "OK " << val->type() << endl;
 }
@@ -214,6 +312,7 @@ int main()
 		test_int_types();
 		test_bitmask();
 		test_enum();
+		test_group();
 	} catch (const exception& e) {
 		cerr << "TEST FAILED" << endl << e.what() << endl;
 		return 1;
