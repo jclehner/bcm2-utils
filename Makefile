@@ -13,7 +13,7 @@ t_nonvol_OBJ = util.o nonvol2.o t_nonvol.o
 
 .PHONY: all clean
 
-all: bcm2dump #bcm2cfg
+all: bcm2dump bcm2cfg nonvoltest t_nonvol
 
 bcm2cfg: $(bcm2cfg_OBJ) nonvol.h
 	$(CXX) $(CXXFLAGS) $(bcm2cfg_OBJ) -o $@ -lssl -lcrypto
@@ -37,7 +37,7 @@ check: t_nonvol
 	./t_nonvol
 
 clean:
-	rm -f bcm2cfg bcm2dump nonvoltest *.o
+	rm -f bcm2cfg bcm2dump nonvoltest t_nonvol *.o
 
 install: all
 	install -m 755 bcm2cfg $(PREFIX)/bin
