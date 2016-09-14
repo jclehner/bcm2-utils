@@ -29,18 +29,7 @@ namespace bcm2cfg {
 namespace {
 string read_stream(istream& is)
 {
-	string ret;
-	char buf[1024];
-	while (is.good()) {
-		auto bytes = is.readsome(buf, sizeof(buf));
-		if (!bytes) {
-			break;
-		}
-
-		ret += string(buf, bytes);
-	}
-
-	return ret;
+	return string(std::istreambuf_iterator<char>(is), {});
 }
 
 string group_header_to_string(const string& type, const string& checksum, bool is_chksum_valid, size_t size, bool is_size_valid,
