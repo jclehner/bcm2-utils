@@ -103,10 +103,13 @@ template<class T> T lexical_cast(const std::string& str, unsigned base = 10)
 			case 'M':
 				t *= 1024 * 1024;
 				break;
+			default:
+				throw bad_lexical_cast("invalid binary suffix in '" + str + "'");
 			}
 		}
 
-		if (istr.eof() || istr.get() == '\0') {
+		int c = istr.get() & 0xff;
+		if (istr.eof() || !c) {
 			return t;
 		}
 	}
