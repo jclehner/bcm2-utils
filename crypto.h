@@ -7,6 +7,10 @@
 #include <CommonCrypto/CommonCrypto.h>
 #include <CommonCrypto/CommonDigest.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef CC_MD5_CTX MD5_CTX;
 
 inline int MD5_Init(MD5_CTX* ctx)
@@ -27,5 +31,11 @@ int AES_set_encrypt_key(const unsigned char* key, const int bits, AES_KEY* akey)
 int AES_set_decrypt_key(const unsigned char* key, const int bits, AES_KEY* akey);
 int AES_encrypt(const unsigned char* in, unsigned char* out, AES_KEY* akey);
 int AES_decrypt(const unsigned char* in, unsigned char* out, AES_KEY* akey);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
 #endif
 

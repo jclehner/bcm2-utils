@@ -18,10 +18,9 @@
  */
 
 #include <boost/crc.hpp>
-#include <openssl/aes.h>
-#include <openssl/md5.h>
 #include <algorithm>
 #include "gwsettings.h"
+#include "crypto.h"
 #include "nonvol.h"
 using namespace std;
 using namespace bcm2dump;

@@ -8,8 +8,8 @@ static int set_key(bool encrypt, const unsigned char *key, int bits, AES_KEY* ak
 
 	CCCryptorStatus ret = CCCryptorCreate(
 			encrypt ? kCCEncrypt : kCCDecrypt,
-			bits == 256 ? kCCAlgorithmAES256 : kCCAlgorithmAES128,
-			0,
+			kCCAlgorithmAES128,
+			kCCOptionECBMode,
 			key,
 			bits == 256 ? kCCKeySizeAES256 : kCCKeySizeAES128,
 			NULL,
@@ -31,7 +31,7 @@ static int crypt(const unsigned char* in, unsigned char* out, AES_KEY *akey)
 inline int AES_set_encrypt_key(const unsigned char *key, const int bits, AES_KEY* akey)
 { return set_key(true, key, bits, akey); }
 
-inline int AES_set_encrypt_key(const unsigned char *key, const int bits, AES_KEY* akey)
+inline int AES_set_decrypt_key(const unsigned char *key, const int bits, AES_KEY* akey)
 { return set_key(false, key, bits, akey); }
 
 int AES_encrypt(const unsigned char* in, unsigned char* out, AES_KEY* akey)

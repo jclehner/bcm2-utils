@@ -17,8 +17,6 @@
  *
  */
 
-#include <openssl/aes.h>
-#include <openssl/md5.h>
 #include <arpa/inet.h>
 #include <getopt.h>
 #include <stdexcept>
@@ -33,6 +31,7 @@
 #include <string>
 #include <string>
 #include "profile.h"
+#include "crypto.h"
 #include "nonvol.h"
 using namespace std;
 using namespace bcm2dump;
