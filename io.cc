@@ -279,7 +279,7 @@ int fdio::getc()
 	ssize_t ret = read1(c);
 	if (ret == 1) {
 		return c & 0xff;
-	} else if (errno == EWOULDBLOCK || errno == EAGAIN) {
+	} else if (!ret || errno == EWOULDBLOCK || errno == EAGAIN) {
 		return eof;
 	} else {
 		throw errno_error("read1");
