@@ -303,21 +303,26 @@ template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 
 	virtual void set(const std::string& name, const std::string& val) override
 	{
-		I index = bcm2dump::lexical_cast<I>(name);
-		if (index < m_count) {
-			nv_array_base::set(name, val);
-		} else {
-			if (L && name == "-1") {
-				if (m_parts.size() >= std::numeric_limits<I>::max()) {
-					throw bcm2dump::user_error("maximum list size reached");
-				}
-				m_parts.push_back({ std::to_string(m_count), std::make_shared<T>()});
-				m_count = m_parts.size();
-				nv_array_base::set(std::to_string(m_count - 1), val);
-			} else {
-				// this will throw an exception
-				get(name);
+		try {
+			I index = bcm2dump::lexical_cast<I>(name);
+			if (index < m_count) {
+				nv_array_base::set(name, val);
+				return;
 			}
+		} catch (const bcm2dump::bad_lexical_cast& e) {
+			// ignored
+		}
+
+		if (L && name == "-1") {
+			if (m_parts.size() >= std::numeric_limits<I>::max()) {
+				throw bcm2dump::user_error("maximum list size reached");
+			}
+			m_parts.push_back({ std::to_string(m_count), std::make_shared<T>()});
+			m_count = m_parts.size();
+			nv_array_base::set(std::to_string(m_count - 1), val);
+		} else {
+			// this will throw an exception
+			get(name);
 		}
 	}
 
