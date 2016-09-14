@@ -46,7 +46,7 @@ string group_header_to_string(const string& type, const string& checksum, bool i
 	ostr << "checksum: " << checksum << (is_chksum_valid ? "" : " (bad)") << endl;
 	ostr << "size    : " << size << (is_size_valid ? "" : " (bad)") << endl;
 	if (is_encrypted) {
-		ostr << "key     :" << (key.empty() ? "(unknown)" : to_hex(key)) << endl;
+		ostr << "key     : " << (key.empty() ? "(unknown)" : to_hex(key)) << endl;
 	}
 
 	return ostr.str();
@@ -152,9 +152,9 @@ class gwsettings : public settings
 		string magic = buf.substr(0, s_magic.size());
 		validate_checksum_and_detect_profile(buf);
 		m_magic_valid = (magic == s_magic);
+		m_encrypted = !m_magic_valid;
 
 		if (!m_magic_valid && !decrypt_and_detect_profile(buf)) {
-			m_encrypted = true;
 			return is;
 		}
 
