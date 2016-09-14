@@ -710,6 +710,10 @@ istream& nv_group::read(istream& is)
 			m_bytes += extra->bytes();
 		}
 	} else {
+		if (is.eof()) {
+			throw runtime_error(type() + ": expected " + ::to_string(m_size.num() - m_bytes) + "b, got end-of-file");
+		}
+
 		throw runtime_error(type() + ": unspecified error while reading data");
 	}
 
