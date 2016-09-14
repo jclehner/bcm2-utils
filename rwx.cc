@@ -332,8 +332,8 @@ void bfc_ram::do_read_chunk(uint32_t offset, uint32_t length)
 
 bool bfc_ram::is_ignorable_line(const string& line)
 {
-	if (line.size() >= 51) {
-		if (line.substr(8, 2) == ": " && line.substr(48, 3) == " | ") {
+	if (line.size() >= 50) {
+		if (line.substr(8, 2) == ": " && line.substr(48, 2) == " |") {
 			m_hint_decimal = false;
 			return false;
 		} else if (contains(line, ": ") && contains(line, " | ")) {
