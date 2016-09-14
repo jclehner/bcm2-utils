@@ -183,7 +183,7 @@ bool bfc_telnet::is_ready(bool passive)
 
 			return false;
 
-		}, 2000);
+		}, 2000, 500);
 
 		return m_status >= connected;
 	} else {
