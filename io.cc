@@ -82,26 +82,6 @@ class scoped_flags
 	int m_orig;
 };
 
-bool set_flag(int fd, int flag, bool set)
-{
-	int flags = 0;
-	if ((flags = fcntl(fd, F_GETFL, 0)) < 0) {
-		return false;
-	}
-
-	if (set) {
-		flags |= flag;
-	} else {
-		flags &= ~flag;
-	}
-
-	if (fcntl(fd, F_SETFL, flags) < 0) {
-		return false;
-	}
-
-	return true;
-}
-
 ssize_t recv_dontwait(int fd, void* buf, size_t len, int flags = 0)
 {
 	scoped_flags f(fd, O_NONBLOCK);
