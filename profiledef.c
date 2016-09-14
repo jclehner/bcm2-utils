@@ -39,31 +39,6 @@ static bool keyfun_tc7200(const char *password, unsigned char *key)
 
 struct bcm2_profile bcm2_profiles[] = {
 	{
-		.name = "generic",
-		.pretty = "Generic Profile",
-		.baudrate = 115200,
-		.spaces = {
-			{
-				.name = "ram",
-			},
-			// this hack enables us to use the bfc_flash dumper on
-			// any device (provided you specify a dump size).
-			{
-				.name = "flash",
-				.parts = {
-						{ "bootloader" },
-						{ "dynnv", 0, 0, "dyn" },
-						{ "permnv", 0, 0, "perm" },
-						{ "image1" },
-						{ "image2" },
-						{ "image3" },
-						{ "image3e" },
-						{ "dhtml" }
-				},
-			}
-		},
-	},
-	{
 		.name = "cg3000",
 		.pretty = "Netgear CG3000",
 		.pssig = 0xa0f7,
@@ -237,6 +212,36 @@ struct bcm2_profile bcm2_profiles[] = {
 				},
 			},
 		}
+	},
+	{
+		.name = "generic",
+		.pretty = "Generic Profile",
+		.baudrate = 115200,
+		.cfg_defkeys = {
+			"0000000000000000000000000000000000000000000000000000000000000000",
+			"0001020304050607080910111213141516171819202122232425262728293031",
+			"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+		},
+		.spaces = {
+			{
+				.name = "ram",
+			},
+			// this hack enables us to use the bfc_flash dumper on
+			// any device (provided you specify a dump size).
+			{
+				.name = "flash",
+				.parts = {
+						{ "bootloader" },
+						{ "dynnv", 0, 0, "dyn" },
+						{ "permnv", 0, 0, "perm" },
+						{ "image1" },
+						{ "image2" },
+						{ "image3" },
+						{ "image3e" },
+						{ "dhtml" }
+				},
+			}
+		},
 	},
 	// end marker
 	{ .name = "" },
