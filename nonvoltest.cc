@@ -100,13 +100,10 @@ int main(int argc, char** argv)
 		type = nv_group::type_dyn;
 	} else if (argv[1] == "dyn"s) {
 		type = nv_group::type_dyn;
-		//in.seekg(0xd2);
 	} else if (argv[1] == "gws"s) {
 		type = nv_group::type_dyn;
-		//in.seekg(0x60);
 	} else if (argv[1] == "perm"s) {
 		type = nv_group::type_perm;
-		//in.seekg(0xd2);
 	} else {
 		cerr << "invalid type " << argv[1] << endl;
 		return 1;
