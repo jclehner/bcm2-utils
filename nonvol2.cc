@@ -280,7 +280,7 @@ void nv_compound::set(const string& name, const string& val)
 	ssize_t diff = get(name)->bytes();
 	diff -= v->parse_checked(val).bytes();
 	v->parent(this);
-	m_bytes += diff;
+	m_bytes -= diff;
 }
 
 csp<nv_val> nv_compound::find(const string& name) const
