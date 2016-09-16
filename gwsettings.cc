@@ -193,6 +193,7 @@ class gwsettings : public encrypted_settings
 		m_encrypted = !m_magic_valid;
 
 		if (!m_magic_valid && !decrypt_and_detect_profile(buf)) {
+			m_key = m_pw = "";
 			return is;
 		} else if (!m_encrypted) {
 			m_key = m_pw = "";
