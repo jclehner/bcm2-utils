@@ -69,10 +69,57 @@ csp<nv_val> get(sp<nv_group> group, const string& name)
 }
 
 #if 0
-void usage()
+void usage(bool help = false)
 {
-	cerr <<
-		"Usage: bcm2cfg [options] <command> 
+	ostream& os = logger::i();
+
+	os << "Usage: bcm2cfg [<options>] <command> [<arguments> ...]\n" << endl;
+	os << endl << endl;
+	os << "Commands:" << endl;
+	os << "  verify <infile>" << endl;
+	if (help) {
+		os << "\n    Verify the input file (checksum and file size).\n";
+	}
+	os << "  fix <infile> [<outfile>]" << endl;
+	if (help) {
+		os << "\n    Fixes the input file's size and checksum, optionally\n"
+				"    writing the resulting file to <outfile>."
+	}
+	os << "  decrypt <infile> [<outfile>]" << endl;
+	if (help) {
+		os << "\n    Decrypts the input file, optionally writing the resulting\n"
+				"    file to <outfile>. If neither key (-k) nor password (-p)\n"
+				"    have been specified, but a profile is known, the default key\n"
+				"    will be used (if available)."
+	}
+	os << "  encrypt <infile> [<outfile>]" << endl;
+	if (help) {
+		os << "\n    Decrypts the input file, optionally writing the resulting\n"
+				"    file to <outfile>. If neither key (-k) nor password (-p)\n"
+				"    have been specified, but a profile is known, the default key\n"
+				"    will be used (if available)."
+	}
+	os << "  list <infile> [<name>]" << endl;
+	if (help) {
+		os << "\n    List all variable names below <name>. If omitted, dump all\n"
+				"    variable names.\n";
+	}
+	os << "  get <infile> [<name>]" << endl;
+	if (help) {
+		os << "\n    Print value of variable <name>. If omitted, dump file contents.\n";
+	}
+	os << "  set <infile> <name> <value>" << endl;
+	if (help) {
+		os << "\n    Set value of variable <name> to <value>.\n";
+	}
+
+		"\n"
+		"Commands:\n";
+		"  ver <file>                  Verify input file\n"
+		"  fix <file>                  Fix checksum and file size\n"
+		"  enc <infile> [<outfile>]    Encrypt input file\n"
+		"  dec <infile> [<outfile>]    Decrypt input file\n"
+		"  get "
 
 }
 #endif
