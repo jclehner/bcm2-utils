@@ -9,7 +9,7 @@ All numbers are stored in network byte order (big endian).
 Header
 ------
 
-### Permnv/dynnv
+##### Permnv/dynnv
 
 | Offset | Type        | Name       | Comment            |
 |-------:|-------------|------------|--------------------|
@@ -22,7 +22,7 @@ The value of `size` describes the number of bytes in the `data` section. The che
 calculated using a CRC-32 on `data`.
 
 
-### GatewaySettings.bin
+##### GatewaySettings.bin
 
 | Offset | Type        | Name       | Comment              |
 |-------:|-------------|------------|----------------------|
@@ -59,6 +59,56 @@ zeroes:
 00006690  a2 87 fc 07 86 b2 75 f1  4b 59 de 7b 74 c1 ac 90  |......u.KY.{t...|
 000066a0  00 00 00 00 00 00 00 00                           |........|
 ```
+
+Configuration data
+------------------
+
+Aside from the header, `GatewaySettings.bin` and permnv/dynnv use the same format. The
+configuration data consists of a set of settings "groups".
+
+##### Group header
+
+| Offset | Type        | Name       |
+|-------:|-------------|------------|
+|    `0` | `u16`       | `size`     |
+|    `4` | `byte[4]`   | `magic`    |
+|    `6` | `byte[2]`   | `version`  |
+|    `8` |             | `data`     |
+
+Value of `size` is the number of bytes in this group, including the full header. An empty
+settings group's size is thus `8` bytes. The `magic` is often either a human-readable string
+(`802T`: Thomson Wi-Fi settings, `CMEV`: CM event log) or a hexspeak `u32` (`0xd0c20130`: DOCSIS 3.0 settings,
+`0xf2a1f61f`: HAL interface settings).
+
+##### Group data
+
+The data contained in each group is a series of values, some of which are variable-length values. This means that
+most variables will not have a fixed offset within a group, and a variable can only be successfully interpreted if
+the meaning of all preceeding values is known. The following variable types are currently known:
+
+###### Numbers
+
+Always stored in network byte order; `uN` for unsigned N-bit integers, `iN` for signed N-bit integers.
+
+###### Strings
+
+Various methods are used to store strings, with some groups often showing a preference for one kind of encoding.
+The following list shows different encodings for the string `"foo"`.
+
+* `fstring`: Fixed-width string, with optional NUL byte (width 6: `\x66\x6f\x6f\x00\x??\x??`; width 3: `\x66\x6f\x6f`)
+* `fzstring`: Fixed-width string, with mandatory NUL byte - maximum length is thus `width - 1` (width 4: `\x66\x6f\x6f\x00`)
+* `zstring`: NUL-terminated string (`\x66\x6f\x6f\x00`)
+* `p8string`: `u8`-prefixed string, with optional NUL byte (`\x03\x66\x6f\x6f` or `\x04\x66\x6f\x6f\x00`)
+* `p8zstring`: `u8`-prefixed string with mandatory NUL byte (`\x04\x66\x6f\x6f\x00`)
+* `p8istring`: `u8`-prefixed string with optional NUL byte, size includes prefix (`\x04\x66\x6f\x6f` or `\x05\x66\x6f\x6f\x00`)
+* `p16string`: `u16`-prefixed string, with optional NUL byte (`\x00\x03\x66\x6f\x6f` or `\x00\x04\x66\x6f\x6f\x00`)
+* `p16zstring`: `u16`-prefixed string with mandatory NUL byte (`\x00\x04\x66\x6f\x6f\x00`)
+* `p16istring`: `u16`-prefixed string with optional NUL byte, size includes prefix (`\x00\x05\x66\x6f\x6f` or `\x00\x06\x66\x6f\x6f\x00`)
+
+
+
+
+
 
 
 
