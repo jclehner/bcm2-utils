@@ -728,7 +728,11 @@ istream& nv_group::read(istream& is)
 
 ostream& nv_group::write(ostream& os) const
 {
-	if (!m_size.write(os) || !m_magic.write(os) || (is_versioned() && !m_version.write(os))) {
+	if (m_bytes > 0xffff) {
+		throw runtime_error(type() + ": size " + ::to_string(m_bytes) + " exceeds maximum");
+	}
+
+	if (!nv_u16::write(os, m_bytes) || !m_magic.write(os) || (is_versioned() && !m_version.write(os))) {
 		throw runtime_error(type() + ": error while writing group header");
 		return os;
 	}
