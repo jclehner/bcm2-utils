@@ -302,7 +302,6 @@ class gwsettings : public settings
 
 	static std::string crypt(string ibuf, const string& key, bool decrypt, bool pad = false)
 	{
-#ifndef BCM2_UTILS_USE_COMMON_CRYPTO
 		auto k = reinterpret_cast<const unsigned char*>(key.data());
 		AES_KEY aes;
 
@@ -340,32 +339,6 @@ class gwsettings : public settings
 		}
 
 		return obuf;
-#else
-		size_t len = align_left(ibuf.size(), 16), moved;
-		string obuf(len, '\0');
-
-		CCCryptorStatus ret = CCCrypt(
-				encrypt ? kCCEncrypt ? kCCDecrypt,
-				kCCAlgorithmAES128,
-				kCCOptionECBMode,
-				key.data(), kCCKeySizeAES256,
-				nullptr,
-				ibuf.data(), len,
-				&obuf[0], len,
-				&moved);
-
-		if (ret != kCCSuccess) {
-			throw runtime_error("CCCrypt: error " + ::to_string(ret));
-		} else if (moved != len) {
-			throw runtime_error("CCCrypt: expected length " + ::to_string(len) + ", got " + ::to_string(moved));
-		}
-
-		if (len < ibuf.size()) {
-			obuf += ibuf.substr(len);
-		}
-
-		return obuf;
-#endif
 	}
 
 	bool m_is_auto_profile = false;
