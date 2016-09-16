@@ -76,9 +76,10 @@ int usage(bool help = false)
 	if (help) {
 		os << "\n    Print value of variable <name>. If omitted, dump file contents.\n\n";
 	}
-	os << "  set     <infile> <name> <value>" << endl;
+	os << "  set     <infile> <name> <value> [<outfile>]" << endl;
 	if (help) {
-		os << "\n    Set value of variable <name> to <value>.\n\n";
+		os << "\n    Set value of variable <name> to <value>, optionally writing\n"
+				"    the resulting file to <outfile>.\n\n";
 	}
 	os << "  info    <infile>" << endl;
 	if (help) {
@@ -159,13 +160,13 @@ int do_list_or_get(int argc, char** argv, const sp<settings>& settings)
 
 int do_set(int argc, char** argv, const sp<settings>& settings)
 {
-	if (argc != 4) {
+	if (argc != 4 && argc != 5) {
 		return usage(false);
 	}
 
 	settings->set(argv[2], argv[3]);
 	logger::i() << settings->get(argv[2])->to_pretty() << endl;
-	write_file(argv[1], settings);
+	write_file(argc == 5 ? argv[4] : argv[1], settings);
 	return 0;
 }
 
