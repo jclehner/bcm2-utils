@@ -43,8 +43,20 @@ string group_header_to_string(const string& type, const string& checksum, bool i
 	} else {
 		ostr << profile << (is_auto_profile ? "" : " (forced)") << endl;
 	}
-	ostr << "checksum: " << checksum << (is_chksum_valid ? "" : " (bad)") << endl;
-	ostr << "size    : " << size << (is_size_valid ? "" : " (bad)") << endl;
+	ostr << "checksum: " << checksum;
+	if (!profile.empty()) {
+		ostr << " " << (is_chksum_valid ? "(ok)" : "(bad)") << endl;
+	} else {
+		ostr << endl;
+	}
+
+	ostr << "size    : ";
+	if (!is_encrypted || !key.empty()) {
+		ostr << size << " " << (is_size_valid ? "(ok)" : "(bad)") << endl;
+	} else {
+		ostr << "(unknown)" << endl;
+	}
+
 	if (is_encrypted) {
 		ostr << "key     : " << (key.empty() ? "(unknown)" : to_hex(key)) << endl;
 	}
