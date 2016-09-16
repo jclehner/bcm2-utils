@@ -266,7 +266,7 @@ template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 			if (!m_count && !is.read(reinterpret_cast<char*>(&m_count), sizeof(I))) {
 				return is;
 			}
-			m_count = bcm2dump::bswapper<I>::ntoh(m_count);
+			m_count = bcm2dump::ntoh(m_count);
 		}
 
 		// FIXME ugly workaround for parsing an array of elements with non-constant width
@@ -288,7 +288,7 @@ template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 	virtual std::ostream& write(std::ostream& os) const override
 	{
 		if (L) {
-			I count = bcm2dump::bswapper<I>::hton(m_count);
+			I count = bcm2dump::hton(m_count);
 			if (!os.write(reinterpret_cast<const char*>(&count), sizeof(I))) {
 				return os;
 			}
@@ -565,7 +565,7 @@ class nv_num : public nv_val
 	virtual std::istream& read(std::istream& is) override
 	{
 		if (is.read(reinterpret_cast<char*>(&m_val), sizeof(T))) {
-			m_val = bcm2dump::bswapper<T>::ntoh(m_val);
+			m_val = bcm2dump::ntoh(m_val);
 			m_set = true;
 		}
 
@@ -586,7 +586,7 @@ class nv_num : public nv_val
 
 	static std::ostream& write(std::ostream& os, const T& num)
 	{
-		T swapped = bcm2dump::bswapper<T>::hton(num);
+		T swapped = bcm2dump::hton(num);
 		return os.write(reinterpret_cast<const char*>(&swapped), sizeof(T));
 	}
 

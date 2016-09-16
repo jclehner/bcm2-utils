@@ -168,6 +168,7 @@ inline unsigned elapsed_millis(std::clock_t start, std::clock_t now = std::clock
 
 std::string transform(const std::string& str, std::function<int(int)> f);
 
+namespace detail {
 template<typename T> struct bswapper
 {
 	static T ntoh(T n);
@@ -190,6 +191,13 @@ BCM2UTILS_DEF_BSWAPPER(uint16_t, ntohs, htons);
 BCM2UTILS_DEF_BSWAPPER(int16_t, ntohs, htons);
 BCM2UTILS_DEF_BSWAPPER(uint32_t, ntohl ,htonl);
 BCM2UTILS_DEF_BSWAPPER(int32_t, ntohl, htonl);
+}
+
+template<typename T> T ntoh(const T& t)
+{ return detail::bswapper<T>::ntoh(t); }
+
+template<typename T> T hton(const T& t)
+{ return detail::bswapper<T>::hton(t); }
 
 /*
 template<> struct bswapper<uint8_t>

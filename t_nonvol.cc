@@ -241,11 +241,11 @@ template<class T> void test_int_type()
 	sp<T> val = make_shared<T>();
 
 	for (unsigned i = 0; i != 1000; ++i) {
-		NT n = bswapper<NT>::hton(rand());
+		NT n = hton(rand());
 		string data(reinterpret_cast<char*>(&n), sizeof(n));
 		unserialize(data, val);
 
-		if (val->num() != bswapper<NT>::ntoh(n)) {
+		if (val->num() != ntoh(n)) {
 			throw failed_test(val->type() + " " + to_string(n) + ": unexpected value " + to_string(val->num()));
 		}
 

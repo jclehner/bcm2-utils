@@ -36,12 +36,12 @@ template<typename T> T read_num(istream& is)
 {
 	T num;
 	is.read(reinterpret_cast<char*>(&num), sizeof(T));
-	return bswapper<T>::ntoh(num);
+	return ntoh(num);
 }
 
 template<typename T> void write_num(ostream& os, T num)
 {
-	num = bswapper<T>::hton(num);
+	num = hton(num);
 	os.write(reinterpret_cast<const char*>(&num), sizeof(T));
 }
 
