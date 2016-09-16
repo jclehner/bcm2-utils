@@ -95,15 +95,15 @@ Always stored in network byte order; `uN` for unsigned N-bit integers, `iN` for 
 Various methods are used to store strings, with some groups often showing a preference for one kind of encoding.
 The following list shows different encodings for the string `"foo"`.
 
-* `fstring`: Fixed-width string, with optional NUL byte (width 6: `\x66\x6f\x6f\x00\x??\x??`; width 3: `\x66\x6f\x6f`)
-* `fzstring`: Fixed-width string, with mandatory NUL byte - maximum length is thus `width - 1` (width 4: `\x66\x6f\x6f\x00`)
-* `zstring`: NUL-terminated string (`\x66\x6f\x6f\x00`)
-* `p8string`: `u8`-prefixed string, with optional NUL byte (`\x03\x66\x6f\x6f` or `\x04\x66\x6f\x6f\x00`)
-* `p8zstring`: `u8`-prefixed string with mandatory NUL byte (`\x04\x66\x6f\x6f\x00`)
-* `p8istring`: `u8`-prefixed string with optional NUL byte, size includes prefix (`\x04\x66\x6f\x6f` or `\x05\x66\x6f\x6f\x00`)
-* `p16string`: `u16`-prefixed string, with optional NUL byte (`\x00\x03\x66\x6f\x6f` or `\x00\x04\x66\x6f\x6f\x00`)
-* `p16zstring`: `u16`-prefixed string with mandatory NUL byte (`\x00\x04\x66\x6f\x6f\x00`)
-* `p16istring`: `u16`-prefixed string with optional NUL byte, size includes prefix (`\x00\x05\x66\x6f\x6f` or `\x00\x06\x66\x6f\x6f\x00`)
+* `fstring`: Fixed-width string, with optional NUL byte (width 6: `66:6f:6f:00:??:??`; width 3: `66:6f:6f`)
+* `fzstring`: Fixed-width string, with mandatory NUL byte - maximum length is thus `width - 1` (width 4: `66:6f:6f:00`)
+* `zstring`: NUL-terminated string (`66:6f:6f:00`)
+* `p8string`: `u8`-prefixed string, with optional NUL byte (`03:66:6f:6f` or `04:66:6f:6f:00`)
+* `p8zstring`: `u8`-prefixed string with mandatory NUL byte (`04:66:6F:6F:00`)
+* `p8istring`: `u8`-prefixed string with optional NUL byte, size includes prefix (`04:66:6f:6f` OR `05:66:6f:6f:00`)
+* `p16string`: `u16`-prefixed string, with optional NUL byte (`00:03:66:6f:6f` OR `00:04:66:6f:6f:00`)
+* `p16zstring`: `u16`-prefixed string with mandatory NUL byte (`00:04:66:6f:6f:00`)
+* `p16istring`: `u16`-prefixed string with optional NUL byte, size includes prefix (`00:05:66:6f:6f` OR `00:06:66:6f:6f:00`)
 
 
 
