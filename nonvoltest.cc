@@ -144,11 +144,18 @@ int do_list_or_get(int argc, char** argv, const sp<settings>& settings)
 			logger::i() << argv[2] << endl;
 		} else {
 			for (auto p : nv_compound_cast(val)->parts()) {
+				if (p.val->is_disabled()) {
+					continue;
+				}
+
 				ostream& os = starts_with(p.name, "_unk_") ? logger::v() : logger::i();
+				os << (!p.val->is_set() ? "[" : "");
 				if (argc == 3) {
 					os << argv[2] << ".";
 				}
-				os << p.name << (p.val->is_compound() ? ".* " : "") << endl;
+
+				os << p.name << (p.val->is_compound() ? ".* " : "");
+				os << (!p.val->is_set() ? "]" : "") << endl;
 			}
 		}
 	} else {
