@@ -4,11 +4,11 @@ CFLAGS += -Wall -g -DVERSION=\"$(shell git describe --always)\"
 CXXFLAGS += $(CFLAGS) -std=c++14 -Wnon-virtual-dtor
 PREFIX ?= /usr/local
 
-bcm2cfg_OBJ = nonvol.o profile.o bcm2cfg.o profiledef.o crypto.o
+bcm2cfg_OBJ = nonvol.o profile.o bcm2cfg.o profiledef.o
 bcm2dump_OBJ = io.o rwx.o interface.o ps.o bcm2dump.o \
 	util.o progress.o mipsasm.o profile.o profiledef.o
 nonvoltest_OBJ = util.o nonvol2.o nonvoltest.o nonvoldef.o \
-	gwsettings.o profile.o profiledef.o crypto.o
+	gwsettings.o profile.o profiledef.o
 
 t_nonvol_OBJ = util.o nonvol2.o t_nonvol.o
 
