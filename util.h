@@ -152,6 +152,7 @@ template<> inline std::string to_hex<unsigned char>(const unsigned char& c, size
 }
 
 std::string to_hex(const std::string& buffer);
+std::string from_hex(const std::string& hex);
 
 // return the closest number lower than num that matches the requested alignment
 template<class T> T align_left(const T& num, size_t alignment)

@@ -128,6 +128,28 @@ string to_hex(const std::string& buffer)
 	return ret;
 }
 
+string from_hex(const string& hexstr)
+{
+	if (hexstr.size() % 2) {
+		throw user_error("invalid hex-string size "
+				+ to_string(hexstr.size()));
+	}
+
+	string ret;
+	ret.reserve(hexstr.size() / 2);
+
+	for (size_t i = 0; i < hexstr.size(); i += 2) {
+		string chr = hexstr.substr(i, 2);
+		try {
+			ret += lexical_cast<int>(hexstr.substr(i, 2), 16);
+		} catch (const bad_lexical_cast& e) {
+			throw user_error("invalid hex char '" + chr + "'");
+		}
+	}
+
+	return ret;
+}
+
 uint16_t crc16_ccitt(const void* buf, size_t size)
 {
 	uint32_t crc = 0xffff;

@@ -240,10 +240,10 @@ int do_crypt_or_fix(int argc, char** argv, const sp<settings>& settings,
 				if (keys.empty()) {
 					throw user_error("detected profile " + p->name() + " has no default keys; use '-k <key>' or '-p <password>'");
 				}
-				s->key(keys.front());
+				s->key(from_hex(keys.front()));
 			}
 		} else {
-			s->key(key);
+			s->key(from_hex(key));
 		}
 	} else if (argv[0] != "fix"s) {
 		return usage(false);
