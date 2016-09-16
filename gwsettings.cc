@@ -246,10 +246,6 @@ class gwsettings : public encrypted_settings
 			throw runtime_error("error while writing data");
 		}
 
-		if (m_padded && !(os << string(16, '\0'))) {
-			throw runtime_error("error while writing padding");
-		}
-
 		return os;
 	}
 
