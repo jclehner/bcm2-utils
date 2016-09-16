@@ -95,15 +95,25 @@ Always stored in network byte order; `uN` for unsigned N-bit integers, `iN` for 
 Various methods are used to store strings, with some groups often showing a preference for one kind of encoding.
 The following list shows different encodings for the string `"foo"`.
 
-* `fstring`: Fixed-width string, with optional NUL byte (width 6: `66:6f:6f:00:??:??`; width 3: `66:6f:6f`)
-* `fzstring`: Fixed-width string, with mandatory NUL byte - maximum length is thus `width - 1` (width 4: `66:6f:6f:00`)
-* `zstring`: NUL-terminated string (`66:6f:6f:00`)
-* `p8string`: `u8`-prefixed string, with optional NUL byte (`03:66:6f:6f` or `04:66:6f:6f:00`)
-* `p8zstring`: `u8`-prefixed string with mandatory NUL byte (`04:66:6F:6F:00`)
-* `p8istring`: `u8`-prefixed string with optional NUL byte, size includes prefix (`04:66:6f:6f` OR `05:66:6f:6f:00`)
-* `p16string`: `u16`-prefixed string, with optional NUL byte (`00:03:66:6f:6f` OR `00:04:66:6f:6f:00`)
-* `p16zstring`: `u16`-prefixed string with mandatory NUL byte (`00:04:66:6f:6f:00`)
-* `p16istring`: `u16`-prefixed string with optional NUL byte, size includes prefix (`00:05:66:6f:6f` OR `00:06:66:6f:6f:00`)
+| Type       | Descrption                                  | `"foo"`                                            |
+| -----------|---------------------------------------------|----------------------------------------------------|
+|`fstring`   | Fixed-width string, with optional NUL byte  | `66:6f:6f:00:??:??` (6), `66:6f:6f` (3)  |
+|`fzstring`  | Fixed-width string, with mandatory NUL byte | `66:6f:6f:00` (4)                             |
+|`zstring`   | NUL-terminated string                       | `66:6f:6f:00`       |
+|`p8string`  | `u8`-prefixed string, with optional NUL byte| `03:66:6f:6f`, `04:66:6f:6f:00`|
+|`p8zstring` | `u8`-prefixed string with mandatory NUL byte| `04:66:6F:6F:00`|
+|`p8istring` | `u8`-prefixed string with optional NUL byte, size includes prefix | `04:66:6f:6f`, `05:66:6f:6f:00`|
+|`p16string` | `u16`-prefixed string, with optional NUL byte | `00:03:66:6f:6f`, `00:04:66:6f:6f:00`|
+|`p16zstring`| `u16`-prefixed string with mandatory NUL byte |`00:04:66:6f:6f:00`|
+|`p16istring`| `u16`-prefixed string with optional NUL byte, size includes prefix | `00:05:66:6f:6f` , `00:06:66:6f:6f:00`|
+
+###### Lists
+
+* `array`: Fixed-width array
+* `pNlist`: `u8`- or `u16`-prefixed list (prefix contains number of elements in list)
+
+The following
+
 
 
 
