@@ -144,17 +144,17 @@ template<> inline std::string to_hex<unsigned char>(const unsigned char& c, size
 
 std::string to_hex(const std::string& buffer);
 
-// return the closest nv_number lower than nv_num that matches the requested alignment
-template<class T> T align_left(const T& nv_num, size_t alignment)
+// return the closest number lower than num that matches the requested alignment
+template<class T> T align_left(const T& num, size_t alignment)
 {
-	return nv_num - (nv_num % alignment);
+	return num - (num % alignment);
 }
 
-// return the closest nv_number higher than nv_num that matches the requested alignment
-template<class T> T align_right(const T& nv_num, size_t alignment)
+// return the closest number higher than num that matches the requested alignment
+template<class T> T align_right(const T& num, size_t alignment)
 {
-	T rem = nv_num % alignment;
-	return nv_num + (rem ? alignment - rem : 0);
+	T rem = num % alignment;
+	return num + (rem ? alignment - rem : 0);
 }
 
 uint16_t crc16_ccitt(const void* buf, size_t size);
