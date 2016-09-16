@@ -240,7 +240,7 @@ int do_crypt_or_fix(int argc, char** argv, const sp<settings>& settings,
 				if (keys.empty()) {
 					throw user_error("detected profile " + p->name() + " has no default keys; use '-k <key>' or '-p <password>'");
 				}
-				s->key(from_hex(keys.front()));
+				s->key(keys.front());
 			}
 		} else {
 			s->key(from_hex(key));
@@ -251,7 +251,7 @@ int do_crypt_or_fix(int argc, char** argv, const sp<settings>& settings,
 
 	write_file(argc == 3 ? argv[2] : argv[1], s);
 
-	return usage(false);
+	return 0;
 }
 
 int do_info(int argc, char** argv, const sp<settings>& settings)
