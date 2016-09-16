@@ -47,6 +47,15 @@ inline bool contains(const std::string& haystack, const std::string& needle)
 	return haystack.find(needle) != std::string::npos;
 }
 
+inline bool starts_with(const std::string& haystack, const std::string& needle)
+{
+	if (haystack.size() < needle.size()) {
+		return false;
+	} else {
+		return haystack.substr(0, needle.size()) == needle;
+	}
+}
+
 inline bool ends_with(const std::string& haystack, const std::string& needle)
 {
 	if (haystack.size() < needle.size()) {

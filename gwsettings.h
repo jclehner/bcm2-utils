@@ -44,8 +44,10 @@ class settings : public nv_compound
 	{ return m_groups; }
 
 	virtual std::string header_to_string() const = 0;
+	virtual bool is_valid() const = 0;
 
-	static sp<settings> read(std::istream& is, int type, const csp<bcm2dump::profile>& profile, const std::string& key);
+	static sp<settings> read(std::istream& is, int type, const csp<bcm2dump::profile>& profile,
+			const std::string& key, const std::string& password);
 
 	protected:
 	settings(const std::string& name, int type, const csp<bcm2dump::profile>& p)
@@ -63,6 +65,18 @@ class settings : public nv_compound
 	int m_type;
 	bool m_permissive = false;
 	list m_groups;
+};
+
+class encrypted_settings : public settings
+{
+	public:
+	virtual void key(const std::string& key) = 0;
+	virtual std::string key() const = 0;
+	virtual void padded(bool padded) = 0;
+	virtual bool padded() const = 0;
+
+	protected:
+	using settings::settings;
 };
 }
 

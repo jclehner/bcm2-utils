@@ -64,6 +64,9 @@ class permdyn : public settings
 	virtual size_t data_bytes() const override
 	{ return bytes() - 8; }
 
+	virtual bool is_valid() const override
+	{ return m_magic_valid; }
+
 	virtual istream& read(istream& is) override
 	{
 		// actually, there's 16 more bytes at the beginning, but these have already been read
@@ -74,16 +77,21 @@ class permdyn : public settings
 		}
 
 		if (magic.find_first_not_of('\xff') != string::npos) {
-			throw runtime_error("found non-0xff byte in magic");
+			m_magic_valid = false;
+			is.clear(ios::failbit);
+			return is;
+			//throw runtime_error("found non-0xff byte in magic");
 		}
+
+		m_magic_valid = true;
 
 		string buf = read_stream(is).substr(0, m_size.num() + 16);
 		uint32_t crc = crc32(buf);
 
 		if (crc == m_checksum.num()) {
-			logger::e() << "checksum ok: " << to_hex(crc) << endl;
+			logger::v() << "checksum ok: " << to_hex(crc) << endl;
 		} else {
-			logger::e() << "checksum mismatch: " << to_hex(crc) << " / " << to_hex(m_checksum.num()) << endl;
+			logger::v() << "checksum mismatch: " << to_hex(crc) << " / " << to_hex(m_checksum.num()) << endl;
 		}
 
 		istringstream istr(buf);
@@ -129,13 +137,16 @@ class permdyn : public settings
 	nv_u32 m_size;
 	nv_u32 m_checksum;
 	bool m_checksum_valid = false;
+	bool m_magic_valid = false;
 };
 
-class gwsettings : public settings
+class gwsettings : public encrypted_settings
 {
 	public:
-	gwsettings(const string& checksum, const csp<bcm2dump::profile>& p)
-	: settings("gwsettings", nv_group::type_cfg, p), m_checksum(checksum) {}
+	gwsettings(const string& checksum, const csp<bcm2dump::profile>& p,
+			const string& key, const string& pw)
+	: encrypted_settings("gwsettings", nv_group::type_cfg, p),
+	  m_checksum(checksum), m_key(key), m_pw(pw) {}
 
 	virtual size_t bytes() const override
 	{ return m_size.num(); }
@@ -145,6 +156,21 @@ class gwsettings : public settings
 
 	virtual string type() const override
 	{ return "gwsettings"; }
+
+	virtual bool is_valid() const override
+	{ return m_magic_valid; }
+
+	virtual void key(const string& key) override
+	{ m_key = key; }
+
+	virtual string key() const override
+	{ return m_key; }
+
+	virtual void padded(bool padded) override
+	{ m_padded = padded; }
+
+	virtual bool padded() const override
+	{ return m_padded; }
 
 	virtual istream& read(istream& is) override
 	{
@@ -156,6 +182,8 @@ class gwsettings : public settings
 
 		if (!m_magic_valid && !decrypt_and_detect_profile(buf)) {
 			return is;
+		} else if (!m_encrypted) {
+			m_key = m_pw = "";
 		}
 
 		istringstream istr(buf.substr(s_magic.size()));
@@ -264,6 +292,10 @@ class gwsettings : public settings
 		if (!m_key.empty()) {
 			return decrypt(buf, m_key);
 		} else if (profile()) {
+			if (!m_pw.empty()) {
+				m_key = profile()->derive_key(m_pw);
+				return decrypt(buf, m_key);
+			}
 			return decrypt_with_profile(buf, profile());
 		} else {
 			for (auto p : profile::list()) {
@@ -349,6 +381,7 @@ class gwsettings : public settings
 	nv_version m_version;
 	nv_u32 m_size;
 	string m_key;
+	string m_pw;
 	bool m_padded = false;
 
 	static const string s_magic;
@@ -385,7 +418,7 @@ istream& settings::read(istream& is)
 }
 
 
-sp<settings> settings::read(istream& is, int type, const csp<bcm2dump::profile>& p, const std::string& key)
+sp<settings> settings::read(istream& is, int type, const csp<bcm2dump::profile>& p, const string& key, const string& pw)
 {
 	string start(16, '\0');
 	if (!is.read(&start[0], start.size())) {
@@ -404,7 +437,7 @@ sp<settings> settings::read(istream& is, int type, const csp<bcm2dump::profile>&
 	if (!ret) {
 		// if this is in fact a gwsettings type file, then start already contains the checksum
 		//ret = make_shared<gwsettings>(start, p);
-		ret = sp<gwsettings>(new gwsettings(start, p));
+		ret = sp<gwsettings>(new gwsettings(start, p, key, pw));
 	}
 
 	if (ret) {
