@@ -148,7 +148,7 @@ int do_list_or_get(int argc, char** argv, const sp<settings>& settings)
 					continue;
 				}
 
-				ostream& os = starts_with(p.name, "_unk_") ? logger::v() : logger::i();
+				ostream& os = (starts_with(p.name, "_unk_") || !p.val->is_set()) ? logger::v() : logger::i();
 				os << (!p.val->is_set() ? "[" : "");
 				if (argc == 3) {
 					os << argv[2] << ".";
