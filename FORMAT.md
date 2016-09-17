@@ -116,7 +116,7 @@ The following table shows various string samples (`\x??` means *any* byte, `(N)`
 
 | Type       | Description                                                                    |                           
 | -----------|--------------------------------------------------------------------------------|
-| `array`    | Fixed-length array (not fixed *width* though, if strings are involved)         |
+| `array`    | Fixed-size array (element number is fixed, but not actual size in bytes)       |
 | `pNlist`   | `u8`- or `u16`-prefixed list; prefix contains number of elements in list       |
 
 Even though an `array` always has a fixed length defined in code, some elements may be considered
@@ -138,12 +138,12 @@ Sample encodings for string arrays/lists:
 
 Sample encodings for integer arrays/lists:
 
-| Type                   | `{ 0xaaaa, 0, 0xbbbb  }`                   | `{}`       | `{ 0xaa }`, width 2, dummy `0`|        
-|------------------------|--------------------------------------------|------------|-------------------------------|
-| `array<u16>`           | `\xaa\xaa\x00\x00\xbb\xbb`                 | N/A        |`\x00\xaa\x00\x00`             |
-| `array<u32>`           | `\x00\x00\xaa\xaa\x00\x00\x00\x00\xbb\xbb` | N/A        |`\x00\x00\x00\xaa\x00\x00\x00\x00`|
-| `p8list<u16>`          | `\x03\xaa\xaa\x00\x00\xbb\xbb`             | `\x00`     | N/A                           |
-| `p16list<u16>`         | `\x00\x03\xaa\xaa\x00\x00\xbb\xbb`         | `\x00\x00` | N/A                           |
+| Type                   | `{ 0xaaaa, 0, 0xbbbb  }`                   | `{ 0xaa }`, width 2, dummy `0` | `{}`      |        
+|------------------------|--------------------------------------------|--------------------------------|-----------|
+| `array<u16>`           | `\xaa\xaa\x00\x00\xbb\xbb`                 |`\x00\xaa\x00\x00`              | N/A       |
+| `array<u32>`           | `\x00\x00\xaa\xaa\x00\x00\x00\x00\xbb\xbb` |`\x00\x00\x00\xaa\x00\x00\x00\x00`| N/A     |
+| `p8list<u16>`          | `\x03\xaa\xaa\x00\x00\xbb\xbb`             | N/A                            | `\x00`    | 
+| `p16list<u16>`         | `\x00\x03\xaa\xaa\x00\x00\xbb\xbb`         | N/A                            | `\x00\x00`| 
 
 
 
