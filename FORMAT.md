@@ -102,8 +102,8 @@ The following table shows different encodings for the string `"foo"` (`\x??` mea
 
 | Type       | Descrption                                  | `""`               | `"foo"`                        |
 | -----------|---------------------------------------------|--------------------|--------------------------------|
-|`fstring`   | Fixed-width string, with optional NUL byte  | `\x00\x00` (`2`)   |`foo` (`3`), `foo\x00\x??\x??` (`6`)|
-|`fzstring`  | Fixed-width string, with mandatory NUL byte | `\x00\x00` (`2`)   | `foo\x00` (`4`), `foo\x00:??` (`5`)|
+|`fstring`   | Fixed-width string, with optional NUL byte  | `\x00\x00` (2)   |`foo` (3), `foo\x00\x??\x??` (6)|
+|`fzstring`  | Fixed-width string, with mandatory NUL byte | `\x00\x00` (2)   | `foo\x00` (4), `foo\x00:??` (5)|
 |`zstring`   | NUL-terminated string                       | `\x00`             | `foo\x00`                      |
 |`p8string`  | `u8`-prefixed string, with optional NUL byte| `\x00`             |`\x03foo`, `\x04foo\x00`        |
 |`p8zstring` | `u8`-prefixed string with mandatory NUL byte| `\x00`             | `\x04foo\x00`                  |
