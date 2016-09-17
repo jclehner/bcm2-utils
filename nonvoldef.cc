@@ -246,6 +246,8 @@ class nv_group_8021 : public nv_group
 				{ 0x6c, "54" }
 		};
 
+		const nv_enum<nv_u8>::valvec offauto = { "off", "auto" };
+
 		if (type != type_perm) {
 			return {
 				NV_VAR(nv_zstring, "ssid", 33),
@@ -304,18 +306,39 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_bool, "wmm_nak"),
 				NV_VAR(nv_bool, "wmm_powersave"),
 				NV_VAR(nv_data, "", 4),
-				//NV_VAR(nv_data, "", 3),
-				//NV_VAR(nv_data, "", ver.num() > 0x0015 ? 0x3a : 0x66),
 				NV_VARN(nv_wmm, "wmm"),
-				//NV_VAR(nv_data, "data_7_1", 9),
 				NV_VARN3(ver.num() > 0x0015, nv_compound_def, "n", "n", {
-					NV_VAR(nv_u8, "bss_opmode_cap_required"),
-					NV_VAR(nv_u8, "channel"),
-					NV_VAR(nv_u8, "", true),
-					NV_VAR(nv_u8, "bandwidth"),
-					NV_VAR(nv_u8, "sideband", true),
-					NV_VAR(nv_u8, "", true),
-					NV_VAR(nv_u8, "", true),
+					NV_VAR(nv_u8, "band"),
+					NV_VAR(nv_u8, "control_channel"),
+					NV_VAR2(nv_enum<nv_u8>, "mode", "off_auto", offauto), // 0 = off, 1 = auto
+					NV_VAR2(nv_enum<nv_u8>, "bandwidth", "n_bandwidth", nv_enum<nv_u8>::valmap {
+						{ 10, "10MHz" },
+						{ 20, "20MHz" },
+						{ 40, "40MHz" }
+					}),
+					NV_VAR(nv_u8, "sideband"), // 0 = none, 1 = upper, 255 = lower,
+					NV_VAR2(nv_enum<nv_i8>, "rate", "n_rate", nv_enum<nv_i8>::valmap {
+							{ -2, "legacy" },
+							{ -1, "auto" },
+							{ 0, "0" },
+							{ 1, "1" },
+							{ 2, "2" },
+							{ 3, "3" },
+							{ 4, "4" },
+							{ 5, "5" },
+							{ 6, "6" },
+							{ 7, "7" },
+							{ 8, "8" },
+							{ 9, "9" },
+							{ 10, "10" },
+							{ 11, "11" },
+							{ 12, "12" },
+							{ 13, "13" },
+							{ 14, "14" },
+							{ 15, "15" },
+							{ 32, "mcs_index" },
+					}),
+					NV_VAR2(nv_enum<nv_u8>, "protection", "off_auto", offauto), // 0 = off, 1 = auto
 				}),
 				NV_VAR3(ver.num() <= 0x0015, nv_data, "", 7),
 				NV_VAR(nv_bool, "wps_enabled"),
