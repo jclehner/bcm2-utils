@@ -667,7 +667,7 @@ template<typename T> class nv_enum_bitmask : public T
 
 	bool str_to_num(const std::string& str, num_type& num, bool bitmask) const
 	{
-		for (num_type i = 0; i < m_vec.size(); ++i) {
+		for (num_type i = 0; i < num_type(m_vec.size()); ++i) {
 			if (m_vec[i] == str) {
 				num = bitmask ? 1 << i : i;
 				return true;
@@ -698,7 +698,7 @@ template<typename T> class nv_enum_bitmask : public T
 			if (i != m_map.end()) {
 				str = i->second;
 			}
-		} else if (!m_vec.empty() && num < m_vec.size()) {
+		} else if (!m_vec.empty() && num < num_type(m_vec.size())) {
 			str = m_vec[num];
 		}
 
