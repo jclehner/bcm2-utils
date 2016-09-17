@@ -39,7 +39,7 @@ int usage(bool help = false)
 	os << "  -P <profile>     Force profile" << endl;
 	os << "  -p <password>    Encryption password" << endl;
 	os << "  -k <key>         Encryption key (hex string)" << endl;
-	//os << "  -f <format>      Input file format (gws/dynnv/permnv)" << endl;
+	os << "  -f <format>      Input file format (auto/gws/dyn/perm)" << endl;
 	os << "  -q               Decrease verbosity" << endl;
 	os << "  -v               Increase verbosity" << endl;
 	os << endl;
@@ -105,11 +105,6 @@ sp<settings> read_file(const string& filename, int format, const sp<profile>& pr
 	ifstream in(filename);
 	if (!in.good()) {
 		throw user_error("failed to open " + filename + " for reading");
-	}
-
-	// FIXME
-	if (format == nv_group::type_unknown) {
-		format = nv_group::type_cfg;
 	}
 
 	return settings::read(in, format, profile, key, pw);
@@ -251,7 +246,7 @@ int do_main(int argc, char** argv)
 	bool pad = false;
 	int format = nv_group::type_unknown;
 
-	while ((opt = getopt(argc, argv, "hP:p:k:zvq")) != -1) {
+	while ((opt = getopt(argc, argv, "hP:p:k:f:zvq")) != -1) {
 		switch (opt) {
 		case 'v':
 			loglevel = max(loglevel - 1, logger::trace);
@@ -272,6 +267,19 @@ int do_main(int argc, char** argv)
 			break;
 		case 'z':
 			pad = true;
+			break;
+		case 'f':
+			if (optarg == "gws"s) {
+				format = nv_group::type_cfg;
+			} else if (optarg == "dyn"s) {
+				format = nv_group::type_dyn;
+			} else if (optarg == "perm"s) {
+				format = nv_group::type_perm;
+			} else if (optarg == "auto"s) {
+				format = nv_group::type_unknown;
+			} else {
+				return usage(false);
+			}
 			break;
 		case 'h':
 		default:
