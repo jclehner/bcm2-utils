@@ -215,11 +215,6 @@ class nv_group_8021 : public nv_group
 
 	virtual list definition(int type, const nv_version& ver) const override
 	{
-		typedef nv_u16_r<20, 1024> beacon_interval;
-		typedef nv_u16_r<1, 255> dtim_interval;
-		typedef nv_u16_r<256, 2346> frag_threshold;
-		typedef nv_u16_r<1, 2347> rts_threshold;
-
 		// known versions
 		// 0x0015: TWG850
 		// 0x001d: TWG870
@@ -230,7 +225,16 @@ class nv_group_8021 : public nv_group
 		// 0x001d-0x0024 appear to be the same, at least until
 		// in_network_radar_check
 
-		const nv_enum<nv_u8>::valmap rates = {
+		typedef nv_u16_r<20, 1024> beacon_interval;
+		typedef nv_u16_r<1, 255> dtim_interval;
+		typedef nv_u16_r<256, 2346> frag_threshold;
+		typedef nv_u16_r<1, 2347> rts_threshold;
+
+		// XXX quite possibly an nv_u16
+		class nv_wifi_rate_mbps : public nv_enum<nv_u8>
+		{
+			public:
+			nv_wifi_rate_mbps() : nv_enum<nv_u8>("rate-mbps", nv_enum<nv_u8>::valmap {
 				{ 0x00, "auto" },
 				{ 0x02, "1" },
 				{ 0x04, "2" },
@@ -244,6 +248,8 @@ class nv_group_8021 : public nv_group
 				{ 0x48, "36" },
 				{ 0x60, "48" },
 				{ 0x6c, "54" }
+			})
+			{}
 		};
 
 		const nv_enum<nv_u8>::valvec offauto = { "off", "auto" };
@@ -255,12 +261,17 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_u8, "channel_b"),
 				NV_VAR(nv_u8, "", true),
 				// 0x0f = all
-				NV_VAR(nv_u8, "basic_rates"), // XXX u16?
-				NV_VAR(nv_data, "", 3),
+				NV_VAR(nv_u8, "basic_rates", true), // XXX u16?
+				NV_VAR(nv_data, "", 1),
+				NV_VAR(nv_u8, "supported_rates", true), // 0x03 = min, 0x0f = all (1..11Mbps)
+				NV_VAR(nv_data, "", 1),
 				NV_VAR2(nv_enum<nv_u8>, "encryption", "encryption", {
-						"none", "wep64", "wep128", "tkip", "aes", "tkip_aes"
+						"none", "wep64", "wep128", "tkip", "aes", "tkip_aes",
+						"tkip_wep64", "aes_wep64", "tkip_aes_wep64", "tkip_wep128",
+						"aes_wep128", "tkip_aes_wep128"
 				}),
-				NV_VAR(nv_data, "", 2),
+				NV_VAR(nv_data, "", 1),
+				NV_VAR(nv_u8_r<1 COMMA() 3>, "authentication"), // 1 = open, 2 = shared key, 3 = both
 				NV_VAR(nv_array<nv_cdata<5>>, "wep64_keys", 4),
 				NV_VAR(nv_u8, "wep_key_num"),
 				NV_VAR(nv_cdata<13>, "wep128_key_1"),
@@ -271,40 +282,45 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_array<nv_cdata<13>>, "wep128_keys", 3),
 				NV_VAR2(nv_enum<nv_u8>, "mac_policy", "mac_policy", { "disabled", "allow", "deny" }),
 				NV_VARN(nv_array<nv_mac>, "mac_table", 32, &is_zero_mac),
-				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_bool, "preamble_long"),
 				NV_VAR(nv_bool, "hide_ssid"),
-				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_u8_r<1 COMMA() 8>, "txpower_level"),
 				NV_VAR(nv_data, "", 0x20),
 				NV_VAR(nv_u8, "short_retry_limit"),
 				NV_VAR(nv_u8, "long_retry_limit"),
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_u8, "channel_a"),
 				// 1 = auto, 4 = performance, 5 = lrs
-				NV_VAR2(nv_enum<nv_u8>, "g_mode", "g_mode", { "disabled", "auto", "", "", "", "performance", "lrs" }),
-				NV_VAR(nv_bool, "radio_disabled"),
+				NV_VAR2(nv_enum<nv_u8>, "g_mode", "g_mode", { "b", "auto", "g", "", "", "performance", "lrs" }),
+				NV_VAR(nv_bool, "radio_enabled"),
 				NV_VAR(nv_bool, "g_protection"),
 				NV_VAR(nv_data, "", 1),
-				NV_VAR2(nv_enum<nv_u8>, "g_rate_mbps", "rate_mbps", rates),
+				NV_VAR(nv_wifi_rate_mbps, "g_rate"),
 				NV_VAR(nv_u8_m<100>, "tx_power"),
 				NV_VAR(nv_p16string, "wpa_psk"),
 				NV_VAR(nv_data, "", 0x2),
-				NV_VAR(nv_u16, "group_key_rotation_interval"),
+				// wpa_rekey
+				NV_VAR(nv_u16, "wpa_rekey_interval"),
 				NV_VAR(nv_ip4, "radius_ip"),
 				NV_VAR(nv_u16, "radius_port"),
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_p8string, "radius_key"),
+				// [size-5]: nv_bool frame_burst_enabled
+				// [size-6]: nv_bool shared_key_auth_required
 				NV_VAR(nv_data, "", (ver.num() <= 0x0015 ? 0x56 : 0x2a) - 0x1d),
 				NV_VAR(nv_bool, "wds_enabled"),
 				NV_VAR(nv_array<nv_mac>, "wds_list", 4),
 				NV_VAR(nv_bool, "enable_afterburner"),
 				NV_VAR(nv_data, "", 3),
-				NV_VAR2(nv_bitmask<nv_u8>, "wpa", "wpa", { "", "wpa1", "psk1", "wpa2", "psk2" }),
+				NV_VAR2(nv_bitmask<nv_u8>, "wpa_auth", "wpa_auth", { "802.1x", "wpa1", "psk1", "wpa2", "psk2" }),
 				NV_VAR(nv_data, "", 2),
 				NV_VAR(nv_u16, "wpa_reauth_interval"),
-				NV_VAR(nv_data, "", 4),
+				NV_VAR(nv_bool, "wpa2_preauth_enabled"),
+				NV_VAR(nv_data, "", 3),
 				NV_VAR(nv_bool, "wmm_enabled"),
 				NV_VAR(nv_bool, "wmm_nak"),
 				NV_VAR(nv_bool, "wmm_powersave"),
+				// nv_i32(?) wmm_vlan_mode: -1 = auto, 0 = off, 1 = on
 				NV_VAR(nv_data, "", 4),
 				NV_VARN(nv_wmm, "wmm"),
 				NV_VARN3(ver.num() > 0x0015, nv_compound_def, "n", "n", {
@@ -342,23 +358,44 @@ class nv_group_8021 : public nv_group
 				}),
 				NV_VAR3(ver.num() <= 0x0015, nv_data, "", 7),
 				NV_VAR(nv_bool, "wps_enabled"),
-				NV_VAR(nv_u8, "wps_cfg_state", true),
+				NV_VAR(nv_bool, "wps_configured"),
 				NV_VAR(nv_p8zstring, "wps_device_pin"),
 				NV_VAR(nv_p8zstring, "wps_model"),
 				NV_VAR(nv_p8zstring, "wps_manufacturer"),
 				NV_VAR(nv_p8zstring, "wps_device_name"),
-				NV_VAR(nv_data, "", 3),
+				// ?? nv_bool wps_external ??
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_p8zstring, "wps_sta_pin"),
 				NV_VAR(nv_p8zstring, "wps_model_num"),
-				//NV_VAR(nv_bool, "wps_timeout"),
-				NV_VAR(nv_data, "", 2),
+				NV_VAR(nv_bool, "wps_timeout"),
+				NV_VAR(nv_data, "", 1),
 				NV_VAR(nv_p8zstring, "wps_uuid"),
 				NV_VAR(nv_p8zstring, "wps_board_num"),
-				NV_VAR(nv_u8, "", true),
+				// ?? stays 0 when setting to "configed" (?wps_sta_mac_restrict?)
+				NV_VAR(nv_bool, "wps_configured2"),
 				NV_VAR(nv_p8zstring, "country"),
-				NV_VAR(nv_bool, ""), // radio_enabled_n ??
-				NV_VAR(nv_data, "", 0x5),
-				NV_VAR(nv_u8, "pre_network_radar_check"),
-				NV_VAR(nv_u8, "in_network_radar_check")
+				NV_VAR(nv_bool, "primary_network_enabled"),
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_wifi_rate_mbps, "a_mcast_rate"),
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_wifi_rate_mbps, "bg_mcast_rate"),
+				NV_VAR2(nv_enum<nv_u8>, "reg_mode", "reg_mode", {
+					"off", "802.11d", "802.11h"
+				}),
+				NV_VAR(nv_u8_m<99>, "pre_network_radar_check"),
+				NV_VAR(nv_u8_m<99>, "in_network_radar_check"),
+				// XXX enum: 0 (off), 2, 3, 4 dB
+				NV_VAR(nv_u8, "tpc_mitigation"),
+				NV_VAR2(nv_bitmask<nv_u8>, "features", nv_bitmask<nv_u8>::valmap {
+					{ 0x01, "obss_coex" },
+					{ 0x04, "ap_isolate" },
+					{ 0x10, "stbc_tx_on" },
+					{ 0x20, "stbc_tx_off" },
+					{ 0x40, "sgi_on" },
+					{ 0x80, "sgi_off" },
+				}),
+				NV_VAR(nv_u8, "", true),
+
 			};
 		}
 
@@ -390,8 +427,8 @@ class nv_group_t802 : public nv_group
 			NV_VAR(nv_fzstring<33>, "card1_random"),
 			NV_VAR(nv_fzstring<33>, "card2_prefix"),
 			NV_VAR(nv_fzstring<33>, "card2_random"),
-			NV_VAR(nv_u8, "card1_regul_rev"),
-			NV_VAR(nv_u8, "card2_regul_rev"),
+			NV_VAR(nv_u8_m<99>, "card1_regul_rev"),
+			NV_VAR(nv_u8_m<99>, "card2_regul_rev"),
 		};
 	}
 };
