@@ -324,7 +324,7 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_data, "", 4),
 				NV_VARN(nv_wmm, "wmm"),
 				NV_VARN3(ver.num() > 0x0015, nv_compound_def, "n", "n", {
-					NV_VAR(nv_u8, "band"),
+					NV_VAR2(nv_enum<nv_u8>, "band", "band", { "", "2.4Ghz", "5Ghz" }),
 					NV_VAR(nv_u8, "control_channel"),
 					NV_VAR2(nv_enum<nv_u8>, "mode", "off_auto", offauto), // 0 = off, 1 = auto
 					NV_VAR2(nv_enum<nv_u8>, "bandwidth", "n_bandwidth", nv_enum<nv_u8>::valmap {
@@ -332,7 +332,11 @@ class nv_group_8021 : public nv_group
 						{ 20, "20MHz" },
 						{ 40, "40MHz" }
 					}),
-					NV_VAR(nv_u8, "sideband"), // 0 = none, 1 = upper, 255 = lower,
+					NV_VAR2(nv_enum<nv_i8>, "sideband", "sideband", nv_enum<nv_i8>::valmap {
+						{ -1, "lower" },
+						{ 0, "none" },
+						{ 1, "upper"}
+					}),
 					NV_VAR2(nv_enum<nv_i8>, "rate", "n_rate", nv_enum<nv_i8>::valmap {
 							{ -2, "legacy" },
 							{ -1, "auto" },
@@ -385,7 +389,9 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_u8_m<99>, "pre_network_radar_check"),
 				NV_VAR(nv_u8_m<99>, "in_network_radar_check"),
 				// XXX enum: 0 (off), 2, 3, 4 dB
-				NV_VAR(nv_u8, "tpc_mitigation"),
+				NV_VAR2(nv_enum<nv_u8>, "tpc_mitigation", "", {
+						"off", "", "2dB", "3dB", "4dB"
+				}),
 				NV_VAR2(nv_bitmask<nv_u8>, "features", nv_bitmask<nv_u8>::valmap {
 					{ 0x01, "obss_coex" },
 					{ 0x04, "ap_isolate" },
@@ -394,8 +400,40 @@ class nv_group_8021 : public nv_group
 					{ 0x40, "sgi_on" },
 					{ 0x80, "sgi_off" },
 				}),
-				NV_VAR(nv_u8, "", true),
-
+				NV_VAR(nv_data, "", 1),
+				// 0 = default, 1 = legacy, 2 = intf, 3 = intf-busy, 4 = optimized,
+				// 5 = optimized1, 6 = optimized2, 7 = user
+				NV_VAR(nv_u8_m<7>, "acs_policy_index"),
+				NV_VAR(nv_data, "", 3),
+				NV_VAR(nv_u8, "acs_flags"),
+				NV_VAR(nv_p8string, "acs_user_policy"),
+				NV_VAR(nv_p8list<nv_u32>, ""),
+				NV_VAR(nv_u8_m<128>, "bss_max_assoc"),
+				NV_VAR2(nv_enum<nv_u8>, "bandwidth_cap", "", nv_enum<nv_u8>::valmap {
+					{ 0x01, "20MHz" },
+					{ 0x03, "40MHz" },
+					{ 0x07, "80MHz" }
+				}),
+				NV_VAR(nv_data, "", 0x15),
+				// 0x01 = txchain(1), 0x03 = txchain(2), 0x07 = txchain(3)
+				NV_VAR(nv_u8, "txchain", true),
+				// same as above
+				NV_VAR(nv_u8, "rxchain", true),
+				NV_VAR2(nv_enum<nv_u8>, "mimo_preamble", "", {
+						"mixed", "greenfield", "greenfield_broadcom"
+				}),
+				NV_VAR2(nv_bitmask<nv_u8>, "features2", nv_bitmask<nv_u8>::valvec {
+						"ampdu", "amsdu",
+				}),
+				NV_VAR(nv_u32, "acs_cs_scan_timer"),
+				NV_VAR(nv_u8_m<3>, "bss_mode_reqd", true),
+				NV_VAR(nv_data, "", 3),
+				NV_VAR2(nv_bitmask<nv_u8>, "features3", nv_bitmask<nv_u8>::valmap {
+					{ 0x01, "band_steering" },
+					{ 0x02, "airtime_fairness" },
+					{ 0x04, "traffic_scheduler" },
+					{ 0x08, "exhausted_buf_order_sched" },
+				}),
 			};
 		}
 
