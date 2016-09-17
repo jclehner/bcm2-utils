@@ -9,7 +9,7 @@ All numbers are stored in network byte order (big endian).
 Header
 ------
 
-#### Permnv/dynnv
+### Permnv/dynnv
 
 | Offset | Type        | Name       | Comment            |
 |-------:|-------------|------------|--------------------|
@@ -22,7 +22,7 @@ The value of `size` describes the number of bytes in the `data` section. The che
 calculated using a CRC-32 on `data`.
 
 
-#### GatewaySettings.bin
+### GatewaySettings.bin
 
 | Offset  | Type        | Name       | Comment              |
 |--------:|-------------|------------|----------------------|
@@ -68,7 +68,7 @@ Aside from the header, `GatewaySettings.bin` and permnv/dynnv use the same forma
 configuration data consists of a series of settings groups, each preceeded by a group
 header.
 
-#### Group header
+### Group header
 
 | Offset | Type          | Name       |
 |-------:|---------------|------------|
@@ -82,7 +82,7 @@ settings group's size is thus `8` bytes. The `magic` is often either a human-rea
 (`802T`: Thomson Wi-Fi settings, `CMEV`: CM event log) or a hexspeak `u32` (`0xd0c20130`: DOCSIS 3.0 settings,
 `0xf2a1f61f`: HAL interface settings).
 
-#### Group data
+### Group data
 
 Since the groups contain variable-length values, to interpret a specific variable, the type of all preceeding
 variables must be known. Within the same device, newer group versions will place new variables at the end, but
@@ -98,19 +98,19 @@ bitmask types based on `uN` types are also available.
 ###### Strings
 
 Various methods are used to store strings, with some groups often showing a preference for one kind of encoding.
-The following list shows different encodings for the string `"foo"`.
+The following table shows different encodings for the string `"foo"` (`\x??` means *any* byte):
 
 | Type       | Descrption                                  | `"foo"`                                            |
 | -----------|---------------------------------------------|----------------------------------------------------|
-|`fstring`   | Fixed-width string, with optional NUL byte  | `66:6f:6f` (3), `66:6f:6f:00:??:??` (6)   |
-|`fzstring`  | Fixed-width string, with mandatory NUL byte | `66:6f:6f:00` (4), `66:6f:6f:00:??` (5)   |
-|`zstring`   | NUL-terminated string                       | `66:6f:6f:00`       |
-|`p8string`  | `u8`-prefixed string, with optional NUL byte| `03:66:6f:6f`, `04:66:6f:6f:00`|
-|`p8zstring` | `u8`-prefixed string with mandatory NUL byte| `04:66:6F:6F:00`|
-|`p8istring` | `u8`-prefixed string with optional NUL byte, size includes prefix | `04:66:6f:6f`, `05:66:6f:6f:00`|
-|`p16string` | `u16`-prefixed string, with optional NUL byte | `00:03:66:6f:6f`, `00:04:66:6f:6f:00`|
-|`p16zstring`| `u16`-prefixed string with mandatory NUL byte |`00:04:66:6f:6f:00`|
-|`p16istring`| `u16`-prefixed string with optional NUL byte, size includes prefix | `00:05:66:6f:6f` , `00:06:66:6f:6f:00`|
+|`fstring`   | Fixed-width string, with optional NUL byte  | `foo` (`fstring<3>`), `foo\x00\x??\x??` (`fstring<6>`)|          
+|`fzstring`  | Fixed-width string, with mandatory NUL byte | `foo\x00` (`fzstring<4>`), `foo\x00:??` (`fzstring<5>`)                    |
+|`zstring`   | NUL-terminated string                       | `foo\x00`                                          |
+|`p8string`  | `u8`-prefixed string, with optional NUL byte| `\x03foo`, `\x04foo\x00`                           |
+|`p8zstring` | `u8`-prefixed string with mandatory NUL byte| `\x04foo\x00`                                      |
+|`p8istring` | `u8`-prefixed string with optional NUL byte, size includes prefix | `\x04foo`, `\x05foo\x00`     |
+|`p16string` | `u16`-prefixed string, with optional NUL byte | `\x00\x03foo`, `\x00\x04foo\x00`                 |
+|`p16zstring`| `u16`-prefixed string with mandatory NUL byte |`\x00\x04foo\x00`                                 |
+|`p16istring`| `u16`-prefixed string with optional NUL byte, size includes prefix | `\x00\x05foo` , `\x00\x06foo\x00`|
 
 ###### Lists
 
