@@ -100,7 +100,7 @@ bitmask types based on `uN` types are also available.
 Various methods are used to store strings, with some groups often showing a preference for one kind of encoding.
 The following table shows various string samples (`\x??` means *any* byte, `(N)` means width `N`):
 
-| Type       | Descrption                                  | `""`               | `"foo"`                        |
+| Type       | Description                                 | `""`               | `"foo"`                        |
 | -----------|---------------------------------------------|--------------------|--------------------------------|
 |`fstring`   | Fixed-width string, with optional NUL byte  | `\x00\x00`(2)   |`foo`(3), `foo\x00\x??\x??`(6)|
 |`fzstring`  | Fixed-width string, with mandatory NUL byte | `\x00\x00`(2)   | `foo\x00`(4), `foo\x00:??`(5)|
@@ -114,7 +114,7 @@ The following table shows various string samples (`\x??` means *any* byte, `(N)`
 
 ###### Lists
 
-| Type       | Descrption                                                                     |                           
+| Type       | Description                                                                    |                           
 | -----------|--------------------------------------------------------------------------------|
 | `array`    | Fixed-length array (not fixed *width* though, if strings are involved)         |
 | `pNlist`   | `u8`- or `u16`-prefixed list; prefix contains number of elements in list       |
@@ -140,10 +140,10 @@ Sample encodings for integer arrays/lists:
 
 | Type                   | `{ 0xaaaa, 0, 0xbbbb  }`                   | `{}`                      |          
 |------------------------|--------------------------------------------|---------------------------|
-| array<u16>             | `\xaa\xaa\x00\x00\xbb\xbb`                 | N/A                       |
-| array<u32>             | `\x00\x00\xaa\xaa\x00\x00\x00\x00\xbb\xbb` | N/A                       |
-| p8list<u16>            | `\x03\xaa\xaa\x00\x00\xbb\xbb`             | `\x00`                    |
-| p16list<u16>           | `\x00\x03\xaa\xaa\x00\x00\xbb\xbb`         | `\x00\x00`                |
+| `array<u16>`           | `\xaa\xaa\x00\x00\xbb\xbb`                 | N/A                       |
+| `array<u32>`           | `\x00\x00\xaa\xaa\x00\x00\x00\x00\xbb\xbb` | N/A                       |
+| `p8list<u16>`          | `\x03\xaa\xaa\x00\x00\xbb\xbb`             | `\x00`                    |
+| `p16list<u16>`         | `\x00\x03\xaa\xaa\x00\x00\xbb\xbb`         | `\x00\x00`                |
 
 
 
