@@ -100,17 +100,17 @@ bitmask types based on `uN` types are also available.
 Various methods are used to store strings, with some groups often showing a preference for one kind of encoding.
 The following table shows different encodings for the string `"foo"` (`\x??` means *any* byte):
 
-| Type       | Descrption                                  | `"foo"`                                            |
-| -----------|---------------------------------------------|----------------------------------------------------|
-|`fstring`   | Fixed-width string, with optional NUL byte  | `foo` (`fstring<3>`), `foo\x00\x??\x??` (`fstring<6>`)|          
-|`fzstring`  | Fixed-width string, with mandatory NUL byte | `foo\x00` (`fzstring<4>`), `foo\x00:??` (`fzstring<5>`)                    |
-|`zstring`   | NUL-terminated string                       | `foo\x00`                                          |
-|`p8string`  | `u8`-prefixed string, with optional NUL byte| `\x03foo`, `\x04foo\x00`                           |
-|`p8zstring` | `u8`-prefixed string with mandatory NUL byte| `\x04foo\x00`                                      |
-|`p8istring` | `u8`-prefixed string with optional NUL byte, size includes prefix | `\x04foo`, `\x05foo\x00`     |
-|`p16string` | `u16`-prefixed string, with optional NUL byte | `\x00\x03foo`, `\x00\x04foo\x00`                 |
-|`p16zstring`| `u16`-prefixed string with mandatory NUL byte |`\x00\x04foo\x00`                                 |
-|`p16istring`| `u16`-prefixed string with optional NUL byte, size includes prefix | `\x00\x05foo` , `\x00\x06foo\x00`|
+| Type       | Descrption                                  | `""`               | `"foo"`                        |
+| -----------|---------------------------------------------|--------------------|--------------------------------|
+|`fstring`   | Fixed-width string, with optional NUL byte  | `\x00\x00` (`2`)   |`foo` (`3`), `foo\x00\x??\x??` (`6`)|
+|`fzstring`  | Fixed-width string, with mandatory NUL byte | `\x00\x00` (`2`)   | `foo\x00` (`4`), `foo\x00:??` (`5`)|
+|`zstring`   | NUL-terminated string                       | `\x00`             | `foo\x00`                      |
+|`p8string`  | `u8`-prefixed string, with optional NUL byte| `\x00`             |`\x03foo`, `\x04foo\x00`        |
+|`p8zstring` | `u8`-prefixed string with mandatory NUL byte| `\x00`             | `\x04foo\x00`                  |
+|`p8istring` | `u8`-prefixed string with optional NUL byte, size includes prefix | `\x00` | `\x04foo`, `\x05foo\x00`|
+|`p16string` | `u16`-prefixed string, with optional NUL byte | `\x00\x00`       |`\x00\x03foo`, `\x00\x04foo\x00`|
+|`p16zstring`| `u16`-prefixed string with mandatory NUL byte | `\x00\x00`       |`\x00\x04foo\x00`               |
+|`p16istring`| `u16`-prefixed string with optional NUL byte, size includes prefix |`\x00\x00`| `\x00\x05foo`,`\x00\x06foo\x00`|
 
 ###### Lists
 
