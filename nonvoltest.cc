@@ -74,12 +74,16 @@ int usage(bool help = false)
 	}
 	os << "  get     <infile> [<name>]" << endl;
 	if (help) {
-		os << "\n    Print value of variable <name>. If omitted, dump file contents.\n\n";
+		os << "\n    Print value of variable <name>. If omitted, print file contents.\n\n";
 	}
 	os << "  set     <infile> <name> <value> [<outfile>]" << endl;
 	if (help) {
 		os << "\n    Set value of variable <name> to <value>, optionally writing\n"
 				"    the resulting file to <outfile>.\n\n";
+	}
+	os << "  dump    <infile> [<name>]" << endl;
+	if (help) {
+		os << "\n    Dump raw data of variable <name>. If omitted, dump file contents.\n\n";
 	}
 	os << "  info    <infile>" << endl;
 	if (help) {
@@ -120,7 +124,7 @@ void write_file(const string& filename, const sp<settings>& settings)
 	settings->write(out);
 }
 
-int do_list_or_get(int argc, char** argv, const sp<settings>& settings)
+int do_list_get_dump(int argc, char** argv, const sp<settings>& settings)
 {
 	if (argc != 2 && argc != 3) {
 		return usage(false);
@@ -153,6 +157,15 @@ int do_list_or_get(int argc, char** argv, const sp<settings>& settings)
 				os << (!p.val->is_set() ? "]" : "") << endl;
 			}
 		}
+	} else if (argv[0] == "dump"s) {
+		// don't clobber the output
+		logger::loglevel(max(logger::warn, logger::loglevel()));
+		ostringstream ostr;
+		if (!val->write(ostr)) {
+			throw runtime_error("failed to write data");
+		}
+
+		cout << ostr.str() << flush;
 	} else {
 		return usage(false);
 	}
@@ -312,8 +325,8 @@ int do_main(int argc, char** argv)
 
 	if (cmd == "encrypt" || cmd == "decrypt" || cmd == "fix") {
 		return do_crypt_or_fix(argc, argv, settings, key, password, pad);
-	} else if (cmd == "get" || cmd == "list") {
-		return do_list_or_get(argc, argv, settings);
+	} else if (cmd == "get" || cmd == "list" || cmd == "dump") {
+		return do_list_get_dump(argc, argv, settings);
 	} else if (cmd == "set") {
 		return do_set(argc, argv, settings);
 	}
