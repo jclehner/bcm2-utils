@@ -205,6 +205,10 @@ int do_crypt_or_fix(int argc, char** argv, const sp<settings>& settings,
 	if (argv[0] == "decrypt"s) {
 		s->key("");
 	} else if (argv[0] == "encrypt"s) {
+		if (!s->key().empty()) {
+			throw user_error("file is already encrypted");
+		}
+
 		if (key.empty()) {
 			auto p = settings->profile();
 			if (!p) {
