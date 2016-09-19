@@ -7,7 +7,7 @@
 
 * [bcm2dump](#bcm2dump): A utility to dump ram/flash, primarily intended as a firmware dump tool for cable modems based on a Broadcom SoC. Works over serial connection (bootloader, firmware) and telnet (firmware).
 * [bcm2cfg](#bcm2cfg): A utility to modify/encrypt/decrypt the configuration
-   dump (aka `GatewaySettings.bin`).
+   file (aka `GatewaySettings.bin`), but also NVRAM images.
 
 Fully supported devices:
 
@@ -18,6 +18,8 @@ Fully supported devices:
 Partially supported:
 
 * Thomson TCW770 (`bcm2cfg` only)
+
+Binaries for Linux, OS X and Windows coming soon. `bcm2dump` is not yet available for Windows.
 
 It should be easy to add support for other devices. Some pointers can
 be found [below](#writing-a-device-profile).
@@ -144,14 +146,41 @@ $ bcm2dump dump /dev/ttyUSB0 nvram dynnv+0x200,16k ramdump.bin
 
 ## bcm2cfg
 
-This utility handles the `GatewaySettings.bin` file that is used on some
-devices (e.g. Technicolor TC7200, Thomson TWG850, Thomson TWG870). Given
-a device profile, it can be used to encrypt, decrypt, and verify the
-settings file. Dumping an unencrypted file also works without a device profile.
+This utility can be used to inspect, and modify device configuration data.
+Supported formats are the `GatewaySettings.bin` file, as well as NVRAM
+dumps (`permnv` / `nvram`).
+
+Given a device profile, it can also be used to enrypt, decrypt, verify,
+and fix a `GatewaySettings.bin` file. Dumping an unencrypted file does
+not require a profile.
 
 ##### Usage
 
-Coming soon.
+*Under construction*
+
+```
+Usage: bcm2cfg [<options>] <command> [<arguments> ...]
+
+Options: 
+  -P <profile>     Force profile
+  -p <password>    Encryption password
+  -k <key>         Encryption key (hex string)
+  -f <format>      Input file format (auto/gws/dyn/perm)
+  -q               Decrease verbosity
+  -v               Increase verbosity
+
+Commands: 
+  verify  <infile>
+  fix     <infile> [<outfile>]
+  decrypt <infile> [<outfile>]
+  encrypt <infile> [<outfile>]
+  list    <infile> [<name>]
+  get     <infile> [<name>]
+  set     <infile> <name> <value> [<outfile>]
+  dump    <infile> [<name>]
+  info    <infile>
+  help
+```
 
 
 # Writing a device profile
