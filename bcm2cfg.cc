@@ -116,7 +116,7 @@ sp<settings> read_file(const string& filename, int format, const sp<profile>& pr
 
 void write_file(const string& filename, const sp<settings>& settings)
 {
-	ofstream out(filename);
+	ofstream out(filename, ios::binary);
 	if (!out.good()) {
 		throw user_error("failed to open " + filename + " for writing");
 	}
