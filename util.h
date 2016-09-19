@@ -40,6 +40,9 @@
 #ifdef _WIN32
 #define USE_WS_PREFIX
 #include <windows.h>
+// are you serious?
+#undef max
+#undef min
 #endif
 
 namespace bcm2dump {
