@@ -47,12 +47,8 @@ class crypt_context
 		BOOL ok = CryptAcquireContext(
 				&handle,
 				nullptr,
-#ifdef __WINE__
-				nullptr,
-#else
 				MS_ENH_RSA_AES_PROV,
-#endif
-				PROV_RSA_FULL,
+				PROV_RSA_AES,
 				CRYPT_VERIFYCONTEXT);
 
 		if (!ok) {
