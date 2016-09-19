@@ -35,7 +35,6 @@
 #include <ios>
 
 #ifdef _WIN32
-#define USE_WS_PREFIX
 #include <winsock2.h>
 #include <windows.h>
 #include <ws2def.h>
