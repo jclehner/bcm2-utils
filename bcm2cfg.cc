@@ -106,7 +106,7 @@ int usage(bool help = false)
 sp<settings> read_file(const string& filename, int format, const sp<profile>& profile,
 		const string& key, const string& pw)
 {
-	ifstream in(filename);
+	ifstream in(filename, ios::binary);
 	if (!in.good()) {
 		throw user_error("failed to open " + filename + " for reading");
 	}
