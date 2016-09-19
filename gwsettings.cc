@@ -365,19 +365,23 @@ class gwsettings : public encrypted_settings
 
 	bool decrypt_and_detect_profile(string& buf)
 	{
-		if (!m_key.empty()) {
-			return decrypt(buf, m_key);
+		if (!m_key.empty() && decrypt(buf, m_key)) {
+			return true;
 		} else if (profile()) {
 			if (!m_pw.empty()) {
 				m_key = profile()->derive_key(m_pw);
-				return decrypt(buf, m_key);
-			}
-			return decrypt_with_profile(buf, profile());
-		} else {
-			for (auto p : profile::list()) {
-				if (decrypt_with_profile(buf, p)) {
+				if (decrypt(buf, m_key)) {
+					m_pw = "";
 					return true;
 				}
+			}
+
+			return decrypt_with_profile(buf, profile());
+		}
+
+		for (auto p : profile::list()) {
+			if (decrypt_with_profile(buf, p)) {
+				return true;
 			}
 		}
 
