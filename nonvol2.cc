@@ -784,11 +784,15 @@ nv_val::list nv_group::definition(int format, const nv_version& ver) const
 	return {};
 }
 
-map<nv_magic, csp<nv_group>> nv_group::s_registry;
-
 void nv_group::registry_add(const csp<nv_group>& group)
 {
-	s_registry[group->m_magic] = group;
+	registry()[group->m_magic] = group;
+}
+
+map<nv_magic, csp<nv_group>>& nv_group::registry()
+{
+	static map<nv_magic, csp<nv_group>> ret;
+	return ret;
 }
 
 istream& nv_group::read(istream& is, sp<nv_group>& group, int format, size_t maxsize)
@@ -805,8 +809,8 @@ istream& nv_group::read(istream& is, sp<nv_group>& group, int format, size_t max
 		//return is;
 	}
 
-	auto i = s_registry.find(magic);
-	if (i == s_registry.end()) {
+	auto i = registry().find(magic);
+	if (i == registry().end()) {
 		string name = magic.to_pretty();
 		name = transform(name.substr(0, name.find('.')), ::tolower);
 		group = make_shared<nv_group_generic>(magic, "grp_" + name);
