@@ -129,9 +129,9 @@ class permdyn : public settings
 				a = ntoh(extract<uint32_t>(m_footer.substr(m_footer.size() - 8, 4)));
 				b = ntoh(extract<uint32_t>(m_footer.substr(m_footer.size() - 4, 4)));
 
-				if (a == 0x00005544 && b == 0xfffffffe) {
+				if (a == 0x5544 && b == 0xfffffffe) {
 					m_format = nv_group::fmt_perm;
-				} else if (a == 0x00010000 && b == 0xfffffffe) {
+				} else if ((a == 0x10000 && b == 0xfffffffe) || (a == 0x8000 && b == 0xfffffffc)) {
 					m_format = nv_group::fmt_dyn;
 				} else {
 					logger::d() << "a=0x" << to_hex(a) << ", b=0x" << to_hex(b) << endl;
