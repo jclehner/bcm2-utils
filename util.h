@@ -20,15 +20,12 @@
 #ifndef BCM2UTILS_UTIL_H
 #define BCM2UTILS_UTIL_H
 #include <type_traits>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <sys/types.h>
+#include <system_error>
 #include <functional>
 #include <stdexcept>
 #include <typeinfo>
 #include <iostream>
 #include <iomanip>
-#include <netdb.h>
 #include <fstream>
 #include <sstream>
 #include <memory>
@@ -39,10 +36,17 @@
 
 #ifdef _WIN32
 #define USE_WS_PREFIX
+#include <winsock2.h>
 #include <windows.h>
+#include <ws2def.h>
 // are you serious?
 #undef max
 #undef min
+#else
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netdb.h>
 #endif
 
 namespace bcm2dump {

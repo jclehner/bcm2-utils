@@ -19,7 +19,6 @@
 
 #ifndef BCM2CFG_NONVOL_H
 #define BCM2CFG_NONVOL_H
-#include <arpa/inet.h>
 #include <type_traits>
 #include <iostream>
 #include <limits>
@@ -411,16 +410,33 @@ template<int N> class nv_ip : public nv_data
 
 	std::string to_string(unsigned level, bool pretty) const override
 	{
+#ifndef _WIN32
 		char buf[32];
-		if (!inet_ntop(AF, m_buf.data(), buf, sizeof(buf)-1)) {
-			return nv_data::to_string(level, pretty);
+		if (inet_ntop(AF, m_buf.data(), buf, sizeof(buf)-1)) {
+			return buf;
 		}
-		return buf;
+#else
+		// FIXME
+		if (AF == AF_INET) {
+			in_addr addr;
+			addr.s_addr = *reinterpret_cast<const uint32_t*>(m_buf.data());
+			char* buf = inet_ntoa(addr);
+			if (buf) {
+				return buf;
+			}
+		}
+#endif
+		return nv_data::to_string(level, pretty);
 	}
 
 	bool parse(const std::string& str) override
 	{
+#ifndef _WIN32
 		return inet_pton(AF, str.c_str(), &m_buf[0]) == 1;
+#else
+		// FIXME
+		return false;
+#endif
 	}
 };
 

@@ -17,7 +17,6 @@
  *
  */
 
-#include <netdb.h>
 #include "profile.h"
 #include "util.h"
 using namespace std;
@@ -204,7 +203,11 @@ ostream& logger::log(int severity)
 
 string getaddrinfo_category::message(int condition) const
 {
+#ifndef _WIN32
 	return gai_strerror(condition);
+#else
+	return to_string(condition);
+#endif
 }
 
 #ifdef _WIN32
