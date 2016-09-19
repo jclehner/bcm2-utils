@@ -32,6 +32,7 @@ string read_stream(istream& is)
 	return string(std::istreambuf_iterator<char>(is), {});
 }
 
+
 string group_header_to_string(const string& type, const string& checksum, bool is_chksum_valid, size_t size, bool is_size_valid,
 		const string& key, bool is_encrypted, const string& profile, bool is_auto_profile)
 {
@@ -44,7 +45,7 @@ string group_header_to_string(const string& type, const string& checksum, bool i
 		ostr << profile << (is_auto_profile ? "" : " (forced)") << endl;
 	}
 	ostr << "checksum: " << checksum;
-	if (!profile.empty()) {
+	if (!profile.empty() || type != "gwsettings") {
 		ostr << " " << (is_chksum_valid ? "(ok)" : "(bad)") << endl;
 	} else {
 		ostr << endl;
@@ -97,16 +98,17 @@ class permdyn : public settings
 
 		m_magic_valid = true;
 
-		string buf = read_stream(is).substr(0, m_size.num() + 16);
-		uint32_t crc = crc32(buf);
+		string buf = read_stream(is);
 
-		if (crc == m_checksum.num()) {
-			logger::v() << "checksum ok: " << to_hex(crc) << endl;
-		} else {
-			logger::v() << "checksum mismatch: " << to_hex(crc) << " / " << to_hex(m_checksum.num()) << endl;
+		// minus 8, since m_size includes itself (4 bytes) plus the checksum (also 4 bytes)
+		uint32_t checksum = calc_checksum(buf.substr(0, m_size.num() - 8));
+		m_checksum_valid = checksum == m_checksum.num();
+
+		if (!m_checksum_valid) {
+			logger::v() << type() << ": checksum mismatch: " << to_hex(checksum) << " / " << to_hex(m_checksum.num()) << endl;
 		}
 
-		istringstream istr(buf);
+		istringstream istr(buf.substr(0, m_size.num()));
 		settings::read(istr);
 
 		return is;
@@ -122,7 +124,7 @@ class permdyn : public settings
 			throw runtime_error("failed to write magic");
 		}
 
-		if (!nv_u32::write(os, 8 + buf.size()) || !nv_u32::write(os, crc32(buf))) {
+		if (!nv_u32::write(os, 8 + buf.size()) || !nv_u32::write(os, calc_checksum(buf))) {
 			throw runtime_error("failed to write header");
 		}
 
@@ -140,10 +142,35 @@ class permdyn : public settings
 	}
 
 	private:
-	static uint32_t crc32(const string& buf)
+	static uint32_t calc_checksum(const string& buf)
 	{
-		boost::crc_32_type crc;
-		return for_each(buf.begin(), buf.end(), crc)();// ^ 0xffffffff;
+		uint32_t remaining = buf.size();
+		// the checksum is calculated from the header (u32 size, u32 checksum), with
+		// the checksum part set to 0, followed by the data buffer. setting the initial
+		// sum to buf.size() + 8 (since buf does NOT contain the header) has the same effect.
+		uint32_t sum = buf.size() + 8;
+
+		while (remaining >= 4) {
+			sum += ntoh(extract<uint32_t>(buf.substr(buf.size() - remaining, 4)));
+			remaining -= 4;
+		}
+
+		uint16_t half = 0;
+
+		if (remaining >= 2) {
+			half = ntoh(extract<uint16_t>(buf.substr(buf.size() - remaining, 2)));
+			remaining -= 2;
+		}
+
+		uint8_t byte = 0;
+
+		if (remaining) {
+			byte = extract<uint8_t>(buf.substr(buf.size() - remaining, 1));
+		}
+
+		sum += ((byte | (half << 8)) << 8);
+
+		return ~sum;
 	}
 
 	nv_u32 m_size;
