@@ -24,6 +24,7 @@
 #include "nonvol.h"
 using namespace std;
 using namespace bcm2dump;
+using namespace bcm2utils;
 
 namespace bcm2cfg {
 namespace {
@@ -349,18 +350,7 @@ class gwsettings : public encryptable_settings
 
 	static string calc_checksum(const string& buf, const csp<bcm2dump::profile>& p)
 	{
-		MD5_CTX c;
-		MD5_Init(&c);
-		MD5_Update(&c, buf.data(), buf.size());
-
-		string key = p ? p->md5_key() : "";
-		if (!key.empty()) {
-			MD5_Update(&c, key.data(), key.size());
-		}
-
-		string md5(16, '\0');
-		MD5_Final(reinterpret_cast<unsigned char*>(&md5[0]), &c);
-		return md5;
+		return hash_md5_keyed(buf, p ? p->md5_key() : "");
 	}
 
 	bool decrypt_and_detect_profile(string& buf)
@@ -410,43 +400,11 @@ class gwsettings : public encryptable_settings
 
 	static std::string crypt(string ibuf, const string& key, bool decrypt, bool pad = false)
 	{
-		auto k = reinterpret_cast<const unsigned char*>(key.data());
-		AES_KEY aes;
-
-		if (decrypt) {
-			AES_set_decrypt_key(k, 256, &aes);
-		} else {
-			AES_set_encrypt_key(k, 256, &aes);
-
-			if (pad) {
-				ibuf += string(16, '\0');
-			}
+		if (pad) {
+			ibuf += string(16, '\0');
 		}
 
-		string obuf(ibuf.size(), '\0');
-
-		auto remaining = ibuf.size();
-		// this is legal in C++11... ugly, but legal!
-		auto iblock = reinterpret_cast<unsigned char*>(&ibuf[0]);
-		auto oblock = reinterpret_cast<unsigned char*>(&obuf[0]);
-
-		while (remaining >= 16) {
-			if (decrypt) {
-				AES_decrypt(iblock, oblock, &aes);
-			} else {
-				AES_encrypt(iblock, oblock, &aes);
-			}
-
-			remaining -= 16;
-			iblock += 16;
-			oblock += 16;
-		}
-
-		if (remaining) {
-			memcpy(oblock, iblock, remaining);
-		}
-
-		return obuf;
+		return crypt_aes_256_ecb(ibuf, key, !decrypt);
 	}
 
 	bool m_is_auto_profile = false;
@@ -462,6 +420,7 @@ class gwsettings : public encryptable_settings
 
 	static const string s_magic;
 };
+
 const string gwsettings::s_magic = "6u9E9eWF0bt9Y8Rw690Le4669JYe4d-056T9p4ijm4EA6u9ee659jn9E-54e4j6rPj069K-670";
 }
 
