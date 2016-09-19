@@ -369,7 +369,7 @@ istream& nv_compound::read(istream& is)
 				}
 			}
 		} catch (const exception& e) {
-			throw runtime_error("failed at pos " + std::to_string(m_bytes) + " while reading " + desc(v) + ":\n" + e.what());
+			throw runtime_error("error at pos " + std::to_string(m_bytes) + " while reading " + desc(v) + ":\n" + e.what());
 		}
 	}
 
@@ -695,12 +695,35 @@ istream& nv_group::read(istream& is)
 
 	logger::t() << "** " << m_magic.to_str() << " " << m_magic.to_pretty() << " " << m_size.num() << " b, version 0x" << to_hex(m_version.num()) << endl;
 
-	if (nv_compound::read(is)) {
+	string buf(m_size.num() - (is_versioned() ? 8 : 6), '\x00');
+	if (!is.read(&buf[0], buf.size())) {
+		throw runtime_error("failed to read group data");
+	}
+
+	istringstream istr(buf);
+	try {
+		nv_compound::read(istr);
+	} catch (const exception& e) {
+		if (m_format == fmt_unknown) {
+			throw e;
+		}
+
+		logger::w() << "failed to parse group " << name() << endl;
+		logger::d() << e.what() << endl;
+		m_format = fmt_unknown;
+
+		istr.clear();
+		istr.str(buf);
+
+		return nv_compound::read(istr);
+	}
+
+	if (istr) {
 		//m_bytes += is_versioned() ? 8 : 6;
 
 		if (m_bytes < m_size.num()) {
 			sp<nv_val> extra = make_shared<nv_data>(m_size.num() - m_bytes);
-			if (!extra->read(is)) {
+			if (!extra->read(istr)) {
 				throw runtime_error("failed to read remaining " + std::to_string(extra->bytes()) + " bytes");
 			}
 
@@ -710,7 +733,7 @@ istream& nv_group::read(istream& is)
 			m_bytes += extra->bytes();
 		}
 	} else {
-		if (is.eof()) {
+		if (istr.eof()) {
 			throw runtime_error(type() + ": expected " + ::to_string(m_size.num() - m_bytes) + "b, got end-of-file");
 		}
 
