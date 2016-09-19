@@ -61,6 +61,10 @@ class nv_group_mlog : public nv_group
 	protected:
 	virtual list definition(int type, const nv_version& ver) const override
 	{
+		if (type == type_perm) {
+			return nv_group::definition(type, ver);
+		}
+
 		typedef nv_bitmask<nv_u8> nv_ipstacks;
 
 		return {
@@ -215,6 +219,10 @@ class nv_group_8021 : public nv_group
 
 	virtual list definition(int type, const nv_version& ver) const override
 	{
+		if (type == type_perm) {
+			return nv_group::definition(type, ver);
+		}
+
 		// known versions
 		// 0x0015: TWG850
 		// 0x001d: TWG870
@@ -449,6 +457,10 @@ class nv_group_t802 : public nv_group
 	protected:
 	virtual list definition(int type, const nv_version& ver) const override
 	{
+		if (type == type_perm) {
+			return nv_group::definition(type, ver);
+		}
+
 		return {
 			NV_VAR(nv_data, "wifi_sleep", 14),
 			NV_VAR(nv_fzstring<33>, "ssid_24"),
