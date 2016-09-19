@@ -172,7 +172,7 @@ void test_string_types()
 	struct test {
 		std::string data;
 		std::string str;
-		sp<nv_string_base> val;
+		sp<nv_string> val;
 		size_t bytes = string::npos;
 		bool strict = true;
 	} tests[] = {

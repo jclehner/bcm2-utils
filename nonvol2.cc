@@ -154,9 +154,9 @@ size_t compound_size(const nv_compound& c)
 
 size_t str_prefix_max(int flags)
 {
-	if (flags & nv_string_base::flag_prefix_u8) {
+	if (flags & nv_string::flag_prefix_u8) {
 		return 0xff;
-	} else if (flags & nv_string_base::flag_prefix_u16) {
+	} else if (flags & nv_string::flag_prefix_u16) {
 		return 0xffff;
 	}
 
@@ -165,9 +165,9 @@ size_t str_prefix_max(int flags)
 
 size_t str_prefix_bytes(int flags)
 {
-	if (flags & nv_string_base::flag_prefix_u8) {
+	if (flags & nv_string::flag_prefix_u8) {
 		return 1;
-	} else if (flags & nv_string_base::flag_prefix_u16) {
+	} else if (flags & nv_string::flag_prefix_u16) {
 		return 2;
 	}
 
@@ -176,7 +176,7 @@ size_t str_prefix_bytes(int flags)
 
 size_t str_extra_bytes(int flags)
 {
-	return flags & nv_string_base::flag_require_nul ? 1 : 0;
+	return flags & nv_string::flag_require_nul ? 1 : 0;
 }
 
 size_t str_max_length(int flags, size_t width)
@@ -186,7 +186,7 @@ size_t str_max_length(int flags, size_t width)
 	}
 
 	size_t max = str_prefix_max(flags);
-	if (flags & nv_string_base::flag_size_includes_prefix) {
+	if (flags & nv_string::flag_size_includes_prefix) {
 		max -= str_prefix_bytes(flags);
 	}
 
@@ -474,11 +474,11 @@ bool nv_mac::parse(const string& str)
 	return false;
 }
 
-nv_string_base::nv_string_base(int flags, size_t width)
+nv_string::nv_string(int flags, size_t width)
 : m_flags(flags | ((width && !str_prefix_bytes(flags)) ? flag_fixed_width : 0)), m_width(width)
 {}
 
-string nv_string_base::type() const
+string nv_string::type() const
 {
 	string ret;
 
@@ -511,7 +511,7 @@ string nv_string_base::type() const
 	return ret;
 }
 
-string nv_string_base::to_string(unsigned level, bool pretty) const
+string nv_string::to_string(unsigned level, bool pretty) const
 {
 	if (m_flags & flag_is_data) {
 		return data_to_string(m_val, level, pretty);
@@ -527,7 +527,7 @@ string nv_string_base::to_string(unsigned level, bool pretty) const
 	}
 }
 
-bool nv_string_base::parse(const string& str)
+bool nv_string::parse(const string& str)
 {
 	if (str.size() > str_max_length(m_flags, m_width)) {
 		return false;
@@ -538,7 +538,7 @@ bool nv_string_base::parse(const string& str)
 	return true;
 }
 
-istream& nv_string_base::read(istream& is)
+istream& nv_string::read(istream& is)
 {
 	string val;
 	size_t size = (m_flags & flag_fixed_width) ? m_width : 0;
@@ -584,7 +584,7 @@ istream& nv_string_base::read(istream& is)
 	return is;
 }
 
-ostream& nv_string_base::write(ostream& os) const
+ostream& nv_string::write(ostream& os) const
 {
 	string val = m_val;
 	if ((m_flags & flag_fixed_width) && val.size() < m_width) {
@@ -608,7 +608,7 @@ ostream& nv_string_base::write(ostream& os) const
 	return os;
 }
 
-size_t nv_string_base::bytes() const
+size_t nv_string::bytes() const
 {
 	if (m_flags & flag_fixed_width) {
 		return m_width;

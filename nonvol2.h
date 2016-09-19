@@ -435,7 +435,7 @@ class nv_mac : public nv_data
 	virtual bool parse(const std::string& str) override;
 };
 
-class nv_string_base : public nv_val
+class nv_string : public nv_val
 {
 	public:
 	static constexpr int flag_require_nul = 1;
@@ -457,7 +457,7 @@ class nv_string_base : public nv_val
 	virtual size_t bytes() const override;
 
 	protected:
-	nv_string_base(int flags, size_t width);
+	nv_string(int flags, size_t width);
 
 	private:
 	int m_flags;
@@ -468,42 +468,42 @@ class nv_string_base : public nv_val
 };
 
 namespace detail {
-template<int FLAGS, size_t WIDTH = 0> class nv_string_tmpl : public nv_string_base
+template<int FLAGS, size_t WIDTH = 0> class nv_string_tmpl : public nv_string
 {
 	public:
-	nv_string_tmpl(size_t width = WIDTH) : nv_string_base(FLAGS, width) {}
+	nv_string_tmpl(size_t width = WIDTH) : nv_string(FLAGS, width) {}
 };
 }
 
 // a fixed-width string, with optional NUL byte (with width 6, "foo" is 66:6f:6f:00:XX:XX, with width 3 it's 66:6f:6f)
-template<size_t WIDTH> using nv_fstring = detail::nv_string_tmpl<nv_string_base::flag_optional_nul, WIDTH>;
+template<size_t WIDTH> using nv_fstring = detail::nv_string_tmpl<nv_string::flag_optional_nul, WIDTH>;
 
 // a fixed-width string, with mandatory NUL byte (maximum length is thus WIDTH - 1)
-template<size_t WIDTH> using nv_fzstring = detail::nv_string_tmpl<nv_string_base::flag_require_nul, WIDTH>;
+template<size_t WIDTH> using nv_fzstring = detail::nv_string_tmpl<nv_string::flag_require_nul, WIDTH>;
 
 // standard C string
-typedef detail::nv_string_tmpl<nv_string_base::flag_require_nul> nv_zstring;
+typedef detail::nv_string_tmpl<nv_string::flag_require_nul> nv_zstring;
 
 // u8-prefixed string (u8) with optional NUL terminator ("foo" is 04:66:6f:00 or 03:66:6f:6f)
-typedef detail::nv_string_tmpl<nv_string_base::flag_optional_nul | nv_string_base::flag_prefix_u8> nv_p8string;
+typedef detail::nv_string_tmpl<nv_string::flag_optional_nul | nv_string::flag_prefix_u8> nv_p8string;
 
 // u8-prefixed string (u8) where the length includes the prefix itself ( "foo" is 04:66:6f:6f)
-typedef detail::nv_string_tmpl<nv_string_base::flag_size_includes_prefix | nv_string_base::flag_prefix_u8> nv_p8istring;
+typedef detail::nv_string_tmpl<nv_string::flag_size_includes_prefix | nv_string::flag_prefix_u8> nv_p8istring;
 
 // u8-prefixed string with mandatory NUL byte ("foo" is 04:66:6f:6f:00)
-typedef detail::nv_string_tmpl<nv_string_base::flag_require_nul | nv_string_base::flag_prefix_u8> nv_p8zstring;
+typedef detail::nv_string_tmpl<nv_string::flag_require_nul | nv_string::flag_prefix_u8> nv_p8zstring;
 
 // u8-prefixed string that is to be interpreted as data
-typedef detail::nv_string_tmpl<nv_string_base::flag_is_data | nv_string_base::flag_prefix_u8> nv_p8data;
+typedef detail::nv_string_tmpl<nv_string::flag_is_data | nv_string::flag_prefix_u8> nv_p8data;
 
 // u16-prefixed string with optional NUL terminator ("foo" is 00:04:66:6f:00 or 00:03:66:6f:6f)
-typedef detail::nv_string_tmpl<nv_string_base::flag_optional_nul | nv_string_base::flag_prefix_u16> nv_p16string;
+typedef detail::nv_string_tmpl<nv_string::flag_optional_nul | nv_string::flag_prefix_u16> nv_p16string;
 
 // u16-prefixed string (u8) where the length includes the prefix itself ( "foo" is 00:05:66:6f:6f)
-typedef detail::nv_string_tmpl<nv_string_base::flag_size_includes_prefix | nv_string_base::flag_prefix_u16> nv_p16istring;
+typedef detail::nv_string_tmpl<nv_string::flag_size_includes_prefix | nv_string::flag_prefix_u16> nv_p16istring;
 
 // u16-prefixed string with mandatory NUL byte ("foo" is 00:04:66:6f:6f:00)
-typedef detail::nv_string_tmpl<nv_string_base::flag_require_nul | nv_string_base::flag_prefix_u16> nv_p16zstring;
+typedef detail::nv_string_tmpl<nv_string::flag_require_nul | nv_string::flag_prefix_u16> nv_p16zstring;
 
 template<class T, class H,
 		T MIN = std::numeric_limits<T>::min(),
