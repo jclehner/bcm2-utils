@@ -494,7 +494,7 @@ istream& settings::read(istream& is)
 }
 
 
-sp<settings> settings::read(istream& is, int type, const csp<bcm2dump::profile>& p, const string& key, const string& pw)
+sp<settings> settings::read(istream& is, int format, const csp<bcm2dump::profile>& p, const string& key, const string& pw)
 {
 	string start(16, '\0');
 	if (!is.read(&start[0], start.size())) {
@@ -502,13 +502,12 @@ sp<settings> settings::read(istream& is, int type, const csp<bcm2dump::profile>&
 	}
 
 	sp<settings> ret;
-	if (start == string(16, '\xff')) {
-		ret = sp<permdyn>(new permdyn(type, p));
+	if (start == string(16, '\xff') && format != nv_group::fmt_gws) {
+		ret = sp<permdyn>(new permdyn(format, p));
 	}
 
 	if (!ret) {
 		// if this is in fact a gwsettings type file, then start already contains the checksum
-		//ret = make_shared<gwsettings>(start, p);
 		ret = sp<gwsettings>(new gwsettings(start, p, key, pw));
 	}
 
