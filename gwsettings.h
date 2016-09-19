@@ -69,7 +69,7 @@ class settings : public nv_compound
 	list m_groups;
 };
 
-class encrypted_settings : public settings
+class encryptable_settings : public settings
 {
 	public:
 	virtual void key(const std::string& key) = 0;

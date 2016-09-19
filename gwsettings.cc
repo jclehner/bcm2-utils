@@ -219,12 +219,12 @@ class permdyn : public settings
 	bool m_magic_valid = false;
 };
 
-class gwsettings : public encrypted_settings
+class gwsettings : public encryptable_settings
 {
 	public:
 	gwsettings(const string& checksum, const csp<bcm2dump::profile>& p,
 			const string& key, const string& pw)
-	: encrypted_settings("gwsettings", nv_group::fmt_gws, p),
+	: encryptable_settings("gwsettings", nv_group::fmt_gws, p),
 	  m_checksum(checksum), m_key(key), m_pw(pw) {}
 
 	virtual size_t bytes() const override

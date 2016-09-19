@@ -192,9 +192,9 @@ int do_crypt_or_fix(int argc, char** argv, const sp<settings>& settings,
 		return usage(false);
 	}
 
-	sp<encrypted_settings> s = dynamic_pointer_cast<encrypted_settings>(settings);
+	sp<encryptable_settings> s = dynamic_pointer_cast<encryptable_settings>(settings);
 	if (!s) {
-		throw user_error(settings->name() + " does not support encryption");
+		throw user_error("file format does not support encryption");
 	}
 
 	// never remove padding
