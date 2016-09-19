@@ -337,7 +337,7 @@ istream& nv_compound::read(istream& is)
 		} else if (!is_valid_identifier(v.name)) {
 			throw runtime_error("invalid identifier name " + v.name);
 		} else if (v.val->is_disabled()) {
-			logger::d() << "skipping disabled " << desc(v) << endl;
+			logger::t() << "skipping disabled " << desc(v) << endl;
 			continue;
 		}
 
@@ -346,7 +346,7 @@ istream& nv_compound::read(istream& is)
 				if (!m_partial) {
 					throw runtime_error("pos " + ::to_string(m_bytes) + ": failed to read " + desc(v));
 				} else {
-					logger::d() << "pos " << m_bytes << ": stopped parsing at " << desc(v) << ", stream=" << !!is
+					logger::t() << "pos " << m_bytes << ": stopped parsing at " << desc(v) << ", stream=" << !!is
 							<< " width=" << m_width << " bytes=" << m_bytes << " val=" << v.val->bytes() << " bytes" << endl;
 					m_set = true;
 				}
@@ -356,11 +356,11 @@ istream& nv_compound::read(istream& is)
 				// check again, because a successful read may have changed the
 				// byte count (e.g. an nv_pstring)
 				if ((m_width && m_bytes + v.val->bytes() > m_width)) {
-					logger::d() << v.val->bytes() << endl;
+					logger::t() << v.val->bytes() << endl;
 					throw runtime_error("pos " + ::to_string(m_bytes) + ": variable ends outside of group: " + desc(v) +
 							" b=" + ::to_string(m_bytes) + "+" + ::to_string(v.val->bytes()) + ", w=" + ::to_string(m_width));
 				}
-				logger::d() << "pos " << m_bytes  << ": " + desc(v) << " = " << v.val->to_pretty() << " (" << v.val->bytes() << " b)"<< endl;
+				logger::t() << "pos " << m_bytes  << ": " + desc(v) << " = " << v.val->to_pretty() << " (" << v.val->bytes() << " b)"<< endl;
 				m_bytes += v.val->bytes();
 				m_set = true;
 
@@ -385,23 +385,23 @@ ostream& nv_compound::write(ostream& os) const
 	size_t pos = 0;
 
 	for (auto v : parts()) {
-		logger::d() << "pos " << pos << ": ";
+		logger::t() << "pos " << pos << ": ";
 		if (v.val->is_disabled()) {
-			logger::d() << v.name << " (disabled)" << endl;
+			logger::t() << v.name << " (disabled)" << endl;
 			continue;
 		} else if (!v.val->is_set()) {
 			if (m_partial) {
-				logger::d() << v.name << " (unset)" << endl;
+				logger::t() << v.name << " (unset)" << endl;
 				continue;
 			}
-			logger::d() << "writing unset " << name() << "." << v.name << endl;
+			logger::t() << "writing unset " << name() << "." << v.name << endl;
 		}
 
 		if (!v.val->write(os)) {
 			throw runtime_error("failed to write " + desc(v));
 		}
 
-		logger::d() << desc(v) << " = " << v.val->to_pretty() << endl;
+		logger::t() << desc(v) << " = " << v.val->to_pretty() << endl;
 		pos += v.val->bytes();
 	}
 
@@ -693,7 +693,7 @@ istream& nv_group::read(istream& is)
 		throw runtime_error("failed to read group version");
 	}
 
-	logger::d() << "** " << m_magic.to_str() << " " << m_magic.to_pretty() << " " << m_size.num() << " b, version 0x" << to_hex(m_version.num()) << endl;
+	logger::t() << "** " << m_magic.to_str() << " " << m_magic.to_pretty() << " " << m_size.num() << " b, version 0x" << to_hex(m_version.num()) << endl;
 
 	if (nv_compound::read(is)) {
 		//m_bytes += is_versioned() ? 8 : 6;
@@ -704,9 +704,9 @@ istream& nv_group::read(istream& is)
 				throw runtime_error("failed to read remaining " + std::to_string(extra->bytes()) + " bytes");
 			}
 
-			logger::d() << "  read " << m_bytes << " b , group size is " << m_size.num() << "; extra data size is " << extra->bytes() << "b" << endl;
+			logger::t() << "  read " << m_bytes << " b , group size is " << m_size.num() << "; extra data size is " << extra->bytes() << "b" << endl;
 			m_parts.push_back(named("extra", extra));
-			logger::d() << extra->to_pretty() << endl;
+			logger::t() << extra->to_pretty() << endl;
 			m_bytes += extra->bytes();
 		}
 	} else {
