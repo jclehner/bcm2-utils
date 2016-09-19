@@ -174,7 +174,7 @@ string crypt_aes_256_ecb(const string& ibuf, const string& key, bool encrypt)
 #elif defined(BCM2UTILS_USE_WINCRYPT)
 	crypt_context ctx;
 
-	// who devised this API???
+	// THIS API IS LUDICROUS!!!
 
 	struct {
 		BLOBHEADER hdr;
@@ -208,22 +208,24 @@ string crypt_aes_256_ecb(const string& ibuf, const string& key, bool encrypt)
 		throw winapi_error("CryptSetKeyParam");
 	}
 
+	DWORD len = align_left(ibuf.size(), 16);
 	string obuf = ibuf;
-	DWORD ibuf_len = align_left(ibuf.size(), 16);
-	DWORD obuf_len = ibuf_len + 2 * aes.key_size;
+
+	// since we want to avoid wincrypt's padding, pass FALSE to both
+	// crypt functions, even though it's technically the final (and only) block
 
 	BOOL ok;
 	if (encrypt) {
-		ok = CryptEncrypt(hkey, 0, TRUE, 0, reinterpret_cast<unsigned char*>(&obuf[0]), &obuf_len, ibuf_len);
+		ok = CryptEncrypt(hkey, 0, FALSE, 0, reinterpret_cast<unsigned char*>(&obuf[0]), &len, len);
 	} else {
-		ok = CryptDecrypt(hkey, 0, TRUE, 0, reinterpret_cast<unsigned char*>(&obuf[0]), &obuf_len);
+		ok = CryptDecrypt(hkey, 0, FALSE, 0, reinterpret_cast<unsigned char*>(&obuf[0]), &len);
 	}
 
 	if (!ok) {
 		throw winapi_error(encrypt ? "CryptEncrypt" : "CryptDecrypt");
 	}
 
-	return obuf;
+	return obuf + (len < ibuf.size() ? ibuf.substr(len) : "");
 #else
 	throw runtime_error("encryption not supported on this platform");
 #endif
