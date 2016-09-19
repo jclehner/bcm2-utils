@@ -266,7 +266,7 @@ class nv_group_8021 : public nv_group
 			return {
 				NV_VAR(nv_zstring, "ssid", 33),
 				NV_VAR(nv_u8, "", true),
-				NV_VAR(nv_u8, "channel_b"),
+				NV_VAR(nv_u8, "b_channel"),
 				NV_VAR(nv_u8, "", true),
 				// 0x0f = all
 				NV_VAR(nv_u8, "basic_rates", true), // XXX u16?
@@ -297,7 +297,7 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_u8, "short_retry_limit"),
 				NV_VAR(nv_u8, "long_retry_limit"),
 				NV_VAR(nv_u8, "", true),
-				NV_VAR(nv_u8, "channel_a"),
+				NV_VAR(nv_u8, "a_channel"),
 				// 1 = auto, 4 = performance, 5 = lrs
 				NV_VAR2(nv_enum<nv_u8>, "g_mode", "g_mode", { "b", "auto", "g", "", "", "performance", "lrs" }),
 				NV_VAR(nv_bool, "radio_enabled"),
@@ -331,44 +331,41 @@ class nv_group_8021 : public nv_group
 				// nv_i32(?) wmm_vlan_mode: -1 = auto, 0 = off, 1 = on
 				NV_VAR(nv_data, "", 4),
 				NV_VARN(nv_wmm, "wmm"),
-				NV_VARN3(ver.num() > 0x0015, nv_compound_def, "n", "n", {
-					NV_VAR2(nv_enum<nv_u8>, "band", "band", { "", "2.4Ghz", "5Ghz" }),
-					NV_VAR(nv_u8, "control_channel"),
-					NV_VAR2(nv_enum<nv_u8>, "mode", "off_auto", offauto), // 0 = off, 1 = auto
-					NV_VAR2(nv_enum<nv_u8>, "bandwidth", "n_bandwidth", nv_enum<nv_u8>::valmap {
-						{ 10, "10MHz" },
-						{ 20, "20MHz" },
-						{ 40, "40MHz" }
-					}),
-					NV_VAR2(nv_enum<nv_i8>, "sideband", "sideband", nv_enum<nv_i8>::valmap {
-						{ -1, "lower" },
-						{ 0, "none" },
-						{ 1, "upper"}
-					}),
-					NV_VAR2(nv_enum<nv_i8>, "rate", "n_rate", nv_enum<nv_i8>::valmap {
-							{ -2, "legacy" },
-							{ -1, "auto" },
-							{ 0, "0" },
-							{ 1, "1" },
-							{ 2, "2" },
-							{ 3, "3" },
-							{ 4, "4" },
-							{ 5, "5" },
-							{ 6, "6" },
-							{ 7, "7" },
-							{ 8, "8" },
-							{ 9, "9" },
-							{ 10, "10" },
-							{ 11, "11" },
-							{ 12, "12" },
-							{ 13, "13" },
-							{ 14, "14" },
-							{ 15, "15" },
-							{ 32, "mcs_index" },
-					}),
-					NV_VAR2(nv_enum<nv_u8>, "protection", "off_auto", offauto), // 0 = off, 1 = auto
+				NV_VAR2(nv_enum<nv_u8>, "n_band", "band", { "", "2.4Ghz", "5Ghz" }),
+				NV_VAR(nv_u8, "n_control_channel"),
+				NV_VAR2(nv_enum<nv_u8>, "n_mode", "off_auto", offauto), // 0 = off, 1 = auto
+				NV_VAR2(nv_enum<nv_u8>, "n_bandwidth", "n_bandwidth", nv_enum<nv_u8>::valmap {
+					{ 10, "10MHz" },
+					{ 20, "20MHz" },
+					{ 40, "40MHz" }
 				}),
-				NV_VAR3(ver.num() <= 0x0015, nv_data, "", 7),
+				NV_VAR2(nv_enum<nv_i8>, "n_sideband", "sideband", nv_enum<nv_i8>::valmap {
+					{ -1, "lower" },
+					{ 0, "none" },
+					{ 1, "upper"}
+				}),
+				NV_VAR2(nv_enum<nv_i8>, "n_rate", "n_rate", nv_enum<nv_i8>::valmap {
+						{ -2, "legacy" },
+						{ -1, "auto" },
+						{ 0, "0" },
+						{ 1, "1" },
+						{ 2, "2" },
+						{ 3, "3" },
+						{ 4, "4" },
+						{ 5, "5" },
+						{ 6, "6" },
+						{ 7, "7" },
+						{ 8, "8" },
+						{ 9, "9" },
+						{ 10, "10" },
+						{ 11, "11" },
+						{ 12, "12" },
+						{ 13, "13" },
+						{ 14, "14" },
+						{ 15, "15" },
+						{ 32, "mcs_index" },
+				}),
+				NV_VAR2(nv_enum<nv_u8>, "n_protection", "off_auto", offauto), // 0 = off, 1 = auto
 				NV_VAR(nv_bool, "wps_enabled"),
 				NV_VAR(nv_bool, "wps_configured"),
 				NV_VAR(nv_p8zstring, "wps_device_pin"),
