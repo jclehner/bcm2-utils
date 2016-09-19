@@ -12,14 +12,14 @@ bcm2cfg_OBJ = util.o nonvol2.o bcm2cfg.o nonvoldef.o \
 
 t_nonvol_OBJ = util.o nonvol2.o t_nonvol.o
 
-.PHONY: all clean
+.PHONY: all clean bcm2cfg.exe
 
 all: bcm2dump bcm2cfg t_nonvol
 
 bcm2cfg: $(bcm2cfg_OBJ) nonvol.h
 	$(CXX) $(CXXFLAGS) $(bcm2cfg_OBJ) -o $@ $(LIBS)
 
-bcm2cfg-wine:
+bcm2cfg.exe:
 	LIBS= CC=winegcc CXX=wineg++ CFLAGS=-m32 make bcm2cfg
 
 bcm2dump: $(bcm2dump_OBJ) bcm2dump.h
@@ -38,7 +38,7 @@ check: t_nonvol
 	./t_nonvol
 
 clean:
-	rm -f bcm2cfg bcm2dump t_nonvol *.o
+	rm -f bcm2cfg bcm2cfg.exe bcm2dump t_nonvol *.o
 
 install: all
 	install -m 755 bcm2cfg $(PREFIX)/bin
