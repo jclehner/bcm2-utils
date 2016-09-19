@@ -167,7 +167,7 @@ int do_set(int argc, char** argv, const sp<settings>& settings)
 	}
 
 	settings->set(argv[2], argv[3]);
-	logger::i() << settings->get(argv[2])->to_pretty() << endl;
+	logger::i() << argv[2] << " = " << settings->get(argv[2])->to_pretty() << endl;
 	write_file(argc == 5 ? argv[4] : argv[1], settings);
 	return 0;
 }
