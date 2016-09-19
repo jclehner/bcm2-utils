@@ -112,6 +112,9 @@ class permdyn : public settings
 		m_magic_valid = true;
 
 		string buf = read_stream(is);
+		if (buf.size() < (m_size.num() - 8)) {
+			logger::w() << type() << ": read " << buf.size() << "b, expected at least " << m_size.num() - 8 << endl;
+		}
 
 		// minus 8, since m_size includes itself (4 bytes) plus the checksum (also 4 bytes)
 		uint32_t checksum = calc_checksum(buf.substr(0, m_size.num() - 8));
