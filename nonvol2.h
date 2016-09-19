@@ -905,7 +905,7 @@ class nv_group : public nv_compound, public cloneable
 
 	virtual std::ostream& write(std::ostream& os) const override;
 
-	static std::istream& read(std::istream& is, sp<nv_group>& group, int type, size_t maxsize);
+	static std::istream& read(std::istream& is, sp<nv_group>& group, int format, size_t maxsize);
 	static void registry_add(const csp<nv_group>& group);
 	static const auto& registry()
 	{ return s_registry; }
@@ -922,13 +922,13 @@ class nv_group : public nv_compound, public cloneable
 
 	protected:
 	virtual list definition() const override final;
-	virtual list definition(int type, const nv_version& ver) const;
+	virtual list definition(int format, const nv_version& ver) const;
 	virtual std::istream& read(std::istream& is) override;
 
 	nv_u16 m_size;
 	nv_magic m_magic;
 	nv_version m_version;
-	int m_type = type_unknown;
+	int m_format = type_unknown;
 
 	private:
 	static std::map<nv_magic, csp<nv_group>> s_registry;

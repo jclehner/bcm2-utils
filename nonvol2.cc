@@ -742,10 +742,14 @@ ostream& nv_group::write(ostream& os) const
 
 nv_val::list nv_group::definition() const
 {
-	return definition(m_type, m_version);
+	if (!m_format) {
+		return nv_group::definition(m_format, m_version);
+	} else {
+		return definition(m_format, m_version);
+	}
 }
 
-nv_val::list nv_group::definition(int type, const nv_version& ver) const
+nv_val::list nv_group::definition(int format, const nv_version& ver) const
 {
 	uint16_t size = m_size.num() - (is_versioned() ? 8 : 6);
 	if (size) {
@@ -762,7 +766,7 @@ void nv_group::registry_add(const csp<nv_group>& group)
 	s_registry[group->m_magic] = group;
 }
 
-istream& nv_group::read(istream& is, sp<nv_group>& group, int type, size_t maxsize)
+istream& nv_group::read(istream& is, sp<nv_group>& group, int format, size_t maxsize)
 {
 	nv_u16 size;
 	nv_magic magic;
@@ -787,7 +791,7 @@ istream& nv_group::read(istream& is, sp<nv_group>& group, int type, size_t maxsi
 
 	group->m_size = size;
 	group->m_magic = magic;
-	group->m_type = type;
+	group->m_format = format;
 
 	return group->read(is);
 }
