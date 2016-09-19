@@ -39,13 +39,13 @@ string group_header_to_string(int format, const string& checksum, bool is_chksum
 	ostringstream ostr;
 	ostr << "type    : ";
 	switch (format) {
-	case nv_group::type_cfg:
+	case nv_group::fmt_gws:
 		ostr << "gwsettings";
 		break;
-	case nv_group::type_dyn:
+	case nv_group::fmt_dyn:
 		ostr << "dyn";
 		break;
-	case nv_group::type_perm:
+	case nv_group::fmt_perm:
 		ostr << "perm";
 		break;
 	default:
@@ -58,7 +58,7 @@ string group_header_to_string(int format, const string& checksum, bool is_chksum
 		ostr << profile << (is_auto_profile ? "" : " (forced)") << endl;
 	}
 	ostr << "checksum: " << checksum;
-	if (!profile.empty() || format != nv_group::type_cfg) {
+	if (!profile.empty() || format != nv_group::fmt_gws) {
 		ostr << " " << (is_chksum_valid ? "(ok)" : "(bad)") << endl;
 	} else {
 		ostr << endl;
@@ -130,9 +130,9 @@ class permdyn : public settings
 				b = ntoh(extract<uint32_t>(m_footer.substr(m_footer.size() - 4, 4)));
 
 				if (a == 0x00005544 && b == 0xfffffffe) {
-					m_format = nv_group::type_perm;
+					m_format = nv_group::fmt_perm;
 				} else if (a == 0x00010000 && b == 0xfffffffe) {
-					m_format = nv_group::type_dyn;
+					m_format = nv_group::fmt_dyn;
 				} else {
 					logger::d() << "a=0x" << to_hex(a) << ", b=0x" << to_hex(b) << endl;
 				}
@@ -224,7 +224,7 @@ class gwsettings : public encrypted_settings
 	public:
 	gwsettings(const string& checksum, const csp<bcm2dump::profile>& p,
 			const string& key, const string& pw)
-	: encrypted_settings("gwsettings", nv_group::type_cfg, p),
+	: encrypted_settings("gwsettings", nv_group::fmt_gws, p),
 	  m_checksum(checksum), m_key(key), m_pw(pw) {}
 
 	virtual size_t bytes() const override

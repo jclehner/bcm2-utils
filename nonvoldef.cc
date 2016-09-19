@@ -61,7 +61,7 @@ class nv_group_mlog : public nv_group
 	protected:
 	virtual list definition(int type, const nv_version& ver) const override
 	{
-		if (type == type_perm) {
+		if (type == fmt_perm) {
 			return nv_group::definition(type, ver);
 		}
 
@@ -219,7 +219,7 @@ class nv_group_8021 : public nv_group
 
 	virtual list definition(int type, const nv_version& ver) const override
 	{
-		if (type == type_perm) {
+		if (type == fmt_perm) {
 			return nv_group::definition(type, ver);
 		}
 
@@ -262,7 +262,7 @@ class nv_group_8021 : public nv_group
 
 		const nv_enum<nv_u8>::valvec offauto = { "off", "auto" };
 
-		if (type != type_perm) {
+		if (type != fmt_perm) {
 			return {
 				NV_VAR(nv_zstring, "ssid", 33),
 				NV_VAR(nv_u8, "", true),
@@ -457,7 +457,7 @@ class nv_group_t802 : public nv_group
 	protected:
 	virtual list definition(int type, const nv_version& ver) const override
 	{
-		if (type == type_perm) {
+		if (type == fmt_perm) {
 			return nv_group::definition(type, ver);
 		}
 

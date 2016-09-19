@@ -884,10 +884,10 @@ class nv_version : public nv_u16
 class nv_group : public nv_compound, public cloneable
 {
 	public:
-	static constexpr int type_unknown = 0;
-	static constexpr int type_perm = 1;
-	static constexpr int type_dyn = 2;
-	static constexpr int type_cfg = 3;
+	static constexpr int fmt_unknown = 0;
+	static constexpr int fmt_perm = 1;
+	static constexpr int fmt_dyn = 2;
+	static constexpr int fmt_gws = 3;
 
 	nv_group(uint32_t magic, const std::string& name = "")
 	: nv_group(nv_magic(magic), name) {}
@@ -928,7 +928,7 @@ class nv_group : public nv_compound, public cloneable
 	nv_u16 m_size;
 	nv_magic m_magic;
 	nv_version m_version;
-	int m_format = type_unknown;
+	int m_format = fmt_unknown;
 
 	private:
 	static std::map<nv_magic, csp<nv_group>> s_registry;

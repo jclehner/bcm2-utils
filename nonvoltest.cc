@@ -244,7 +244,7 @@ int do_main(int argc, char** argv)
 	string profile_name, password, key;
 	int opt = 0;
 	bool pad = false;
-	int format = nv_group::type_unknown;
+	int format = nv_group::fmt_unknown;
 
 	while ((opt = getopt(argc, argv, "hP:p:k:f:zvq")) != -1) {
 		switch (opt) {
@@ -270,13 +270,13 @@ int do_main(int argc, char** argv)
 			break;
 		case 'f':
 			if (optarg == "gws"s) {
-				format = nv_group::type_cfg;
+				format = nv_group::fmt_gws;
 			} else if (optarg == "dyn"s) {
-				format = nv_group::type_dyn;
+				format = nv_group::fmt_dyn;
 			} else if (optarg == "perm"s) {
-				format = nv_group::type_perm;
+				format = nv_group::fmt_perm;
 			} else if (optarg == "auto"s) {
-				format = nv_group::type_unknown;
+				format = nv_group::fmt_unknown;
 			} else {
 				return usage(false);
 			}
