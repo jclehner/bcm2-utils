@@ -11,16 +11,44 @@ Header
 
 ### Permnv/dynnv
 
-| Offset | Type        | Name       | Comment            |
-|-------:|-------------|------------|--------------------|
-|    `0` | `byte[202]` | `magic`    | all `\xff`         |
-|  `202` | `u32`       | `size`     |                    |
-|  `206` | `u32`       | `checksum` |                    |
-|  `210` | `byte[size]`| `data`     |                    |
+| Offset | Type         | Name       | Comment            |
+|-------:|--------------|------------|--------------------|
+|    `0` | `byte[202]`  | `magic`    | all `\xff`         |
+|  `202` | `u32`        | `size`     |                    |
+|  `206` | `u32`        | `checksum` |                    |
+|  `210` |`byte[size-8]`| `data`     |                    |
 
-The value of `size` describes the number of bytes in the `data` section. The checksum is
-calculated using a CRC-32 on `data`.
+To calculate the checksum, `checksum` is first set to zero,
+then, starting at `size`, the following algorithm is employed:
 
+```
+uint32_t checksum(const char* buf)
+{
+	uint32_t checksum = 0;
+
+	uint32_t word;
+	while (read_next_word(buf, &word)) {
+		checksum += word;
+	}
+
+	uint16_t half;
+	if (!read_next_half(buf, &half)) {
+		half = 0;
+	}
+
+	uint8_t byte;
+	if (!read_next_byte(buf, &byte)) {
+		byte = 0;
+	}
+
+	checksum += (byte | (half << 8)) << 8;
+	return ~checksum;
+}
+```
+
+For a buffer containing the data `\xaa\xaa\xaa\xaa\xbb\xbb\xbb\xbb\xcc\xcc\xdd`, the
+checksum is thus `~(0xaaaaaaaa + 0xbbbbbbbb + 0xccccdd00)`, for `\xaa\xaa\xaa\xaa\xbb`,
+it would be `~(0xaaaaaaaa + 0x0000bb00)` (assuming `uint32_t` rollover on overflow).
 
 ### GatewaySettings.bin
 
