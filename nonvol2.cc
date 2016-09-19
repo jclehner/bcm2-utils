@@ -80,7 +80,7 @@ string data_to_string(const string& data, unsigned level, bool pretty)
 {
 	const unsigned threshold = 24;
 	ostringstream ostr;
-	bool multiline = pretty && (data.size() > threshold);
+	bool multiline = /*pretty && */(data.size() > threshold);
 	if (multiline) {
 		ostr << "{";
 	}
@@ -116,6 +116,8 @@ string compound_to_string(const nv_compound& c, unsigned level, bool pretty,
 		if (is_end && is_end(v.val)) {
 			break;
 		} else if (v.val->is_disabled() || (pretty && v.name[0] == '_' && false)) {
+			continue;
+		} else if (pretty && (!v.val->is_set() || v.name[0] == '_')) {
 			continue;
 		}
 
@@ -410,7 +412,7 @@ ostream& nv_compound::write(ostream& os) const
 
 std::string nv_compound::to_string(unsigned level, bool pretty) const
 {
-	if (!pretty) {
+	if (!pretty && false) {
 		return "<compound type " + type() + ">";
 	}
 
@@ -728,7 +730,7 @@ istream& nv_group::read(istream& is)
 			}
 
 			logger::t() << "  read " << m_bytes << " b , group size is " << m_size.num() << "; extra data size is " << extra->bytes() << "b" << endl;
-			m_parts.push_back(named("extra", extra));
+			m_parts.push_back(named("_extra", extra));
 			logger::t() << extra->to_pretty() << endl;
 			m_bytes += extra->bytes();
 		}
@@ -776,7 +778,7 @@ nv_val::list nv_group::definition(int format, const nv_version& ver) const
 {
 	uint16_t size = m_size.num() - (is_versioned() ? 8 : 6);
 	if (size) {
-		return {{ "data", std::make_shared<nv_data>(size) }};
+		return {{ "_data", std::make_shared<nv_data>(size) }};
 	}
 
 	return {};

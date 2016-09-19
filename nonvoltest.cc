@@ -137,7 +137,11 @@ int do_list_get_dump(int argc, char** argv, const sp<settings>& settings)
 			logger::i() << argv[2] << " = ";
 		}
 
-		logger::i() << val->to_pretty() << endl;
+		if (logger::loglevel() < logger::info) {
+			logger::i() << val->to_str() << endl;
+		} else {
+			logger::i() << val->to_pretty() << endl;
+		}
 	} else if (argv[0] == "list"s) {
 		if (!val->is_compound()) {
 			logger::i() << argv[2] << endl;

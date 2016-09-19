@@ -646,7 +646,7 @@ class nv_bool : public nv_u8_m<1>
 	{ return "bool"; }
 
 	virtual std::string to_string(unsigned level, bool pretty) const override
-	{ return m_val <= 1 ? (m_val ? "true" : "false") : nv_u8_m<1>::to_string(level, pretty); }
+	{ return m_val <= 1 ? (m_val ? "yes" : "no") : nv_u8_m<1>::to_string(level, pretty); }
 
 	virtual bool parse(const std::string& str) override;
 };
