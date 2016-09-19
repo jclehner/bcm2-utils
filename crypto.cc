@@ -17,9 +17,11 @@
 #define BCM2UTILS_USE_COMMON_CRYPTO
 
 #elif defined(_WIN32)
-#error "Platform not yet supported"
+// this is required for wine
+#define USE_WS_PREFIX
 #include <windows.h>
 #include <wincrypt.h>
+#include <system_error>
 #define BCM2UTILS_USE_WINCRYPT
 #else
 #include <openssl/aes.h>
@@ -36,21 +38,69 @@ inline const unsigned char* data(const string& buf)
 {
 	return reinterpret_cast<const unsigned char*>(buf.data());
 }
+
+#ifdef BCM2UTILS_USE_WINCRYPT
+class winapi_error : public system_error
+{
+	public:
+	winapi_error(const string& what, DWORD error = GetLastError())
+	: system_error(error_code(error, generic_category()), what)
+	{}
+};
+
+class crypt_context
+{
+	public:
+	crypt_context()
+	{
+		if (!CryptAcquireContext(&handle, nullptr, nullptr, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
+			throw winapi_error("CryptAcquireContext");
+		}
+	}
+
+	~crypt_context()
+	{
+		CryptReleaseContext(handle, 0);
+	}
+
+	HCRYPTPROV handle;
+};
+
+#endif
 }
 
-string hash_md5_keyed(const string& buf, const string& key)
+string hash_md5(const string& buf)
 {
+	string md5(16, '\0');
 #ifndef BCM2UTILS_USE_WINCRYPT
 	MD5_CTX ctx;
 
 	MD5_Init(&ctx);
 	MD5_Update(&ctx, data(buf), buf.size());
-	if (!key.empty()) {
-		MD5_Update(&ctx, data(key), key.size());
+	MD5_Final(reinterpret_cast<unsigned char*>(&md5[0]), &ctx);
+
+	return md5;
+#else
+	crypt_context ctx;
+	HCRYPTHASH hash;
+
+	if (!CryptCreateHash(ctx.handle, CALG_MD5, 0, 0, &hash)) {
+		throw winapi_error("CryptCreateHash");
 	}
 
-	string md5(16, '\0');
-	MD5_Final(reinterpret_cast<unsigned char*>(&md5[0]), &ctx);
+	auto c = bcm2dump::cleaner([hash] () {
+		CryptDestroyHash(hash);
+	});
+
+	if (!CryptHashData(hash, data(buf), buf.size(), 0)) {
+		throw winapi_error("CryptHashData");
+	}
+
+	DWORD size = md5.size();
+	if (!CryptGetHashParam(hash, HP_HASHVAL, reinterpret_cast<unsigned char*>(&md5[0]), &size, 0)) {
+		throw winapi_error("CryptGetHashParam");
+	}
+
 	return md5;
 #endif
 }
@@ -121,6 +171,8 @@ string crypt_aes_256_ecb(const string& ibuf, const string& key, bool encrypt)
 	}
 
 	return obuf;
+#else
+	throw runtime_error("encryption not supported on this platform");
 #endif
 }
 }

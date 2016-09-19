@@ -1,5 +1,6 @@
-CC = gcc
-CXX = g++
+CC ?= gcc
+CXX ?= g++
+LIBS ?= -lssl -lcrypto
 CFLAGS += -Wall -g -DVERSION=\"$(shell git describe --always)\"
 CXXFLAGS += $(CFLAGS) -std=c++14 -Wnon-virtual-dtor
 PREFIX ?= /usr/local
@@ -16,7 +17,10 @@ t_nonvol_OBJ = util.o nonvol2.o t_nonvol.o
 all: bcm2dump bcm2cfg t_nonvol
 
 bcm2cfg: $(bcm2cfg_OBJ) nonvol.h
-	$(CXX) $(CXXFLAGS) $(bcm2cfg_OBJ) -o $@ -lssl -lcrypto
+	$(CXX) $(CXXFLAGS) $(bcm2cfg_OBJ) -o $@ $(LIBS)
+
+bcm2cfg-wine:
+	LIBS= CC=winegcc CXX=wineg++ CFLAGS=-m32 make bcm2cfg
 
 bcm2dump: $(bcm2dump_OBJ) bcm2dump.h
 	$(CXX) $(CXXFLAGS) $(bcm2dump_OBJ) -o $@ 
