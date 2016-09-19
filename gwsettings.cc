@@ -349,7 +349,7 @@ class gwsettings : public encryptable_settings
 
 	static string calc_checksum(const string& buf, const csp<bcm2dump::profile>& p)
 	{
-		return hash_md5_keyed(buf, p ? p->md5_key() : "");
+		return hash_md5(buf + (p ? p->md5_key() : ""));
 	}
 
 	bool decrypt_and_detect_profile(string& buf)
