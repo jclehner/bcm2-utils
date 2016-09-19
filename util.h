@@ -37,6 +37,11 @@
 #include <string>
 #include <ios>
 
+#ifdef _WIN32
+#define USE_WS_PREFIX
+#include <windows.h>
+#endif
+
 namespace bcm2dump {
 
 std::string trim(std::string str);
@@ -366,6 +371,25 @@ class getaddrinfo_category : public std::error_category
 
 	virtual std::string message(int condition) const override;
 };
+
+#ifdef _WIN32
+class winapi_category : public std::error_category
+{
+
+	virtual const char* name() const noexcept override
+	{ return "winapi_category"; };
+
+	virtual std::string message(int condition) const override;
+};
+
+class winapi_error : public std::system_error
+{
+	public:
+	winapi_error(const std::string& what, DWORD error = GetLastError())
+	: std::system_error(error, winapi_category(), what)
+	{}
+};
+#endif
 }
 
 template<class T> struct bcm2dump_def_comparison_operators

@@ -206,4 +206,29 @@ string getaddrinfo_category::message(int condition) const
 {
 	return gai_strerror(condition);
 }
+
+#ifdef _WIN32
+string winapi_category::message(int condition) const
+{
+	char* buf = nullptr;
+	DWORD len = FormatMessageA(
+			FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+			nullptr,
+			condition,
+			//MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+			0,
+			reinterpret_cast<LPTSTR>(&buf),
+			0,
+			nullptr);
+
+	if (buf && len) {
+		string msg = trim(buf);
+		LocalFree(buf);
+		return msg;
+	}
+
+	return "0x" + to_hex(condition);
+}
+#endif
+
 }

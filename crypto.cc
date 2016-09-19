@@ -17,9 +17,6 @@
 #define BCM2UTILS_USE_COMMON_CRYPTO
 
 #elif defined(_WIN32)
-// this is required for wine
-#define USE_WS_PREFIX
-#include <windows.h>
 #include <wincrypt.h>
 #include <system_error>
 #define BCM2UTILS_USE_WINCRYPT
@@ -40,27 +37,31 @@ inline const unsigned char* data(const string& buf)
 }
 
 #ifdef BCM2UTILS_USE_WINCRYPT
-class winapi_error : public system_error
-{
-	public:
-	winapi_error(const string& what, DWORD error = GetLastError())
-	: system_error(error_code(error, generic_category()), what)
-	{}
-};
 
 class crypt_context
 {
 	public:
 	crypt_context()
+	: handle(0)
 	{
-		if (!CryptAcquireContext(&handle, nullptr, nullptr, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
+		BOOL ok = CryptAcquireContext(
+				&handle,
+				nullptr,
+				nullptr,
+				//MS_ENH_RSA_AES_PROV,
+				PROV_RSA_FULL,
+				CRYPT_VERIFYCONTEXT);
+
+		if (!ok) {
 			throw winapi_error("CryptAcquireContext");
 		}
 	}
 
 	~crypt_context()
 	{
-		CryptReleaseContext(handle, 0);
+		if (handle) {
+			CryptReleaseContext(handle, 0);
+		}
 	}
 
 	HCRYPTPROV handle;
@@ -168,6 +169,59 @@ string crypt_aes_256_ecb(const string& ibuf, const string& key, bool encrypt)
 
 	if (len < ibuf.size()) {
 		obuf += ibuf.substr(len);
+	}
+
+	return obuf;
+#elif defined(BCM2UTILS_USE_WINCRYPT)
+	crypt_context ctx;
+
+	// who devised this API???
+
+	struct {
+		BLOBHEADER hdr;
+		const DWORD key_size = sizeof(key);
+		BYTE key[32];
+	} aes;
+
+	aes.hdr = {
+		.bType = PLAINTEXTKEYBLOB,
+		.bVersion = CUR_BLOB_VERSION,
+		.reserved = 0,
+		.aiKeyAlg = CALG_AES_256
+	};
+
+	memcpy(aes.key, key.data(), aes.key_size);
+
+	HCRYPTKEY hkey = 0;
+
+	if (!CryptImportKey(ctx.handle, reinterpret_cast<BYTE*>(&aes), sizeof(aes), 0, 0, &hkey)) {
+		throw winapi_error("CryptImportKey");
+	}
+
+	auto c = bcm2dump::cleaner([hkey] () {
+			if (hkey) {
+				CryptDestroyKey(hkey);
+			}
+	});
+
+	DWORD mode = CRYPT_MODE_ECB;
+	if (!CryptSetKeyParam(hkey, KP_MODE, reinterpret_cast<BYTE*>(&mode), 0)) {
+		throw winapi_error("CryptSetKeyParam");
+	}
+
+	string obuf = ibuf;
+	DWORD ibuf_len = align_left(ibuf.size(), 16);
+	DWORD obuf_len = ibuf_len + 2 * aes.key_size;
+
+	BOOL ok;
+	if (encrypt) {
+		ok = CryptEncrypt(hkey, 0, TRUE, 0, reinterpret_cast<unsigned char*>(&obuf[0]), &obuf_len, ibuf_len);
+	} else {
+		ok = CryptDecrypt(hkey, 0, TRUE, 0, reinterpret_cast<unsigned char*>(&obuf[0]), &obuf_len);
+	}
+
+	if (!ok) {
+		throw winapi_error(encrypt ? "CryptEncrypt" : "CryptDecrypt");
 	}
 
 	return obuf;
