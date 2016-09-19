@@ -17,7 +17,6 @@
  *
  */
 
-#include <boost/crc.hpp>
 #include <algorithm>
 #include "gwsettings.h"
 #include "crypto.h"
