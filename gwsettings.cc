@@ -33,19 +33,32 @@ string read_stream(istream& is)
 }
 
 
-string group_header_to_string(const string& type, const string& checksum, bool is_chksum_valid, size_t size, bool is_size_valid,
+string group_header_to_string(int format, const string& checksum, bool is_chksum_valid, size_t size, bool is_size_valid,
 		const string& key, bool is_encrypted, const string& profile, bool is_auto_profile)
 {
 	ostringstream ostr;
-	ostr << "type    : " << type << endl;
-	ostr << "profile : ";
+	ostr << "type    : ";
+	switch (format) {
+	case nv_group::type_cfg:
+		ostr << "gwsettings";
+		break;
+	case nv_group::type_dyn:
+		ostr << "dyn";
+		break;
+	case nv_group::type_perm:
+		ostr << "perm";
+		break;
+	default:
+		ostr << "(unknown)";
+	}
+	ostr << endl << "profile : ";
 	if (profile.empty()) {
-		ostr << " (unknown)" << endl;
+		ostr << "(unknown)" << endl;
 	} else {
 		ostr << profile << (is_auto_profile ? "" : " (forced)") << endl;
 	}
 	ostr << "checksum: " << checksum;
-	if (!profile.empty() || type != "gwsettings") {
+	if (!profile.empty() || format != nv_group::type_cfg) {
 		ostr << " " << (is_chksum_valid ? "(ok)" : "(bad)") << endl;
 	} else {
 		ostr << endl;
@@ -68,8 +81,8 @@ string group_header_to_string(const string& type, const string& checksum, bool i
 class permdyn : public settings
 {
 	public:
-	permdyn(bool dyn, const csp<bcm2dump::profile>& p)
-	: settings("permdyn", dyn ? nv_group::type_dyn : nv_group::type_perm, p) {}
+	permdyn(int format, const csp<bcm2dump::profile>& p)
+	: settings("permdyn", format, p) {}
 
 	virtual size_t bytes() const override
 	{ return m_size.num(); }
@@ -108,6 +121,28 @@ class permdyn : public settings
 			logger::v() << type() << ": checksum mismatch: " << to_hex(checksum) << " / " << to_hex(m_checksum.num()) << endl;
 		}
 
+		m_footer = buf.substr(m_size.num());
+
+		if (!m_format) {
+			if (m_footer.size() >= 8) {
+				uint32_t a, b;
+				a = ntoh(extract<uint32_t>(m_footer.substr(m_footer.size() - 8, 4)));
+				b = ntoh(extract<uint32_t>(m_footer.substr(m_footer.size() - 4, 4)));
+
+				if (a == 0x00005544 && b == 0xfffffffe) {
+					m_format = nv_group::type_perm;
+				} else if (a == 0x00010000 && b == 0xfffffffe) {
+					m_format = nv_group::type_dyn;
+				} else {
+					logger::d() << "a=0x" << to_hex(a) << ", b=0x" << to_hex(b) << endl;
+				}
+			}
+
+			if (!m_format) {
+				logger::w() << "failed to detect file format; please specify `-f perm` or `-f dyn`" << endl;
+			}
+		}
+
 		istringstream istr(buf.substr(0, m_size.num()));
 		settings::read(istr);
 
@@ -132,12 +167,16 @@ class permdyn : public settings
 			throw runtime_error("failed to write data");
 		}
 
+		if (!os.write(m_footer.data(), m_footer.size())) {
+			throw runtime_error("failed to write footer");
+		}
+
 		return os;
 	}
 
 	virtual string header_to_string() const override
 	{
-		return group_header_to_string("permdyn", to_hex(m_checksum.num()), m_checksum_valid,
+		return group_header_to_string(m_format, to_hex(m_checksum.num()), m_checksum_valid,
 				m_size.num(), true, "", false, "", false);
 	}
 
@@ -175,6 +214,7 @@ class permdyn : public settings
 
 	nv_u32 m_size;
 	nv_u32 m_checksum;
+	string m_footer;
 	bool m_checksum_valid = false;
 	bool m_magic_valid = false;
 };
@@ -278,7 +318,7 @@ class gwsettings : public encrypted_settings
 
 	virtual string header_to_string() const override
 	{
-		return group_header_to_string("gwsettings", to_hex(m_checksum), m_checksum_valid,
+		return group_header_to_string(m_format, to_hex(m_checksum), m_checksum_valid,
 				m_size.num(), m_size_valid, m_key, m_encrypted, profile() ? profile()->name() : "",
 				m_is_auto_profile);
 	}
@@ -432,7 +472,7 @@ istream& settings::read(istream& is)
 	unsigned mult = 1;
 
 	while (remaining && !is.eof()) {
-		if (!nv_group::read(is, group, m_type, remaining) && !is.eof()) {
+		if (!nv_group::read(is, group, m_format, remaining) && !is.eof()) {
 			if (!m_permissive) {
 				throw runtime_error("failed to read group " + group->magic().to_str());
 			}
@@ -463,11 +503,7 @@ sp<settings> settings::read(istream& is, int type, const csp<bcm2dump::profile>&
 
 	sp<settings> ret;
 	if (start == string(16, '\xff')) {
-		if (type == nv_group::type_dyn || type == nv_group::type_perm) {
-			ret = sp<permdyn>(new permdyn(type == nv_group::type_dyn, p));
-		} else {
-			logger::w() << "file looks like a permnv/dynnv file, but no type was specified" << endl;
-		}
+		ret = sp<permdyn>(new permdyn(type, p));
 	}
 
 	if (!ret) {

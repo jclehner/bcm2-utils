@@ -50,8 +50,8 @@ class settings : public nv_compound
 			const std::string& key, const std::string& password);
 
 	protected:
-	settings(const std::string& name, int type, const csp<bcm2dump::profile>& p)
-	: nv_compound(true, name), m_profile(p), m_type(type) {}
+	settings(const std::string& name, int format, const csp<bcm2dump::profile>& p)
+	: nv_compound(true, name), m_profile(p), m_format(format) {}
 
 	virtual std::istream& read(std::istream& is) override;
 	//virtual std::ostream& write(std::ostream& is) const override;
@@ -61,8 +61,10 @@ class settings : public nv_compound
 
 	csp<bcm2dump::profile> m_profile;
 
+	protected:
+	int m_format;
+
 	private:
-	int m_type;
 	bool m_permissive = false;
 	list m_groups;
 };
