@@ -82,7 +82,7 @@ string hash_md5(const string& buf)
 	return md5;
 #else
 	crypt_context ctx;
-	HCRYPTHASH hash;
+	HCRYPTHASH hash = 0;
 
 	if (!CryptCreateHash(ctx.handle, CALG_MD5, 0, 0, &hash)) {
 		throw winapi_error("CryptCreateHash");
