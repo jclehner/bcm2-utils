@@ -240,7 +240,7 @@ csp<nv_val> nv_compound::get(const string& name) const
 {
 	auto val = find(name);
 	if (!val) {
-		throw invalid_argument("requested non-existing member '" + name + "' of type " + type());
+		throw invalid_argument("requested non-existing member '" + name);
 	}
 
 	return val;
@@ -293,10 +293,15 @@ csp<nv_val> nv_compound::find(const string& name) const
 		if (c.val->is_disabled()) {
 			continue;
 		} else if (c.name == tok[0]) {
-			if (tok.size() == 2 && c.val->is_compound()) {
-				return nv_val_cast<nv_compound>(c.val)->find(tok[1]);
+			if (tok.size() == 2) {
+				if (c.val->is_compound()) {
+					return nv_val_cast<nv_compound>(c.val)->find(tok[1]);
+				} else {
+					break;
+				}
+			} else {
+				return c.val;
 			}
-			return c.val;
 		}
 	}
 
