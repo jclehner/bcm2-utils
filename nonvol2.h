@@ -843,8 +843,8 @@ class nv_magic : public nv_data
 
 	virtual std::string to_string(unsigned, bool pretty) const override;
 
-	uint32_t as_num() const
-	{ return ntohl(*reinterpret_cast<const uint32_t*>(m_buf.data())); }
+	const std::string& raw() const
+	{ return m_buf; }
 
 	bool operator<(const nv_magic& other) const
 	{ return m_buf < other.m_buf; }

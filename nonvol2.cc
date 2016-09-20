@@ -139,6 +139,26 @@ string compound_to_string(const nv_compound& c, unsigned level, bool pretty,
 
 }
 
+string magic_to_string(const string& buf, bool pretty, char filler)
+{
+	string str;
+	if (pretty) {
+		for (auto c : buf) {
+			if (isalnum(c)) {
+				str += c;
+			} else if (filler) {
+				str += filler;
+			}
+		}
+
+		if (str.size() >= 2) {
+			return str;
+		}
+	}
+
+	return to_hex(buf);
+}
+
 size_t compound_size(const nv_compound& c)
 {
 	size_t size = 0;
@@ -641,20 +661,7 @@ bool nv_bool::parse(const string& str)
 
 string nv_magic::to_string(unsigned, bool pretty) const
 {
-	string str;
-	bool ascii = pretty && (isprint(m_buf[0]) || isprint(m_buf[1]));
-
-	for (size_t i = 0; i < 4; ++i) {
-		if (!ascii) {
-			str += to_hex(m_buf[i]);
-		} else if (!isprint(m_buf[i])) {
-			str += '.';
-		} else {
-			str += m_buf[i];
-		}
-	}
-
-	return str;
+	return magic_to_string(m_buf, pretty, '.');
 }
 
 nv_magic::nv_magic(const std::string& magic)
@@ -816,8 +823,7 @@ istream& nv_group::read(istream& is, sp<nv_group>& group, int format, size_t max
 
 	auto i = registry().find(magic);
 	if (i == registry().end()) {
-		string name = magic.to_pretty();
-		name = transform(name.substr(0, name.find('.')), ::tolower);
+		string name = transform(magic_to_string(magic.raw(), true, 0), ::tolower);
 		group = make_shared<nv_group_generic>(magic, "grp_" + name);
 	} else {
 		group.reset(i->second->clone());
