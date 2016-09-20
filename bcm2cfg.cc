@@ -28,6 +28,10 @@ using namespace bcm2cfg;
 using namespace bcm2dump;
 using namespace std;
 
+#ifndef VERSION
+#define VERSION "v(unknown)"
+#endif
+
 namespace {
 int usage(bool help = false)
 {
@@ -257,6 +261,17 @@ int do_info(int argc, char** argv, const sp<settings>& settings)
 	return 0;
 }
 
+int do_verify(int argc, char** argv, const sp<settings>& settings)
+{
+	if (!settings->is_valid()) {
+		logger::w() << "verification failed; see 'info' command for more details" << endl;
+		return 2;
+	}
+
+	logger::i() << "verification successful" << endl;
+	return 0;
+}
+
 int do_main(int argc, char** argv)
 {
 	ios::sync_with_stdio();
@@ -337,6 +352,8 @@ int do_main(int argc, char** argv)
 		return do_list_get_dump(argc, argv, settings);
 	} else if (cmd == "set") {
 		return do_set(argc, argv, settings);
+	} else if (cmd == "verify") {
+		return do_verify(argc, argv, settings);
 	}
 
 	return usage(false);
