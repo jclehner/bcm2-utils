@@ -1,9 +1,18 @@
 CC ?= gcc
 CXX ?= g++
-LIBS ?= -lssl -lcrypto
+LIBS ?=
 CFLAGS += -Wall -g -DVERSION=\"$(shell git describe --always)\"
 CXXFLAGS += $(CFLAGS) -std=c++14 -Wnon-virtual-dtor
 PREFIX ?= /usr/local
+UNAME ?= $(shell uname)
+
+ifeq ($(UNAME), Linux)
+	LIBS += -lssl -lcrypto
+endif
+
+ifeq ($(UNAME), Darwin)
+	CFLAGS += -arch i386 -arch x86_64 -mmacosx-version-min=10.7
+endif
 
 bcm2dump_OBJ = io.o rwx.o interface.o ps.o bcm2dump.o \
 	util.o progress.o mipsasm.o profile.o profiledef.o
