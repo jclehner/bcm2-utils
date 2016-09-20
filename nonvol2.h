@@ -678,11 +678,19 @@ template<typename T, bool B> class nv_enum_bitmask : public T
 
 		if (!m_vec.empty()) {
 			for (num_type i = 0; i < num_type(m_vec.size()); ++i) {
+				if (m_vec[i].empty()) {
+					continue;
+				}
+
 				type += "\n  " + (B ? "0x" + to_hex(1 << (i + 1)) : std::to_string(i)) + " = " + m_vec[i];
 			}
 
 		} else if (!m_map.empty()) {
 			for (auto v : m_map) {
+				if (v.second.empty()) {
+					continue;
+				}
+
 				type += "\n  " + (B ? "0x" + to_hex(v.first) : std::to_string(v.first)) + " = " + v.second;
 			}
 		}
