@@ -972,6 +972,96 @@ class nv_group_upc : public nv_group
 	}
 };
 
+class nv_group_xbpi : public nv_group
+{
+	public:
+	nv_group_xbpi(bool ebpi)
+	: nv_group(ebpi ? "Ebpi" : "bpi ", ebpi ? "ebpi" : "bpi")
+	{}
+
+	NV_GROUP_DEF_CLONE(nv_group_xbpi)
+
+	virtual list definition(int format, const nv_version& ver) const override
+	{
+		if (format == fmt_dyn) {
+			return {
+				NV_VAR(nv_data, "code_access_start", 12),
+				NV_VAR(nv_data, "cvc_access_start", 12),
+				NV_VAR(nv_u8, "", true),
+			};
+			//return nv_group::definition(format, ver);
+		}
+
+		return {
+#if 0
+			NV_VAR3(format == fmt_dyn, nv_data, "code_access_start", 12),
+			NV_VAR3(format == fmt_dyn, nv_data, "cvc_access_start", 12),
+			NV_VAR3(format == fmt_dyn, nv_u8, "", true),
+#endif
+			NV_VAR(nv_p16data, "bpi_public_key"),
+			NV_VAR(nv_p16data, "bpi_private_key"),
+			NV_VAR(nv_p16data, "bpiplus_root_public_key"),
+			NV_VAR(nv_p16data, "bpiplus_cm_certificate"),
+			NV_VAR(nv_p16data, "bpiplus_ca_certificate"),
+			NV_VAR(nv_p16data, "bpiplus_cvc_root_certificate"),
+			NV_VAR(nv_p16data, "bpiplus_cvc_ca_certificate"),
+		};
+	}
+};
+
+class nv_group_halif : public nv_group
+{
+	public:
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_halif, 0xf2a1f61f, "halif")
+
+	virtual list definition(int format, const nv_version& ver) const override
+	{
+		if (format == fmt_dyn) {
+			return nv_group::definition(format, ver);
+		}
+
+		return {
+			NV_VAR2(nv_bitmask<nv_u32>, "interfaces", "interfaces", {
+					"docsis",
+					"ethernet",
+					"hpna",
+					"usb",
+					"IP1",
+					"IP2",
+					"IP3",
+					"IP4",
+					"davic",
+					"pci",
+					"bluetooh",
+					"802.11",
+					"packet_generator",
+					"IP5",
+					"IP6",
+					"IP7",
+					"IP8",
+					"wan_ethernet",
+					"scb",
+					"itc",
+					"moca"
+
+			}),
+			NV_VAR(nv_array<nv_mac COMMA() 4>, "mac_addrs_1"),
+			NV_VAR(nv_data, "", 5),
+			NV_VAR(nv_u8, "board_rev"),
+			NV_VAR(nv_u16, "usb_vid", true),
+			NV_VAR(nv_u16, "usb_pid", true),
+			NV_VAR(nv_mac, "usb_mac"),
+			//NV_VAR(nv_bool, "usb_rndis"),
+			NV_VAR(nv_data, "", 0x19),
+			NV_VAR(nv_mac, "bluetooth_local_mac"),
+			NV_VAR(nv_mac, "bluetooth_remote_mac"),
+			//NV_VAR(nv_bool, "bluetooth_master"),
+			NV_VAR(nv_data, "", 0x15),
+			NV_VAR(nv_array<nv_mac COMMA() 4>, "mac_addrs_2"),
+		};
+	}
+};
+
 struct registrar {
 	registrar()
 	{
@@ -990,6 +1080,9 @@ struct registrar {
 			NV_GROUP(nv_group_xxxl, "CMBL"),
 			NV_GROUP(nv_group_xxxl, "EMBL"),
 			NV_GROUP(nv_group_thom),
+			NV_GROUP(nv_group_xbpi, false),
+			NV_GROUP(nv_group_xbpi, true),
+			NV_GROUP(nv_group_halif),
 		};
 
 		for (auto g : groups) {
