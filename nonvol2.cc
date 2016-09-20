@@ -63,17 +63,28 @@ size_t to_index(const string& str, const nv_val& val)
 	}
 }
 
-istream& read_group_header(istream& is, nv_u16& size, nv_magic& magic)
+bool read_group_header(istream& is, nv_u16& size, nv_magic& magic, size_t maxsize)
 {
 	if (size.read(is)) {
 		if (size.num() < 6) {
-			throw runtime_error("group size " + size.to_str() + " too small to be valid");
+			logger::v() << "group size " << size.to_str() << " too small to be valid" << endl;
+			return false;
 		} else if (!magic.read(is)) {
-			throw runtime_error("failed to read group magic");
+			logger::v() << "failed to read group magic" << endl;
+			return false;
 		}
+
+		if (size.num() > maxsize) {
+			logger::v() << "group size " << size.to_str() << " exceeds maximum size " << maxsize << endl;
+			return false;
+		}
+
+		return true;
+	} else {
+		logger::v() << "failed to read group size" << endl;
 	}
 
-	return is;
+	return false;
 }
 
 string data_to_string(const string& data, unsigned level, bool pretty)
@@ -808,18 +819,45 @@ map<nv_magic, csp<nv_group>>& nv_group::registry()
 	return ret;
 }
 
+namespace {
+class nv_group_junk : public nv_group
+{
+	public:
+	nv_group_junk() : nv_group("JUNK", "junk") {}
+
+	nv_group_junk* clone() const
+	{ return new nv_group_junk(*this); }
+
+	string type() const override
+	{ return "junk"; }
+
+	istream& read(istream& is) override
+	{
+		m_data = string(std::istreambuf_iterator<char>(is), {});
+		is.clear(is.rdstate() | (m_data.empty() ? ios::failbit : ios::eofbit));
+
+		return is;
+	}
+
+	ostream& write(ostream& os) const override
+	{ return os.write(m_data.data(), m_data.size()); }
+
+	size_t bytes() const override
+	{ return m_data.size(); }
+
+	private:
+	string m_data;
+};
+}
+
 istream& nv_group::read(istream& is, sp<nv_group>& group, int format, size_t maxsize)
 {
 	nv_u16 size;
 	nv_magic magic;
 
-	if (!read_group_header(is, size, magic)) {
+	if (!read_group_header(is, size, magic, maxsize)) {
+		group = nullptr;
 		return is;
-	} else if (size.num() > maxsize) {
-		throw runtime_error("size of group " + magic.to_str() + " " + size.to_str()
-				+ " exceeds " + std::to_string(maxsize));
-		//is.setstate(ios::failbit);
-		//return is;
 	}
 
 	auto i = registry().find(magic);

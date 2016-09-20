@@ -259,6 +259,11 @@ int do_info(int argc, char** argv, const sp<settings>& settings)
 	os << settings->header_to_string() << endl;
 	for (auto p : settings->parts()) {
 		csp<nv_group> g = nv_val_cast<nv_group>(p.val);
+		if (g->magic() == 0x4a554e4b) {
+			printf("%-6s  %-12s  %5zu b\n", "", "junk", g->bytes());
+			continue;
+		}
+
 		string ugly = g->magic().to_str();
 		string pretty = g->magic().to_pretty();
 		os << ugly << "  " << (ugly == pretty ? "    " : pretty) << "  ";

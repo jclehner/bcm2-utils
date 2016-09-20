@@ -433,13 +433,12 @@ istream& settings::read(istream& is)
 	unsigned mult = 1;
 
 	while (remaining && !is.eof()) {
-		if (!nv_group::read(is, group, m_format, remaining) && !is.eof()) {
-			if (!m_permissive) {
-				throw runtime_error("failed to read group " + group->magic().to_str());
+		if (!nv_group::read(is, group, m_format, remaining) || !group) {
+			if (is.eof() || !group) {
+				break;
 			}
-			// fake eof
-			is.clear(ios::eofbit);
-			break;
+
+			throw runtime_error("failed to read group " + (group ? group->magic().to_str() : ""));
 		} else {
 			string name = group->name();
 			if (find(name)) {
