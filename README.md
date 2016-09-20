@@ -1,6 +1,3 @@
-**WARNING** Parts of this readme still refer to the old [legacy](https://github.com/jclehner/bcm2-utils/tree/legacy) branch.
-
-
 # bcm2-utils
 
 **Util**ities for **B**road**c**o**m**-based **c**able **m**odems.
@@ -18,6 +15,7 @@ Fully supported devices:
 Partially supported:
 
 * Thomson TCW770 (`bcm2cfg` only)
+* Netgear CG3000 (`bcm2cfg` only, untested)
 
 Binaries for Linux, OS X and Windows coming soon. `bcm2dump` is not yet available for Windows.
 
@@ -142,8 +140,6 @@ at offset `0x200`, using a serial console:
 ```
 $ bcm2dump dump /dev/ttyUSB0 nvram dynnv+0x200,16k ramdump.bin
 ```
-
-
 ## bcm2cfg
 
 This utility can be used to inspect, and modify device configuration data.
@@ -156,7 +152,6 @@ not require a profile.
 
 ##### Usage
 
-*Under construction*
 
 ```
 Usage: bcm2cfg [<options>] <command> [<arguments> ...]
@@ -285,33 +280,6 @@ grp_mlog = {
 
 All currently known group definitions are found in [nonvoldef.cc](https://github.com/jclehner/bcm2-utils/blob/master/nonvoldef.cc).
 
-###### Displaying group data
-
-
-
-Settings groups whose format is not known
-
-Not all settings groups are supported by `bcm2cfg` at the moment, so for some, only the raw and uninterpreted
-data is available.
-
-These data files contain multiple settings groups, which 
-
-Configuration data 
-
-
-These configuration files can be visualized a tree, with the topmost elements 
-
-For `bcm2cfg` to be able to modify 
-
-
-
-`bcm2cfg` allows you to inspect and modify the contents of a `GatewaySettings.bin` file, or an
-NVRAM dump. These files contain multiple 
-
-
-
-
-
 
 # Writing a device profile
 
@@ -334,7 +302,7 @@ The following information is required to add a new profile:
 To get the firmware image, dump either `image1` or `image2`.
 
 ```
-$ bcm2dump -P generic /dev/ttyUSB0 flash image2 image.bin
+$ bcm2dump -P generic dump /dev/ttyUSB0 flash image2 image.bin
 ```
 
 ##### Bootloader (if unlocked)
