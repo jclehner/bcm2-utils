@@ -248,7 +248,7 @@ csp<nv_val> nv_compound::get(const string& name) const
 
 void nv_compound::set(const string& name, const string& val)
 {
-	auto parts = split(name, '.', 2);
+	auto parts = split(name, '.', false, 2);
 	if (parts.size() == 2) {
 		const_pointer_cast<nv_val>(get(parts[0]))->set(parts[1], val);
 		return;
