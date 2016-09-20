@@ -178,9 +178,139 @@ Commands:
   get     <infile> [<name>]
   set     <infile> <name> <value> [<outfile>]
   dump    <infile> [<name>]
+  type    <infile> <name>
   info    <infile>
   help
 ```
+
+`bcm2cfg` can be used to inspect and modify device configuration data. Currently supported formats are the
+`GatewaySettings.bin` file that can be downloaded via the web interface, and NVRAM dumps (such as those
+obtained by `bcm2dump`).
+
+The configuration data consists of a series of so-called settings groups. To display a list of settings
+groups, use:
+
+```
+$ bcm2cfg info GatewaySettings.bin
+type    : gwsettings
+profile : tc7200
+checksum: ef49b64540163f356704601f9b31ac88 (ok)
+size    : 26228 (ok)
+
+38303231  8021  0.36    bcmwifi         745 b
+4344502e  CDP.  1.5     dhcp           1500 b
+52472e2e  RG..  0.30    rg             3192 b
+46495245  FIRE  0.7     firewall      11267 b
+54383032  T802  0.10    tmmwifi         293 b
+5550432e  UPC.  0.6     upc            9129 b
+4d4c6f67  MLog  0.6     userif           22 b
+```
+
+For less verbose output, you can use the `list` command instead:
+
+```
+$ bcm2cfg list GatewaySettings.bin
+bcmwifi.* 
+dhcp.* 
+rg.* 
+firewall.* 
+tmmwifi.* 
+upc.* 
+userif.* 
+```
+
+The `.*` indicates that a variable has child entries, which can be displayed using the `list` command.
+For example, to list variables in `userif`, run:
+
+```
+bcm2cfg list GatewaySettings.bin userif
+userif.http_user
+userif.http_pass
+```
+
+To display both variable names *and* their respective values, use the `get` command instead:
+
+```
+$ bcm2cfg get GatewaySettings.bin userif
+userif = {
+  http_user = "admin"
+  http_pass = "admin"
+}
+```
+
+To change the webinterface password (`userif.http_pass`), run
+
+```
+$ bcm2cfg set GatewaySettings.bin userif.http_pass "secret"`
+```
+
+If a `set` command fails for some reason, you can use the `type` command
+to display information about the type for a particular variable. This is
+especially useful for bitmask or enum types:
+```
+$ bcm2cfg type GatewaySettings.bin userif.http_pass
+p16string[32]
+
+$ bcm2cfg type GatewaySettings.bin firewall.features
+features {
+  0x00000002 = keyword_blocking
+  0x00000004 = domain_blocking
+  0x00000008 = http_proxy_blocking
+  0x00000010 = disable_cookies
+  0x00000020 = disable_java_applets
+  0x00000040 = disable_activex_ctrl
+  0x00000080 = disable_popups
+  0x00000100 = mac_tod_filtering
+  0x00000200 = email_alerts
+  0x00002000 = block_fragmented_ip
+  0x00004000 = port_scan_detection
+  0x00008000 = syn_flood_detection
+}
+```
+
+Bitmask types can be either set numerically (`set firewall.features 0x06`), or by setting and unsetting individual
+bits (`set firewall.features +0x04`, `set firewall.features -0x02`, `set firewall.features +email_alerts`,
+`set firewall.features -keyword_blocking`).
+
+Note that most of these operations require knowledge of the internal format of a settings groups. 
+For example, if we *didn't* know the format of the `userif` group, only the raw data would be available.
+In this case, the output would look like this (note the `-v` flag; without it, uninterpreted data is not printed):
+
+```
+$ bcm2cfg -v get GatewaySettings.bin grp_mlog
+grp_mlog = {
+  _data = 00:05:61:64:6D:69:6E:00:05:61:64:6D:69:6E
+}
+```
+
+All currently known group definitions are found in [nonvoldef.cc](https://github.com/jclehner/bcm2-utils/blob/master/nonvoldef.cc).
+
+###### Displaying group data
+
+
+
+Settings groups whose format is not known
+
+Not all settings groups are supported by `bcm2cfg` at the moment, so for some, only the raw and uninterpreted
+data is available.
+
+These data files contain multiple settings groups, which 
+
+Configuration data 
+
+
+These configuration files can be visualized a tree, with the topmost elements 
+
+For `bcm2cfg` to be able to modify 
+
+
+
+`bcm2cfg` allows you to inspect and modify the contents of a `GatewaySettings.bin` file, or an
+NVRAM dump. These files contain multiple 
+
+
+
+
 
 
 # Writing a device profile
