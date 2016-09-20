@@ -656,7 +656,7 @@ class nv_bool : public nv_u8_m<1>
 	virtual bool parse(const std::string& str) override;
 };
 
-template<typename T> class nv_enum_bitmask : public T
+template<typename T, bool B> class nv_enum_bitmask : public T
 {
 	public:
 	typedef typename T::num_type num_type;
@@ -665,10 +665,35 @@ template<typename T> class nv_enum_bitmask : public T
 
 	virtual ~nv_enum_bitmask() {}
 
+	virtual std::string type() const override
+	{
+		using bcm2dump::to_hex;
+
+		std::string type = m_name;
+		if (m_vec.empty() && m_map.empty()) {
+			return type;
+		}
+
+		type += " {";
+
+		if (!m_vec.empty()) {
+			for (num_type i = 0; i < num_type(m_vec.size()); ++i) {
+				type += "\n  " + (B ? "0x" + to_hex(1 << (i + 1)) : std::to_string(i)) + " = " + m_vec[i];
+			}
+
+		} else if (!m_map.empty()) {
+			for (auto v : m_map) {
+				type += "\n  " + (B ? "0x" + to_hex(v.first) : std::to_string(v.first)) + " = " + v.second;
+			}
+		}
+
+		return type + "\n}";
+	}
+
 	protected:
 	nv_enum_bitmask(const std::string& name, const valvec& vals) : nv_enum_bitmask(name, vals.size()) { m_vec = vals; }
 	nv_enum_bitmask(const std::string& name, const valmap& vals) : nv_enum_bitmask(name, vals.size()) { m_map = vals; }
-	nv_enum_bitmask(const std::string& name) : nv_enum_bitmask(name, 0) {}
+	nv_enum_bitmask(const std::string& name) : nv_enum_bitmask(!name.empty() ? name : (B ? "bitmask" : "enum"), 0) {}
 
 	bool str_to_num(const std::string& str, num_type& num, bool bitmask) const
 	{
@@ -710,8 +735,6 @@ template<typename T> class nv_enum_bitmask : public T
 		return str;
 	}
 
-	std::string m_name;
-
 	private:
 	nv_enum_bitmask(const std::string& name, size_t n)
 	: m_name(name)
@@ -721,14 +744,16 @@ template<typename T> class nv_enum_bitmask : public T
 		}
 	}
 
+	std::string m_name;
 	valmap m_map;
 	valvec m_vec;
+
 };
 
-template<class T> class nv_enum : public nv_enum_bitmask<T>
+template<class T> class nv_enum : public nv_enum_bitmask<T, false>
 {
 	protected:
-	typedef nv_enum_bitmask<T> super;
+	typedef nv_enum_bitmask<T, false> super;
 
 	public:
 	nv_enum()
@@ -741,16 +766,10 @@ template<class T> class nv_enum : public nv_enum_bitmask<T>
 
 	virtual ~nv_enum() {}
 
-	virtual std::string type() const override
-	{
-		std::string name = super::m_name;
-		return name.empty() ? "enum" : name;
-	}
-
 	virtual std::string to_string(unsigned, bool pretty) const override
 	{
 		std::string str = super::num_to_str(T::m_val, false, pretty);
-		return str.empty() ? type() + "(" + T::to_string(0, pretty) + ")" : str;
+		return str.empty() ? super::type() + "(" + T::to_string(0, pretty) + ")" : str;
 	}
 
 	virtual bool parse(const std::string& str) override
@@ -759,14 +778,14 @@ template<class T> class nv_enum : public nv_enum_bitmask<T>
 	}
 };
 
-template<class T> class nv_bitmask : public nv_enum_bitmask<T>
+template<class T> class nv_bitmask : public nv_enum_bitmask<T, true>
 {
-	typedef typename nv_enum_bitmask<T>::num_type num_type;
-	typedef nv_enum_bitmask<T> super;
+	typedef nv_enum_bitmask<T, true> super;
+	typedef typename super::num_type num_type;
 
 	public:
 	nv_bitmask(const std::string& name = "")
-	: super(name) {}
+	: super(!name.empty() ? name : "bitmask") {}
 	nv_bitmask(const typename super::valmap& vals)
 	: super("", vals) {}
 	nv_bitmask(const typename super::valvec& vals)
@@ -777,12 +796,6 @@ template<class T> class nv_bitmask : public nv_enum_bitmask<T>
 	: super(name, vals) {}
 
 	virtual ~nv_bitmask() {}
-
-	virtual std::string type() const override
-	{
-		std::string name = super::m_name;
-		return name.empty() ? "bitmask" : name;
-	}
 
 	virtual std::string to_string(unsigned, bool pretty) const override
 	{
