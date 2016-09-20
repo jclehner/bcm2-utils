@@ -89,6 +89,10 @@ int usage(bool help = false)
 	if (help) {
 		os << "\n    Dump raw data of variable <name>. If omitted, dump file contents.\n\n";
 	}
+	os << "  type    <infile> <name>" << endl;
+	if (help) {
+		os << "\n    Display type information of variable <name>.\n\n";
+	}
 	os << "  info    <infile>" << endl;
 	if (help) {
 		os << "\n    Print general information about a config file.\n\n";
@@ -128,7 +132,7 @@ void write_file(const string& filename, const sp<settings>& settings)
 	settings->write(out);
 }
 
-int do_list_get_dump(int argc, char** argv, const sp<settings>& settings)
+int do_list_get_dump_type(int argc, char** argv, const sp<settings>& settings)
 {
 	if (argc != 2 && argc != 3) {
 		return usage(false);
@@ -174,6 +178,9 @@ int do_list_get_dump(int argc, char** argv, const sp<settings>& settings)
 		}
 
 		cout << ostr.str() << flush;
+	} else if (argv[0] == "type"s && argc == 3) {
+		logger::i() << val->type() << endl;
+		return 0;
 	} else {
 		return usage(false);
 	}
@@ -349,8 +356,8 @@ int do_main(int argc, char** argv)
 
 	if (cmd == "encrypt" || cmd == "decrypt" || cmd == "fix") {
 		return do_crypt_or_fix(argc, argv, settings, key, password, pad);
-	} else if (cmd == "get" || cmd == "list" || cmd == "dump") {
-		return do_list_get_dump(argc, argv, settings);
+	} else if (cmd == "get" || cmd == "list" || cmd == "dump" || cmd == "type") {
+		return do_list_get_dump_type(argc, argv, settings);
 	} else if (cmd == "set") {
 		return do_set(argc, argv, settings);
 	} else if (cmd == "verify") {
