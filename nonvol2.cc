@@ -721,14 +721,9 @@ istream& nv_group::read(istream& is)
 
 	logger::t() << "** " << m_magic.to_str() << " " << m_magic.to_pretty() << " " << m_size.num() << " b, version 0x" << to_hex(m_version.num()) << endl;
 
-	string buf(m_size.num() - (is_versioned() ? 8 : 6), '\x00');
-	if (!is.read(&buf[0], buf.size())) {
-		throw runtime_error("failed to read group data");
-	}
-
-	istringstream istr(buf);
+	auto pos = is.tellg();
 	try {
-		nv_compound::read(istr);
+		nv_compound::read(is);
 	} catch (const exception& e) {
 		if (m_format == fmt_unknown) {
 			throw e;
@@ -738,18 +733,18 @@ istream& nv_group::read(istream& is)
 		logger::d() << e.what() << endl;
 		m_format = fmt_unknown;
 
-		istr.clear();
-		istr.str(buf);
+		is.clear();
+		is.seekg(pos);
 
-		return nv_compound::read(istr);
+		return nv_compound::read(is);
 	}
 
-	if (istr) {
+	if (is) {
 		//m_bytes += is_versioned() ? 8 : 6;
 
 		if (m_bytes < m_size.num()) {
 			sp<nv_val> extra = make_shared<nv_data>(m_size.num() - m_bytes);
-			if (!extra->read(istr)) {
+			if (!extra->read(is)) {
 				throw runtime_error("failed to read remaining " + std::to_string(extra->bytes()) + " bytes");
 			}
 
@@ -759,7 +754,7 @@ istream& nv_group::read(istream& is)
 			m_bytes += extra->bytes();
 		}
 	} else {
-		if (istr.eof()) {
+		if (is.eof()) {
 			throw runtime_error(type() + ": expected " + ::to_string(m_size.num() - m_bytes) + "b, got end-of-file");
 		}
 
