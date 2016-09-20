@@ -300,7 +300,7 @@ struct enum_bitmask_test
 	bool exception = false;
 };
 
-void test_enum_bitmask(nv_enum_bitmask<nv_u16>& enbm, vector<enum_bitmask_test> tests)
+template<bool B> void test_enum_bitmask(nv_enum_bitmask<nv_u16, B>& enbm, vector<enum_bitmask_test> tests)
 {
 	for (enum_bitmask_test t : tests) {
 		try {
