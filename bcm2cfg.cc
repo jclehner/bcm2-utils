@@ -44,6 +44,7 @@ int usage(bool help = false)
 	os << "  -p <password>    Encryption password" << endl;
 	os << "  -k <key>         Encryption key (hex string)" << endl;
 	os << "  -f <format>      Input file format (auto/gws/dyn/perm)" << endl;
+	os << "  -z               Add padding when encrypting" << endl;
 	os << "  -q               Decrease verbosity" << endl;
 	os << "  -v               Increase verbosity" << endl;
 	os << endl;

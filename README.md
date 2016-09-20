@@ -161,6 +161,7 @@ Options:
   -p <password>    Encryption password
   -k <key>         Encryption key (hex string)
   -f <format>      Input file format (auto/gws/dyn/perm)
+  -z               Add padding when encrypting
   -q               Decrease verbosity
   -v               Increase verbosity
 
