@@ -673,6 +673,7 @@ nv_magic::nv_magic(const std::string& magic)
 nv_magic::nv_magic(uint32_t magic)
 : nv_magic()
 {
+	magic = hton(magic);
 	parse_checked(string(reinterpret_cast<const char*>(&magic), 4));
 }
 
