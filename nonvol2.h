@@ -507,6 +507,9 @@ typedef detail::nv_string_tmpl<nv_string::flag_size_includes_prefix | nv_string:
 // u16-prefixed string with mandatory NUL byte ("foo" is 00:04:66:6f:6f:00)
 typedef detail::nv_string_tmpl<nv_string::flag_require_nul | nv_string::flag_prefix_u16> nv_p16zstring;
 
+// u16-prefixed string that is to be interpreted as data
+typedef detail::nv_string_tmpl<nv_string::flag_is_data | nv_string::flag_prefix_u16> nv_p16data;
+
 template<class T, class H,
 		T MIN = std::numeric_limits<T>::min(),
 		T MAX = std::numeric_limits<T>::max()>
