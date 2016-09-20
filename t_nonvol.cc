@@ -149,6 +149,7 @@ void test_group()
 		{ "strlist.-1", "", true },
 		{ "shortarray.3", "", true },
 		{ "shmoobar", "", true },
+		{ "byte.foobar", "", true },
 		{ "byte", "90" },
 		{ "str", "foobar" },
 		{ "strarray.0", "" },
