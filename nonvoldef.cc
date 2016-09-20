@@ -956,7 +956,9 @@ class nv_group_upc : public nv_group
 	virtual list definition(int type, const nv_version& ver) const override
 	{
 		return {
-			NV_VAR(nv_data, "", 10),
+			NV_VAR(nv_data, "", 3),
+			NV_VAR(nv_bool, "parental_enable"),
+			NV_VAR(nv_data, "", 6),
 			NV_VAR(nv_u16, "parental_activity_time_enable"),
 			NV_VAR(nv_zstring, "parental_password", 10),
 			NV_VAR(nv_data, "", 0x2237),
@@ -1005,6 +1007,40 @@ class nv_group_xbpi : public nv_group
 			NV_VAR(nv_p16data, "bpiplus_ca_certificate"),
 			NV_VAR(nv_p16data, "bpiplus_cvc_root_certificate"),
 			NV_VAR(nv_p16data, "bpiplus_cvc_ca_certificate"),
+		};
+	}
+};
+
+class nv_group_rca : public nv_group
+{
+	public:
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_rca, "RCA ", "thomcm")
+
+	virtual list definition(int format, const nv_version& ver) const override
+	{
+		if (format == fmt_perm) {
+			return nv_group::definition(format, ver);
+		}
+
+		return {
+			NV_VAR(nv_data, "", 2),
+			NV_VAR(nv_p8list<nv_u32>, "scan_list_freqs"),
+			NV_VAR(nv_u32, "us_alert_poll_period"),
+			//NV_VAR(nv_data, "", 1),
+			NV_VAR(nv_u32, "us_alert_thresh_dbmv_min"),
+			NV_VAR(nv_u32, "us_alert_thresh_dbmv_max"),
+			NV_VAR(nv_data, "", 1),
+			NV_VAR(nv_p8data, "html_bitstring"),
+			NV_VAR2(nv_enum<nv_u8>, "message_led", "", {
+					"",
+					"off",
+					"on",
+					"flashing"
+			}),
+			NV_VAR(nv_data, "", 5),
+			NV_VAR(nv_p8list<nv_u32>, "last_known_freqs"),
+			NV_VAR(nv_data, "", 2),
+
 		};
 	}
 };
@@ -1062,6 +1098,26 @@ class nv_group_halif : public nv_group
 	}
 };
 
+class nv_group_msc : public nv_group
+{
+	public:
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_msc, "MSC.", "msc")
+
+	virtual list definition(int format, const nv_version& ver) const override
+	{
+		if (format == fmt_perm) {
+			return nv_group::definition(format, ver);
+		}
+
+		return {
+			NV_VAR(nv_data, "", 1),
+			NV_VAR(nv_p8istring, "server_name"),
+			NV_VAR(nv_data, "", 6),
+			NV_VAR(nv_data, "", 2),
+		};
+	}
+};
+
 struct registrar {
 	registrar()
 	{
@@ -1083,6 +1139,8 @@ struct registrar {
 			NV_GROUP(nv_group_xbpi, false),
 			NV_GROUP(nv_group_xbpi, true),
 			NV_GROUP(nv_group_halif),
+			NV_GROUP(nv_group_rca),
+			NV_GROUP(nv_group_msc),
 		};
 
 		for (auto g : groups) {
