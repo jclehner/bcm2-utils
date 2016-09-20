@@ -234,7 +234,6 @@ int main(int argc, char** argv)
 	int opts = 0;
 	int opt;
 
-	optind = 0;
 	opterr = 0;
 
 	while ((opt = getopt(argc, argv, "hsARFqvP:")) != -1) {
