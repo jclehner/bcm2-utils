@@ -11,7 +11,7 @@ ifeq ($(UNAME), Linux)
 endif
 
 ifeq ($(UNAME), Darwin)
-	CFLAGS += -arch i386 -arch x86_64 -mmacosx-version-min=10.7
+	CFLAGS += 
 endif
 
 bcm2dump_OBJ = io.o rwx.o interface.o ps.o bcm2dump.o \
