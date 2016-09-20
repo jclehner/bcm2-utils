@@ -9,13 +9,13 @@ Libs=
 PrivateResource=
 ResourceIncludes=
 MakeIncludes=
-Compiler=-std=c99_@@_
-CppCompiler=-DVERSION="\"0.9\""_@@_-std=c++14_@@_
+Compiler=-std=c99_@@_-DWINVER=0x0600_@@_-D_WIN32_WINNT=0x0600_@@_
+CppCompiler=-DVERSION="\"UNKNOWN\""_@@_-std=c++14_@@_-DWINVER=0x0600_@@_-D_WIN32_WINNT=0x0600_@@_
 Linker=-lws2_32_@@_
 IsCpp=1
 Icon=
 ExeOutput=
-ObjectOutput=
+ObjectOutput=obj
 LogOutput=
 LogOutputEnabled=0
 OverrideOutput=0
@@ -28,7 +28,7 @@ Folders=
 IncludeVersionInfo=0
 SupportXPThemes=0
 CompilerSet=3
-CompilerSettings=0000000100000000000000000
+CompilerSettings=0000000100100000000001000
 UnitCount=14
 
 [VersionInfo]
@@ -40,7 +40,7 @@ LanguageID=1033
 CharsetID=1252
 CompanyName=
 FileVersion=1.0.0.0
-FileDescription=
+FileDescription=Developed using the Dev-C++ IDE
 InternalName=
 LegalCopyright=
 LegalTrademarks=
@@ -168,7 +168,7 @@ Compile=1
 Link=1
 Priority=1000
 OverrideBuildCmd=0
-BuildCmd=
+BuildCmd=$(CC) -c profiledef.c -o profiledef.o $(CFLAGS)
 
 [Unit13]
 FileName=util.cc

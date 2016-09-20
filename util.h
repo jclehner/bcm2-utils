@@ -37,6 +37,7 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #include <windows.h>
+#include <ws2tcpip.h>
 #include <ws2def.h>
 // are you serious?
 #undef max
@@ -219,44 +220,6 @@ template<typename T> T ntoh(const T& t)
 
 template<typename T> T hton(const T& t)
 { return detail::bswapper<T>::hton(t); }
-
-/*
-template<> struct bswapper<uint8_t>
-{
-	static uint8_t ntoh(const uint8_t& n)
-	{ return n; }
-
-	static uint8_t hton(const uint8_t& n)
-	{ return n; }
-};
-
-template<> struct bswapper<uint16_t>
-{
-	static uint16_t ntoh(const uint16_t& n)
-	{ return ntohs(n); }
-
-	static uint16_t hton(const uint16_t& n)
-	{ return htons(n); }
-};
-
-template<> struct bswapper<uint32_t>
-{
-	static uint32_t ntoh(const uint32_t& n)
-	{ return ntohl(n); }
-
-	static uint32_t hton(const uint32_t& n)
-	{ return htonl(n); }
-};
-
-template<> struct bswapper<int32_t>
-{
-	static int32_t ntoh(const int32_t& n)
-	{ return ntohl(n); }
-
-	static int32_t hton(const int32_t& n)
-	{ return htonl(n); }
-};
-*/
 
 template<typename T> using sp = std::shared_ptr<T>;
 template<typename T> using csp = std::shared_ptr<const T>;
