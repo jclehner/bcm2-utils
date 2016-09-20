@@ -50,7 +50,8 @@ int usage(bool help = false)
 	os << "Commands: " << endl;
 	os << "  verify  <infile>" << endl;
 	if (help) {
-		os << "\n    Verify the input file (checksum and file size).\n";
+		os << "\n    Verifies the input file (checksum and file size). Returns\n"
+				"    0 on success, and 2 on failed verification.\n\n";
 	}
 	os << "  fix     <infile> [<outfile>]" << endl;
 	if (help) {
