@@ -116,10 +116,15 @@ int usage(bool help = false)
 sp<settings> read_file(const string& filename, int format, const sp<profile>& profile,
 		const string& key, const string& pw)
 {
-	ifstream in(filename, ios::binary);
-	if (!in.good()) {
-		throw user_error("failed to open " + filename + " for reading");
+	ifstream infile;
+	if (filename != "-") {
+		infile.open(filename, ios::binary);
+		if (!infile.good()) {
+			throw user_error("failed to open " + filename + " for reading");
+		}
 	}
+
+	istream& in = filename != "-" ? infile : cin;
 
 	return settings::read(in, format, profile, key, pw);
 }
