@@ -701,7 +701,7 @@ template<typename T, bool B> class nv_enum_bitmask : public T
 	protected:
 	nv_enum_bitmask(const std::string& name, const valvec& vals) : nv_enum_bitmask(name, vals.size()) { m_vec = vals; }
 	nv_enum_bitmask(const std::string& name, const valmap& vals) : nv_enum_bitmask(name, vals.size()) { m_map = vals; }
-	nv_enum_bitmask(const std::string& name) : nv_enum_bitmask(!name.empty() ? name : (B ? "bitmask" : "enum"), 0) {}
+	nv_enum_bitmask(const std::string& name) : nv_enum_bitmask(name, 0) {}
 
 	bool str_to_num(const std::string& str, num_type& num, bool bitmask) const
 	{
@@ -743,16 +743,17 @@ template<typename T, bool B> class nv_enum_bitmask : public T
 		return str;
 	}
 
+	const std::string m_name;
+
 	private:
 	nv_enum_bitmask(const std::string& name, size_t n)
-	: m_name(name)
+	: m_name(!name.empty() ? name : (B ? "bitmask" : "enum"))
 	{
 		if (n > std::numeric_limits<num_type>::max()) {
 			throw std::invalid_argument("number of enum elements exceeds maximum for " + nv_type<T>::name());
 		}
 	}
 
-	std::string m_name;
 	valmap m_map;
 	valvec m_vec;
 
@@ -777,7 +778,7 @@ template<class T> class nv_enum : public nv_enum_bitmask<T, false>
 	virtual std::string to_string(unsigned, bool pretty) const override
 	{
 		std::string str = super::num_to_str(T::m_val, false, pretty);
-		return str.empty() ? super::type() + "(" + T::to_string(0, pretty) + ")" : str;
+		return !str.empty() ? str : super::m_name + "(" + std::to_string(super::num()) + ")";
 	}
 
 	virtual bool parse(const std::string& str) override
