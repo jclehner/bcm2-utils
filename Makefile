@@ -11,7 +11,7 @@ ifeq ($(UNAME), Linux)
 endif
 
 ifeq ($(UNAME), Darwin)
-	CFLAGS += 
+	CFLAGS +=
 endif
 
 bcm2dump_OBJ = io.o rwx.o interface.o ps.o bcm2dump.o \
@@ -29,7 +29,7 @@ bcm2cfg: $(bcm2cfg_OBJ)
 	$(CXX) $(CXXFLAGS) $(bcm2cfg_OBJ) -o $@ $(LIBS)
 
 bcm2cfg.exe:
-	LIBS= CC=winegcc CXX=wineg++ CFLAGS=-m32 make bcm2cfg
+	UNAME=Wine CC=winegcc CXX=wineg++ CFLAGS=-m32 make bcm2cfg
 
 bcm2dump: $(bcm2dump_OBJ)
 	$(CXX) $(CXXFLAGS) $(bcm2dump_OBJ) -o $@ 
