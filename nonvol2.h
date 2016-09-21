@@ -682,7 +682,7 @@ template<typename T, bool B> class nv_enum_bitmask : public T
 					continue;
 				}
 
-				type += "\n  " + (B ? "0x" + to_hex(1 << (i + 1)) : std::to_string(i)) + " = " + m_vec[i];
+				type += "\n  " + (B ? "0x" + to_hex(1 << i) : std::to_string(i)) + " = " + m_vec[i];
 			}
 
 		} else if (!m_map.empty()) {
