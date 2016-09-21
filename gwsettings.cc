@@ -20,7 +20,6 @@
 #include <algorithm>
 #include "gwsettings.h"
 #include "crypto.h"
-#include "nonvol.h"
 using namespace std;
 using namespace bcm2dump;
 using namespace bcm2utils;

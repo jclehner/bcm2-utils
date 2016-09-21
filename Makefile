@@ -25,7 +25,7 @@ t_nonvol_OBJ = util.o nonvol2.o t_nonvol.o
 
 all: bcm2dump bcm2cfg t_nonvol
 
-bcm2cfg: $(bcm2cfg_OBJ) nonvol.h
+bcm2cfg: $(bcm2cfg_OBJ)
 	$(CXX) $(CXXFLAGS) $(bcm2cfg_OBJ) -o $@ $(LIBS)
 
 bcm2cfg.exe:
