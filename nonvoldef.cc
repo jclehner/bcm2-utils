@@ -419,7 +419,9 @@ class nv_group_8021 : public nv_group
 					{ 0x03, "40MHz" },
 					{ 0x07, "80MHz" }
 				}),
-				NV_VAR(nv_data, "", 0x15),
+				// this is the same as n_control_channel, but as text (could also be a p8zstring)
+				NV_VAR(nv_p8istring, ""),
+				NV_VAR(nv_data, "", 0x13),
 				// 0x01 = txchain(1), 0x03 = txchain(2), 0x07 = txchain(3)
 				NV_VAR(nv_u8, "txchain", true),
 				// same as above
@@ -965,7 +967,13 @@ class nv_group_upc : public nv_group
 			NV_VAR(nv_u8, "web_country"),
 			NV_VAR(nv_u8, "web_language"),
 			NV_VAR(nv_bool, "web_syslog_enable"),
-			NV_VAR(nv_u8, "web_syslog_level"),
+			NV_VAR2(nv_bitmask<nv_u8>, "web_syslog_level", "", {
+					"critical",
+					"major",
+					"minor",
+					"warning",
+					"inform"
+			}),
 			NV_VAR2(nv_array<nv_mac>, "trusted_macs", 10, &is_zero_mac),
 			NV_VAR(nv_data, "", 0xd8),
 			NV_VAR(nv_array<nv_ip4>, "lan_dns4_list", 3),
