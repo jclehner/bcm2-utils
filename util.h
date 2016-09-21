@@ -33,6 +33,7 @@
 #include <vector>
 #include <string>
 #include <ios>
+#include <unistd.h>
 
 #ifdef _WIN32
 #include <winsock2.h>
