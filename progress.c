@@ -17,7 +17,7 @@
  *
  */
 
-#include "bcm2dump.h"
+#include "progress.h"
 
 static void gmtime_days(time_t time, unsigned *days, struct tm *tm)
 {

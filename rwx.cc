@@ -20,7 +20,7 @@
 #include <arpa/inet.h>
 #include <iostream>
 #include <fstream>
-#include "bcm2dump.h"
+#include "progress.h"
 #include "mipsasm.h"
 #include "util.h"
 #include "rwx.h"

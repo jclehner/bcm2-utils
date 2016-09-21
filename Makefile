@@ -31,7 +31,7 @@ bcm2cfg: $(bcm2cfg_OBJ)
 bcm2cfg.exe:
 	LIBS= CC=winegcc CXX=wineg++ CFLAGS=-m32 make bcm2cfg
 
-bcm2dump: $(bcm2dump_OBJ) bcm2dump.h
+bcm2dump: $(bcm2dump_OBJ)
 	$(CXX) $(CXXFLAGS) $(bcm2dump_OBJ) -o $@ 
 
 t_nonvol: $(t_nonvol_OBJ)

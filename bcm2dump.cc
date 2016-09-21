@@ -2,7 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include "interface.h"
-#include "bcm2dump.h"
+#include "progress.h"
 #include "rwx.h"
 #include "io.h"
 using namespace std;
