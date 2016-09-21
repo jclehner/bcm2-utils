@@ -41,6 +41,11 @@ bool is_zero_mac(const csp<nv_mac>& mac)
 	return mac->to_str() == "00:00:00:00:00:00";
 }
 
+bool is_empty_string(const csp<nv_string>& str)
+{
+	return str->to_str().empty();
+}
+
 class nv_timestamp : public nv_u32
 {
 	public:
@@ -50,6 +55,35 @@ class nv_timestamp : public nv_u32
 		time_t time = num();
 		strftime(buf, sizeof(buf) - 1, "%F %R", localtime(&time));
 		return buf;
+	}
+};
+
+class nv_time_period : public nv_compound_def
+{
+	public:
+	nv_time_period()
+	: nv_compound_def("time-period", {
+			NV_VAR(nv_u8_m<23>, "beg_hrs"),
+			NV_VAR(nv_u8_m<23>, "end_hrs"),
+			NV_VAR(nv_u8_m<59>, "beg_min"),
+			NV_VAR(nv_u8_m<59>, "end_min"),
+	}) {}
+
+	string to_string(unsigned level, bool pretty) const override
+	{
+		if (!pretty) {
+			return nv_compound_def::to_string(level, pretty);
+		}
+
+		return num("beg_hrs") + ":" + num("beg_min") + "-" +
+				num("end_hrs") + ":" + num("end_min");
+	}
+
+	private:
+	string num(const string& name) const
+	{
+		string str = get(name)->to_pretty();
+		return (str.size() == 2 ? "" : "0") + str;
 	}
 };
 
@@ -461,7 +495,25 @@ class nv_group_t802 : public nv_group
 		}
 
 		return {
-			NV_VAR(nv_data, "wifi_sleep", 14),
+#if 0
+			NV_VAR(nv_array<nv_u8 COMMA() 10>, "wifi_sleep"),
+#else
+			NV_VAR(nv_bool, "sleep_breaking_time"),
+			NV_VAR(nv_bool, "sleep_every_day"),
+			NV_VAR(nv_bitmask<nv_u8>, "sleep_days"),
+			NV_VAR(nv_bool, "sleep_all_day"),
+#if 0
+			NV_VAR(nv_u8_m<23>, "sleep_begin_h"),
+			NV_VAR(nv_u8_m<23>, "sleep_end_h"),
+			NV_VAR(nv_u8_m<59>, "sleep_begin_m"),
+			NV_VAR(nv_u8_m<59>, "sleep_end_m"),
+#else
+			NV_VAR(nv_time_period, "sleep_time"),
+#endif
+			NV_VAR(nv_bool, "sleep_enabled"),
+			NV_VAR(nv_bool, "sleep_page_visible"),
+#endif
+			NV_VAR(nv_data, "", 4),
 			NV_VAR(nv_fzstring<33>, "ssid_24"),
 			NV_VAR(nv_fzstring<33>, "ssid_50"),
 			NV_VAR(nv_u8, "", true),
@@ -860,10 +912,7 @@ class nv_group_fire : public nv_group
 			// 0x40 = saturday
 			NV_VAR(nv_bitmask<nv_u8>, "tod_filter_days"),
 			NV_VAR(nv_data, "", 1),
-			NV_VAR(nv_u8_m<23>, "tod_filter_begin_h"),
-			NV_VAR(nv_u8_m<23>, "tod_filter_end_h"),
-			NV_VAR(nv_u8_m<59>, "tod_filter_begin_m"),
-			NV_VAR(nv_u8_m<59>, "tod_filter_end_m"),
+			NV_VAR(nv_time_period, "tod_filter_time"),
 			NV_VAR(nv_data, "", 0x2a80),
 			NV_VAR(nv_ip4, "syslog_ip"),
 			NV_VAR(nv_data, "", 2),

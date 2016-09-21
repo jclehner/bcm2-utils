@@ -210,7 +210,7 @@ template<> struct nv_type<nv_compound>
 template<class From> csp<nv_compound> nv_compound_cast(const std::shared_ptr<From>& from)
 { return nv_val_cast<const nv_compound, From, nv_type<nv_compound>>(from); }
 
-class nv_compound_def final : public nv_compound
+class nv_compound_def : public nv_compound
 {
 	public:
 	nv_compound_def(const std::string& name, const nv_compound::list& def, bool partial = false)
@@ -629,10 +629,10 @@ NV_NUM_NAMES_DEF(64);
 
 // defines name (unlimited range), name_r (custom range) and name_m (custom maximum)
 #define NV_NUM_DEF(name, num_type) \
-	template<num_type MIN, num_type MAX> \
-	using name ## _r = nv_num<num_type, detail::num_name<num_type>, MIN, MAX>; \
-	template<num_type MAX> using name ## _m = name ## _r<0, MAX>; \
-	typedef name ## _r<std::numeric_limits<num_type>::min(), std::numeric_limits<num_type>::max()> name \
+	template<num_type MIN = std::numeric_limits<num_type>::min(), num_type MAX = std::numeric_limits<num_type>::max()> \
+			using name ## _r = nv_num<num_type, detail::num_name<num_type>, MIN, MAX>; \
+	template<num_type MAX> using name ## _m = name ## _r<std::numeric_limits<num_type>::min(), MAX>; \
+	typedef name ## _r<> name \
 
 NV_NUM_DEF(nv_u8, uint8_t);
 NV_NUM_DEF(nv_u16, uint16_t);
