@@ -1,7 +1,8 @@
 CC ?= gcc
 CXX ?= g++
 LIBS ?=
-CFLAGS += -Wall -g -DVERSION=\"$(shell git describe --always)\"
+VERSION = $(shell git describe --always)
+CFLAGS += -Wall -g -DVERSION=\"$(VERSION)\"
 CXXFLAGS += $(CFLAGS) -std=c++14 -Wnon-virtual-dtor
 PREFIX ?= /usr/local
 UNAME ?= $(shell uname)
@@ -24,6 +25,11 @@ t_nonvol_OBJ = util.o nonvol2.o t_nonvol.o
 .PHONY: all clean bcm2cfg.exe
 
 all: bcm2dump bcm2cfg t_nonvol
+
+release: clean bcm2cfg bcm2dump
+	strip bcm2cfg
+	strip bcm2dump
+	zip bcm2utils-$(VERSION).zip README.md bcm2cfg bcm2dump
 
 bcm2cfg: $(bcm2cfg_OBJ)
 	$(CXX) $(CXXFLAGS) $(bcm2cfg_OBJ) -o $@ $(LIBS)
