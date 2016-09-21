@@ -74,11 +74,6 @@ bool read_group_header(istream& is, nv_u16& size, nv_magic& magic, size_t maxsiz
 			return false;
 		}
 
-		if (size.num() > maxsize) {
-			logger::v() << "group size " << size.to_str() << " exceeds maximum size " << maxsize << endl;
-			return false;
-		}
-
 		return true;
 	} else {
 		logger::v() << "failed to read group size" << endl;
@@ -853,6 +848,9 @@ istream& nv_group::read(istream& is, sp<nv_group>& group, int format, size_t max
 	if (!read_group_header(is, size, magic, maxsize)) {
 		group = nullptr;
 		return is;
+	} else if (size.num() > maxsize) {
+		logger::v() << "group size " << size.to_str() << " exceeds maximum size " << maxsize << endl;
+		size.num(maxsize);
 	}
 
 	auto i = registry().find(magic);

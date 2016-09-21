@@ -279,6 +279,11 @@ class gwsettings : public encryptable_settings
 			if (m_size.num() + 16 == buf.size()) {
 				m_padded = true;
 				m_size_valid = true;
+			} else {
+				if (buf.size() > m_size.num()) {
+					logger::v() << "data size exceeds reported file size" << endl;
+					m_size.num(buf.size());
+				}
 			}
 		}
 
