@@ -583,8 +583,11 @@ class nv_num : public nv_val
 	virtual size_t bytes() const override
 	{ return sizeof(T); }
 
-	virtual T num() const
+	virtual const T& num() const
 	{ return m_val; }
+
+	virtual void num(const T& val)
+	{ m_val = val; }
 
 	bool operator!=(const nv_num<T, H>& other)
 	{ return m_val == other.m_val; }
