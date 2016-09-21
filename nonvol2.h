@@ -786,7 +786,12 @@ template<class T> class nv_enum : public nv_enum_bitmask<T, false>
 
 	virtual bool parse(const std::string& str) override
 	{
-		return super::str_to_num(str, T::m_val, false);
+		if(super::str_to_num(str, T::m_val, false)) {
+			T::m_set = true;
+			return true;
+		}
+
+		return false;
 	}
 };
 
@@ -845,11 +850,14 @@ template<class T> class nv_bitmask : public nv_enum_bitmask<T, true>
 				} else {
 					T::m_val &= ~n;
 				}
-				return true;
 			} else if(super::str_to_num(str, n, true)) {
 				T::m_val = n;
-				return true;
+			} else {
+				return false;
 			}
+
+			T::m_set = true;
+			return true;
 		}
 
 		return false;
