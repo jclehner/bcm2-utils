@@ -903,8 +903,8 @@ class nv_group_fire : public nv_group
 			NV_VAR(nv_u8, "word_filter_count"),
 			NV_VAR(nv_data, "", 3),
 			NV_VAR(nv_u8, "domain_filter_count"),
-			NV_VAR2(nv_array<nv_fstring<0x20>>, "word_filters", 16),
-			NV_VAR2(nv_array<nv_fstring<0x40>>, "domain_filters", 16),
+			NV_VAR2(nv_array<nv_fstring<0x20>>, "word_filters", 16, &is_empty_string),
+			NV_VAR2(nv_array<nv_fstring<0x40>>, "domain_filters", 16, &is_empty_string),
 			NV_VAR(nv_data, "", 0x2d4), // this theoretically gives room for 11 more domain filters
 			NV_VAR(nv_data, "", 0xc),
 			// 0x00 = all (!)
