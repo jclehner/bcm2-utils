@@ -177,8 +177,6 @@ int do_list_get_dump_type(int argc, char** argv, const sp<settings>& settings)
 			}
 		}
 	} else if (argv[0] == "dump"s) {
-		// don't clobber the output
-		logger::no_stdout();
 		ostringstream ostr;
 		if (!val->write(ostr)) {
 			throw runtime_error("failed to write data");
@@ -341,6 +339,9 @@ int do_main(int argc, char** argv)
 	string cmd = optind < argc ? argv[optind] : "";
 	if (cmd.empty() || cmd == "help") {
 		return usage(!cmd.empty());
+	} else if (cmd == "dump") {
+		// don't clobber the output
+		logger::no_stdout();
 	}
 
 	logger::loglevel(loglevel);
