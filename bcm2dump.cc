@@ -1,6 +1,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <fstream>
+#include <unistd.h>
 #include "interface.h"
 #include "progress.h"
 #include "rwx.h"

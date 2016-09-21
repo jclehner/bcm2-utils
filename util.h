@@ -33,16 +33,15 @@
 #include <vector>
 #include <string>
 #include <ios>
-#include <unistd.h>
 
 #ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <winsock2.h>
 #include <windows.h>
 #include <ws2tcpip.h>
 #include <ws2def.h>
-// are you serious?
-#undef max
-#undef min
 #else
 #include <arpa/inet.h>
 #include <sys/socket.h>
