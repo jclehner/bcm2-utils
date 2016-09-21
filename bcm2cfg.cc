@@ -178,7 +178,7 @@ int do_list_get_dump_type(int argc, char** argv, const sp<settings>& settings)
 		}
 	} else if (argv[0] == "dump"s) {
 		// don't clobber the output
-		logger::loglevel(max(logger::warn, logger::loglevel()));
+		logger::no_stdout();
 		ostringstream ostr;
 		if (!val->write(ostr)) {
 			throw runtime_error("failed to write data");

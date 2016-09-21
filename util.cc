@@ -182,6 +182,7 @@ std::string transform(const std::string& str, std::function<int(int)> f)
 
 ofstream logger::s_bucket;
 int logger::s_loglevel = logger::info;
+bool logger::s_no_stdout = false;
 
 constexpr int logger::trace;
 constexpr int logger::debug;
@@ -194,7 +195,7 @@ ostream& logger::log(int severity)
 {
 	if (severity < s_loglevel) {
 		return s_bucket;
-	} else if (severity >= warn) {
+	} else if (s_no_stdout || severity >= warn) {
 		return cerr;
 	} else {
 		return cout;

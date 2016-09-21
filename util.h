@@ -306,9 +306,13 @@ class logger
 	static int loglevel()
 	{ return s_loglevel; }
 
+	static void no_stdout(bool no_stdout = true)
+	{ s_no_stdout = no_stdout; }
+
 	private:
 	static std::ofstream s_bucket;
 	static int s_loglevel;
+	static bool s_no_stdout;
 };
 
 class user_error : public std::runtime_error
