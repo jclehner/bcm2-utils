@@ -93,13 +93,19 @@ class nv_group_mlog : public nv_group
 	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_mlog, "MLog", "userif");
 
 	protected:
+	class nv_ipstacks : public nv_bitmask<nv_u8>
+	{
+		public:
+		nv_ipstacks() : nv_bitmask("ipstacks", {
+				"IP1", "IP2", "IP3", "IP4", "IP5", "IP6", "IP7", "IP8"
+		}) {}
+	};
+
 	virtual list definition(int type, const nv_version& ver) const override
 	{
 		if (type == fmt_perm) {
 			return nv_group::definition(type, ver);
 		}
-
-		typedef nv_bitmask<nv_u8> nv_ipstacks;
 
 		return {
 			NV_VAR(nv_p16string, "http_user", 32),
@@ -110,13 +116,15 @@ class nv_group_mlog : public nv_group
 			NV_VAR(nv_zstring, "remote_acc_user", 16),
 			NV_VAR(nv_zstring, "remote_acc_pass", 16),
 			NV_VAR(nv_ipstacks, "telnet_ipstacks"),
-			NV_VAR3(ver.num() > 0x0006, nv_ipstacks, "ssh_ip_stacks"),
-			NV_VAR3(ver.num() > 0x0006, nv_u8, "ssh_enabled"),
-			NV_VAR3(ver.num() > 0x0006, nv_u8, "http_enabled"),
-			NV_VAR3(ver.num() > 0x0006, nv_u16, "remote_acc_timeout"),
+			NV_VAR3(ver.num() >= 0x0006, nv_ipstacks, "ssh_ipstacks"),
+			NV_VAR3(ver.num() >= 0x0006, nv_bool, "ssh_enabled"),
+			NV_VAR3(ver.num() >= 0x0006, nv_bool, "http_enabled"),
+			NV_VAR3(ver.num() >= 0x0006, nv_u16, "remote_acc_timeout"),
 			//NV_VAR3(ver.num() <= 0x0006, nv_data, "", 2),
 			NV_VAR2(nv_ipstacks, "http_ipstacks"),
-			NV_VAR2(nv_ipstacks, "http_adv_ipstacks")
+			NV_VAR2(nv_ipstacks, "http_adv_ipstacks"),
+			NV_VAR(nv_data, "", 1),
+			NV_VAR2(nv_p8string, "http_seed"),
 		};
 	}
 };
