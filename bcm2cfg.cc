@@ -131,12 +131,19 @@ sp<settings> read_file(const string& filename, int format, const sp<profile>& pr
 
 void write_file(const string& filename, const sp<settings>& settings)
 {
+	ostringstream ostr;
+	if (!settings->write(ostr)) {
+		throw user_error("failed to serialize data");
+	}
+
 	ofstream out(filename, ios::binary);
 	if (!out.good()) {
 		throw user_error("failed to open " + filename + " for writing");
 	}
 
-	settings->write(out);
+	if (!(out << ostr.str())) {
+		throw user_error("failed to write to " + filename);
+	}
 }
 
 int do_list_get_dump_type(int argc, char** argv, const sp<settings>& settings)
