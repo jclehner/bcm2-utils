@@ -76,8 +76,8 @@ final block is less than 16 bytes, the data is copied verbatim, thus leaking som
 
 ```
 ...
-00004280  9f 60 b1 1b 54 28 35 8f  e4 39 57 76 da fd f2 24  |.`..T(5..9Wv...$|
-00004290  00 05 61 64 6d 69 6e                              |..admin|
+000041a0  80 d3 e4 8a 71 51 f2 64  81 e4 31 4a 64 a9 5d 74  |....qQ.d..1Jd.]t|
+000041b0  69 6e 00 05 61 64 6d 69  6e                       |in..admin|
 ```
 
 Some firmware versions append a 16-byte block of all `\x00` before encrypting, so as to "leak" only
@@ -85,8 +85,9 @@ zeroes:
 
 ```
 ...
-00006690  a2 87 fc 07 86 b2 75 f1  4b 59 de 7b 74 c1 ac 90  |......u.KY.{t...|
-000066a0  00 00 00 00 00 00 00 00                           |........|
+000041a0  80 d3 e4 8a 71 51 f2 64  81 e4 31 4a 64 a9 5d 74  |....qQ.d..1Jd.]t|
+000041b0  b3 65 87 cd ad 42 6c d1  af 3c 63 a9 20 b1 b9 6c  |.e...Bl..<c. ..l|
+000041c0  00 00 00 00 00 00 00 00  00                       |.........|
 ```
 
 Configuration data
