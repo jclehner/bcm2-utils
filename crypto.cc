@@ -244,7 +244,8 @@ string crypt_aes_256_ecb(const string& ibuf, const string& key, bool encrypt)
 		throw winapi_error(encrypt ? "CryptEncrypt" : "CryptDecrypt");
 	}
 
-	return obuf + (len < ibuf.size() ? ibuf.substr(len) : "");
+	// no need to deal with the remaining data, since we copied ibuf to obuf
+	return obuf;
 #else
 	throw runtime_error("encryption not supported on this platform");
 #endif
