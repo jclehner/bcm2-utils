@@ -644,7 +644,7 @@ class dumpcode_rwx : public parsing_rwx
 	{ return limits(4, 16, 0x4000); }
 
 	virtual limits limits_write() const override
-	{ return limits(); }
+	{ return limits(4, 4, 0x4000); }
 
 	virtual void set_interface(const interface::sp& intf) override
 	{
@@ -697,7 +697,39 @@ class dumpcode_rwx : public parsing_rwx
 
 	protected:
 	virtual bool write_chunk(uint32_t offset, const string& chunk) override
-	{ return false; }
+	{
+#ifdef WRITECODE_PRINT_OFFSETS
+		const uint32_t start = offset;
+		return m_intf->foreach_line([this, &offset, chunk, &start](const string& line) {
+				if (is_prompt_line(line, offset)) {
+					m_intf->writeln(to_hex(chunk.substr(offset - start, 4)));
+					offset += 4;
+				}
+
+				return (offset - start) >= chunk.size();
+		}, 500, 500);
+#else
+		for (size_t i = 0; i < chunk.size(); i += 4) {
+			m_intf->writeln(to_hex(chunk.substr(i, 4)));
+			m_intf->readln();
+		}
+
+		return true;
+#endif
+	}
+
+	bool is_prompt_line(const string& line, uint32_t offset)
+	{
+		if (line.empty() || line[0] != ':') {
+			return false;
+		}
+
+		if (offset != hex_cast<uint32_t>(line.substr(1))) {
+			throw runtime_error("offset mismatch");
+		}
+
+		return true;
+	}
 
 	virtual bool exec_impl(uint32_t offset) override
 	{ return false; }
@@ -708,16 +740,24 @@ class dumpcode_rwx : public parsing_rwx
 			throw runtime_error("error recovery is not possible with custom dumpcode");
 		}
 
-		patch32(m_code, 0x10, offset);
-		m_ram->write(m_loadaddr + 0x10, m_code.substr(0x10, 4));
+		uint32_t remaining = m_rw_length - (offset - m_rw_offset);
 
-		patch32(m_code, 0x1c, m_dump_length - (offset - m_dump_offset));
-		m_ram->write(m_loadaddr + 0x1c, m_code.substr(0x1c, 4));
+		if (!m_write) {
+			patch32(m_code, 0x10, offset);
+			m_ram->write(m_loadaddr + 0x10, m_code.substr(0x10, 4));
+
+			patch32(m_code, 0x1c, remaining);
+			m_ram->write(m_loadaddr + 0x1c, m_code.substr(0x1c, 4));
+		} else {
+			patch32(m_code, 0x10, offset);
+			patch32(m_code, 0x14, remaining);
+			m_ram->write(m_loadaddr + 0x10, m_code.substr(0x10, 8));
+		}
 	}
 
 	unsigned chunk_timeout(uint32_t offset, uint32_t length) const override
 	{
-		if (offset != m_dump_offset || !m_read_func.addr()) {
+		if (offset != m_rw_offset || !m_read_func.addr()) {
 			return parsing_rwx::chunk_timeout(offset, length);
 		} else {
 			return 60 * 1000;
@@ -734,8 +774,13 @@ class dumpcode_rwx : public parsing_rwx
 					+ to_string(cfg.buflen) + " b)");
 		}
 
-		m_dump_offset = offset;
-		m_dump_length = length;
+		if (write && !m_space.is_ram()) {
+			throw runtime_error("writing to non-ram address space is not supported");
+		}
+
+		m_write = write;
+		m_rw_offset = offset;
+		m_rw_length = length;
 		//m_rwx_func = m_space.get_read_func(m_intf->id());
 
 		uint32_t kseg1 = profile->kseg1();
@@ -743,27 +788,38 @@ class dumpcode_rwx : public parsing_rwx
 
 		// FIXME check whether we have a custom dumpcode file
 		if (true) {
-			m_code = string(reinterpret_cast<const char*>(dumpcode), sizeof(dumpcode));
-			m_entry = 0x4c;
+			if (!write) {
+				m_code = string(reinterpret_cast<const char*>(dumpcode), sizeof(dumpcode));
+				m_entry = 0x4c;
 
-			patch32(m_code, 0x10, 0);
-			patch32(m_code, 0x14, kseg1 | cfg.buffer);
-			patch32(m_code, 0x18, offset);
-			patch32(m_code, 0x1c, length);
-			patch32(m_code, 0x20, limits_read().max);
-			patch32(m_code, 0x24, kseg1 | cfg.printf);
+				patch32(m_code, 0x10, 0);
+				patch32(m_code, 0x14, kseg1 | cfg.buffer);
+				patch32(m_code, 0x18, offset);
+				patch32(m_code, 0x1c, length);
+				patch32(m_code, 0x20, limits_read().max);
+				patch32(m_code, 0x24, kseg1 | cfg.printf);
 
-			if (m_read_func.addr()) {
-				patch32(m_code, 0x0c, m_read_func.args());
-				patch32(m_code, 0x28, kseg1 | m_read_func.addr());
+				if (m_read_func.addr()) {
+					patch32(m_code, 0x0c, m_read_func.args());
+					patch32(m_code, 0x28, kseg1 | m_read_func.addr());
 
-				unsigned i = 0;
-				for (auto patch : m_read_func.patches()) {
-					uint32_t offset = 0x2c + (8 * i++);
-					uint32_t addr = patch->addr;
-					patch32(m_code, offset, addr ? (kseg1 | addr) : 0);
-					patch32(m_code, offset + 4, addr ? patch->word : 0);
+					unsigned i = 0;
+					for (auto patch : m_read_func.patches()) {
+						uint32_t offset = 0x2c + (8 * i++);
+						uint32_t addr = patch->addr;
+						patch32(m_code, offset, addr ? (kseg1 | addr) : 0);
+						patch32(m_code, offset + 4, addr ? patch->word : 0);
+					}
 				}
+			} else {
+				m_code = string(reinterpret_cast<const char*>(writecode), sizeof(writecode));
+				m_entry = 0x24;
+
+				patch32(m_code, 0x10, offset);
+				patch32(m_code, 0x14, length);
+				patch32(m_code, 0x18, limits_write().max);
+				patch32(m_code, 0x1c, kseg1 | cfg.printf);
+				patch32(m_code, 0x20, kseg1 | cfg.scanf);
 			}
 
 			uint32_t codesize = m_code.size();
@@ -782,7 +838,7 @@ class dumpcode_rwx : public parsing_rwx
 			progress_init(&pg, m_loadaddr, m_code.size());
 
 			if (m_prog_l && !quick) {
-				printf("updating dump code at 0x%08x (%u b)\n", m_loadaddr, codesize);
+				logger::i("updating code at 0x%08x (%u b)\n", m_loadaddr, codesize);
 			}
 
 			for (unsigned pass = 0; pass < 2; ++pass) {
@@ -790,7 +846,7 @@ class dumpcode_rwx : public parsing_rwx
 				for (uint32_t i = 0; i < m_code.size(); i += 4) {
 					if (!quick && pass == 0 && m_prog_l) {
 						progress_add(&pg, 4);
-						printf("\r ");
+						logger::i("\r ");
 						progress_print(&pg, stdout);
 					}
 
@@ -803,7 +859,7 @@ class dumpcode_rwx : public parsing_rwx
 				}
 
 				if (!quick && pass == 0 && m_prog_l) {
-					printf("\n");
+					logger::i("\n");
 				}
 			}
 		}
@@ -813,8 +869,9 @@ class dumpcode_rwx : public parsing_rwx
 	uint32_t m_loadaddr = 0;
 	uint32_t m_entry = 0;
 
-	uint32_t m_dump_offset = 0;
-	uint32_t m_dump_length = 0;
+	bool m_write;
+	uint32_t m_rw_offset = 0;
+	uint32_t m_rw_length = 0;
 
 	func m_read_func;
 
