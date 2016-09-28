@@ -18,6 +18,103 @@
  */
 
 #define CODE_MAGIC 0xbeefc0de
+//#define WRITECODE_PRINT_OFFSETS
+
+#define WRITECODE_ENTRY 0x20
+
+#define L_LOOP_WORDS ASM_LABEL(6)
+#define L_OUT        ASM_LABEL(7)
+
+uint32_t writecode[] = {
+		_WORD(CODE_MAGIC),
+		// ":%x"
+		_WORD(0x3a257800),
+		// "\r\n"
+		_WORD(0x0d0a0000),
+		_WORD(0), // buffer
+		_WORD(0), // length
+		_WORD(0), // chunk size
+		_WORD(0), // printf
+		_WORD(0), // scanf
+		_WORD(0), // flags
+		// main:
+		ADDIU(SP, SP, -0x1c),
+		SW(RA, 0x00, SP),
+		SW(S7, 0x04, SP),
+		SW(S4, 0x08, SP),
+		SW(S3, 0x0c, SP),
+		SW(S2, 0x10, SP),
+		SW(S1, 0x14, SP),
+		SW(S0, 0x18, SP),
+
+		// branch to next instruction
+		BAL(1),
+		// delay slot: address mask
+		LUI(T0, 0xffff),
+		// store ra & 0xffff0000
+		AND(S7, RA, T0),
+		// buffer
+		LW(S0, 0x10, S7),
+		// length
+		LW(S1, 0x14, S7),
+		// chunk size
+		LW(S2, 0x18, S7),
+		// printf
+		LW(S3, 0x1c, S7),
+		// scanf
+		LW(S4, 0x20, S7),
+
+		// bail out if length is zero
+		BEQZ(S1, L_OUT),
+
+		// set s1 to MIN(length, chunk_size)
+		MOVE(T1, S1),
+		MOVE(S1, S2),
+		SLT(T0, T1, S1),
+		MOVN(S1, T1, T0),
+
+_DEF_LABEL(L_LOOP_WORDS),
+#ifdef WRITECODE_PRINT_OFFSETS
+		// printf(":%x", buffer)
+		ADDIU(A0, S7, 4),
+		JR(S3),
+		MOVE(A1, S0),
+#endif
+
+		// scanf("%x", buffer)
+		ADDIU(A0, S7, 5),
+		JR(S4),
+		MOVE(A1, S0),
+
+		// bail out if scanf didn't return 1
+		BNE(V0, 1, L_OUT),
+		// delay slot: decrement length
+		ADDIU(S1, S1, -4),
+
+		// loop while length > 0
+		BGTZ(S1, L_LOOP_WORDS),
+		// delay slot: increment buffer
+		ADDIU(S0, S0, 4),
+
+		// store length and buffer
+		SW(S0, 0x10, S7),
+		SW(S1, 0x14, S7),
+
+_DEF_LABEL(L_OUT),
+		// restore registers
+		LW(RA, 0x00, SP),
+		LW(S7, 0x04, SP),
+		LW(S4, 0x08, SP),
+		LW(S3, 0x0c, SP),
+		LW(S2, 0x10, SP),
+		LW(S1, 0x14, SP),
+		LW(S0, 0x18, SP),
+		JR(RA),
+		ADDIU(SP, SP, 0x1c),
+
+		// checksum
+		_WORD(0),
+};
 
 #define L_LOOP_PATCH ASM_LABEL(0)
 #define L_PATCH_DONE ASM_LABEL(1)
@@ -25,11 +122,10 @@
 #define L_LOOP_BZERO ASM_LABEL(3)
 #define L_START_DUMP ASM_LABEL(4)
 #define L_LOOP_LINE  ASM_LABEL(5)
-#define L_LOOP_WORDS ASM_LABEL(6)
-#define L_OUT        ASM_LABEL(7)
+// labels 6 and 7 are defined above
 #define F_PATCH      ASM_LABEL(8)
 
-#define CODE_ENTRY 0x4c
+#define DUMPCODE_ENTRY 0x4c
 
 uint32_t dumpcode[] = {
 		_WORD(CODE_MAGIC),
@@ -40,7 +136,7 @@ uint32_t dumpcode[] = {
 		_WORD(0), // flags
 		_WORD(0), // dump offset
 		_WORD(0), // buffer
-		_WORD(0), // offset
+		_WORD(0), // offset (used when dumping flash)
 		_WORD(0), // length
 		_WORD(0), // chunk size
 		_WORD(0), // printf
