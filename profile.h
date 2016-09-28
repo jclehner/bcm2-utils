@@ -162,11 +162,18 @@ struct bcm2_profile {
 	// address where dump code can be loaded (dump code
 	// is short, currently around 512 bytes)
 	uint32_t loadaddr;
-	// memory address of a bootloader function that behaves
-	// like printf (a0 = format string, a1...aX format args)
+	// address of a function that behaves like printf:
+	// printf a0 = format string, a1...aX format args
 	uint32_t printf;
-	// not used
+	// address of a function that behaves like scanf:
+	// a0 = format, a1...aX = args
 	uint32_t scanf;
+	// address of a sscanf-like function
+	// a0 = str, a1 = format, a2...aX = args
+	uint32_t sscanf;
+	// address of a fgets-like function, minus the stream:
+	// a0 = buffer, a1 = size; return v0 = length
+	uint32_t fgets;
 	// a location in memory with a constant value (ideally a
 	// bootloader string), which can be used to automatically
 	// identify the connected device
@@ -336,6 +343,8 @@ struct codecfg
 	uint32_t buflen;
 	uint32_t printf;
 	uint32_t scanf;
+	uint32_t sscanf;
+	uint32_t fgets;
 };
 
 class profile

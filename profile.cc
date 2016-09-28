@@ -218,6 +218,8 @@ class profile_wrapper : public profile
 		}
 
 		m_codecfg.printf = check_addr(m_p->printf, "printf");
+		m_codecfg.sscanf = check_addr(m_p->sscanf, "sscanf");
+		m_codecfg.fgets = check_addr(m_p->fgets, "fgets");
 		m_codecfg.scanf = check_addr(m_p->scanf, "scanf");
 	}
 
