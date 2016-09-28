@@ -202,6 +202,15 @@ ostream& logger::log(int severity)
 	}
 }
 
+void logger::log(int severity, const char* format, va_list args)
+{
+	if (severity < s_loglevel) {
+		return;
+	}
+
+	vfprintf((s_no_stdout || severity >= warn) ? stderr : stdout, format, args);
+}
+
 string getaddrinfo_category::message(int condition) const
 {
 #ifndef _WIN32

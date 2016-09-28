@@ -28,6 +28,7 @@
 #include <iomanip>
 #include <fstream>
 #include <sstream>
+#include <cstdarg>
 #include <memory>
 #include <cerrno>
 #include <vector>
@@ -270,6 +271,18 @@ class cleaner
 	std::function<void()> m_cleanup;
 };
 
+#define BCM2UTILS_LOGF_BODY(severity, format) \
+		va_list args; \
+		va_start(args, format); \
+		log(severity, format, args); \
+		va_end(args)
+
+#define BCM2UTILS_DEF_LOGF(name, severity) \
+		static void name(const char* format, ...) __attribute__((format(printf, 1, 2))) \
+		{ \
+			BCM2UTILS_LOGF_BODY(severity, format); \
+		}
+
 class logger
 {
 	public:
@@ -281,6 +294,8 @@ class logger
 	static constexpr int err = 5;
 
 	static std::ostream& log(int severity);
+
+	static void log(int severity, const char* format, va_list args);
 
 	static std::ostream& t()
 	{ return log(trace); }
@@ -299,6 +314,9 @@ class logger
 
 	static std::ostream& e()
 	{ return log(err); }
+
+	BCM2UTILS_DEF_LOGF(i, info);
+	BCM2UTILS_DEF_LOGF(v, verbose);
 
 	static void loglevel(int level)
 	{ s_loglevel = level; }
