@@ -218,7 +218,7 @@ class profile_wrapper : public profile
 		}
 
 		m_codecfg.printf = check_addr(m_p->printf, "printf");
-		m_codecfg.scanf = check_addr(m_p->printf, "scanf");
+		m_codecfg.scanf = check_addr(m_p->scanf, "scanf");
 	}
 
 	void parse_magic()
