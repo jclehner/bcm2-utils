@@ -4,6 +4,7 @@ LIBS ?=
 VERSION = $(shell git describe --always)
 CFLAGS += -Wall -g -DVERSION=\"$(VERSION)\"
 CXXFLAGS += $(CFLAGS) -std=c++14 -Wnon-virtual-dtor
+LDFLAGS +=
 PREFIX ?= /usr/local
 UNAME ?= $(shell uname)
 
@@ -32,7 +33,7 @@ release: clean bcm2cfg bcm2dump
 	zip bcm2utils-$(VERSION).zip README.md bcm2cfg bcm2dump
 
 bcm2cfg: $(bcm2cfg_OBJ)
-	$(CXX) $(CXXFLAGS) $(bcm2cfg_OBJ) -o $@ $(LIBS)
+	$(CXX) $(CXXFLAGS) $(bcm2cfg_OBJ) -o $@ $(LIBS) $(LDFLAGS)
 
 bcm2cfg.exe:
 	UNAME=Wine CC=winegcc CXX=wineg++ CFLAGS=-m32 make bcm2cfg
