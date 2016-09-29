@@ -41,7 +41,7 @@
 
 // I-type: op(6) | rs(5) | rt(5) | imm(16)
 #define ASM_I(op, rs, rt, imm) \
-	ASM_OPCODE(ASM_X_OP(op) | ASM_X_RS(rs) | ASM_X_RT(rt) | (imm & 0xffff))
+	ASM_OPCODE(ASM_X_OP(op) | ASM_X_RS(rs) | ASM_X_RT(rt) | ((imm) & 0xffff))
 
 // J-type: op(6) | target(26)
 #define ASM_J(op, target) \
@@ -95,6 +95,7 @@
 #define JALR(rs)             ASM_R(rs, 0, RA, 0, 0x09)
 #define JR(rs)               ASM_R(rs, 0, 0, 0, 0x08)
 #define LB(rt, imm, rs)      ASM_I(0x20, rs, rt, imm)
+#define LBU(rt, imm, rs)     ASM_I(0x24, rs, rt, imm)
 #define LUI(rt, imm)         ASM_I(0x0f, 0, rt, imm)
 #define LI(rt, imm32)        LUI(rt, ASM_HI(imm32)), ORI(rt, rt, ASM_LO(imm32))
 #define LW(rt, imm, rs)      ASM_I(0x23, rs, rt, imm)

@@ -20,10 +20,14 @@
 #define CODE_MAGIC 0xbeefc0de
 //#define WRITECODE_PRINT_OFFSETS
 
-#define WRITECODE_ENTRY 0x20
+#define WRITECODE_ENTRY 0x28
+#define WRITECODE_STRSIZE 0x10
+#define WRITECODE_STACKSIZE (0x20 + WRITECODE_STRSIZE)
 
-#define L_LOOP_WORDS ASM_LABEL(6)
-#define L_OUT        ASM_LABEL(7)
+#define L_LOOP_WORDS ASM_LABEL(0)
+#define L_SCANF      ASM_LABEL(1)
+#define L_WORD_OK    ASM_LABEL(2)
+#define L_OUT        ASM_LABEL(3)
 
 uint32_t writecode[] = {
 		_WORD(CODE_MAGIC),
@@ -31,21 +35,23 @@ uint32_t writecode[] = {
 		_WORD(0x3a257800),
 		// "\r\n"
 		_WORD(0x0d0a0000),
+		_WORD(0), // flags
 		_WORD(0), // buffer
 		_WORD(0), // length
 		_WORD(0), // chunk size
 		_WORD(0), // printf
-		_WORD(0), // scanf
-		_WORD(0), // flags
+		_WORD(0), // scanf / sscanf
+		_WORD(0), // fgets
 		// main:
-		ADDIU(SP, SP, -0x1c),
-		SW(RA, 0x00, SP),
-		SW(S7, 0x04, SP),
-		SW(S4, 0x08, SP),
-		SW(S3, 0x0c, SP),
-		SW(S2, 0x10, SP),
-		SW(S1, 0x14, SP),
+		ADDIU(SP, SP, -WRITECODE_STACKSIZE),
+		SW(RA, 0x10, SP),
+		SW(S7, 0x14, SP),
 		SW(S0, 0x18, SP),
+		SW(S1, 0x1c, SP),
+		SW(S2, 0x20, SP),
+		SW(S3, 0x24, SP),
+		SW(S4, 0x28, SP),
+		SW(S5, 0x2c, SP),
 
 		// branch to next instruction
 		BAL(1),
@@ -61,8 +67,10 @@ uint32_t writecode[] = {
 		LW(S2, 0x18, S7),
 		// printf
 		LW(S3, 0x1c, S7),
-		// scanf
+		// scanf / sscanf
 		LW(S4, 0x20, S7),
+		// fgets
+		LW(S5, 0x24, S7),
 
 		// bail out if length is zero
 		BEQZ(S1, L_OUT),
@@ -73,21 +81,76 @@ uint32_t writecode[] = {
 		SLT(T0, T1, S1),
 		MOVN(S1, T1, T0),
 
+		// make sure that we have a NUL byte
+		SB(ZERO, WRITECODE_STRSIZE - 1, SP),
+
 _DEF_LABEL(L_LOOP_WORDS),
 #ifdef WRITECODE_PRINT_OFFSETS
 		// printf(":%x", buffer)
 		ADDIU(A0, S7, 4),
-		JR(S3),
+		JALR(S3),
 		MOVE(A1, S0),
 #endif
+		// if fgets is zero, we have a true scanf
+		BEQZ(S5, L_SCANF),
 
-		// scanf("%x", buffer)
-		ADDIU(A0, S7, 5),
-		JR(S4),
-		MOVE(A1, S0),
+		// set first byte of string to zero
+		SB(ZERO, 0, SP),
 
-		// bail out if scanf didn't return 1
-		BNE(V0, 1, L_OUT),
+		// delay slot: string
+		MOVE(A0, SP),
+		// fgets(string, size)
+		JALR(S5),
+		// delay slot: string size
+		ORI(A1, ZERO, WRITECODE_STRSIZE - 1),
+
+#if 0
+		// load flags
+		LW(T1, 0x0c, S7),
+		ANDI(T0, T1, BCM2_FGETS_RET_BUF_PLUS_LEN),
+
+		// if FGETS_RET_BUF_PLUS_LEN is set, set t0 to sp,
+		// otherwise leave it at zero
+		MOVN(T0, SP, T0),
+
+		// this is a nop if FGETS_RET_BUF_PLUS_LEN is not set
+		SUBU(V0, V0, T0),
+
+		// set v0 to (flags & FGETS_RET_VOID), if applicable
+		ANDI(T0, T1, BCM2_FGETS_RET_VOID),
+		MOVN(V0, T0, T0),
+		// bail out if fgets returned < 1
+		SLTIU(V1, V0, 1),
+		BNEZ(V1, L_OUT),
+#endif
+
+		// bail out if first byte in string is zero
+		LBU(V1, 0, SP),
+		BEQZ(V1, L_OUT),
+
+#if 0
+		// delay slot: string
+		MOVE(A0, SP),
+		// sscanf(string, ":%x", buffer)
+		ADDIU(A1, S7, 4),
+		JALR(S4),
+		MOVE(A2, S0),
+#endif
+
+		B(L_WORD_OK),
+
+_DEF_LABEL(L_SCANF),
+		// delay slot: format string
+		ADDIU(A0, S7, 4),
+		// scanf(":%x", buffer)
+		JALR(S4),
+		MOVE(A2, S0),
+
+		// bail out if scanf returned < 1
+		SLTIU(V1, V0, 1),
+		BNEZ(V1, L_OUT),
+
+_DEF_LABEL(L_WORD_OK),
 		// delay slot: decrement length
 		ADDIU(S1, S1, -4),
 
@@ -102,19 +165,23 @@ _DEF_LABEL(L_LOOP_WORDS),
 
 _DEF_LABEL(L_OUT),
 		// restore registers
-		LW(RA, 0x00, SP),
-		LW(S7, 0x04, SP),
-		LW(S4, 0x08, SP),
-		LW(S3, 0x0c, SP),
-		LW(S2, 0x10, SP),
-		LW(S1, 0x14, SP),
+		LW(RA, 0x10, SP),
+		LW(S7, 0x14, SP),
 		LW(S0, 0x18, SP),
+		LW(S1, 0x1c, SP),
+		LW(S2, 0x20, SP),
+		LW(S3, 0x24, SP),
+		LW(S4, 0x28, SP),
+		LW(S5, 0x2c, SP),
 		JR(RA),
-		ADDIU(SP, SP, 0x1c),
+		ADDIU(SP, SP, WRITECODE_STACKSIZE),
 
 		// checksum
 		_WORD(0),
 };
+
+#undef L_LOOP_WORDS
+#undef L_OUT
 
 #define L_LOOP_PATCH ASM_LABEL(0)
 #define L_PATCH_DONE ASM_LABEL(1)
@@ -122,7 +189,8 @@ _DEF_LABEL(L_OUT),
 #define L_LOOP_BZERO ASM_LABEL(3)
 #define L_START_DUMP ASM_LABEL(4)
 #define L_LOOP_LINE  ASM_LABEL(5)
-// labels 6 and 7 are defined above
+#define L_LOOP_WORDS ASM_LABEL(6)
+#define L_OUT        ASM_LABEL(7)
 #define F_PATCH      ASM_LABEL(8)
 
 #define DUMPCODE_ENTRY 0x4c
