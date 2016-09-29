@@ -646,6 +646,9 @@ class dumpcode_rwx : public parsing_rwx
 	virtual limits limits_write() const override
 	{ return limits(4, 4, 0x4000); }
 
+	virtual unsigned capabilities() const override
+	{ return cap_read | cap_write; }
+
 	virtual void set_interface(const interface::sp& intf) override
 	{
 		parsing_rwx::set_interface(intf);
@@ -698,11 +701,12 @@ class dumpcode_rwx : public parsing_rwx
 	protected:
 	virtual bool write_chunk(uint32_t offset, const string& chunk) override
 	{
+		m_ram->exec(m_loadaddr + m_entry);
 #ifdef WRITECODE_PRINT_OFFSETS
 		const uint32_t start = offset;
 		return m_intf->foreach_line([this, &offset, chunk, &start](const string& line) {
 				if (is_prompt_line(line, offset)) {
-					m_intf->writeln(to_hex(chunk.substr(offset - start, 4)));
+					m_intf->writeln(":" + to_hex(chunk.substr(offset - start, 4)));
 					offset += 4;
 				}
 
@@ -710,9 +714,12 @@ class dumpcode_rwx : public parsing_rwx
 		}, 500, 500);
 #else
 		for (size_t i = 0; i < chunk.size(); i += 4) {
-			m_intf->writeln(to_hex(chunk.substr(i, 4)));
+			m_intf->writeln(":" + to_hex(chunk.substr(i, 4)));
 			m_intf->readln();
+			update_progress(offset + i, 4);
 		}
+
+		m_intf->writeln();
 
 		return true;
 #endif
@@ -784,7 +791,7 @@ class dumpcode_rwx : public parsing_rwx
 		//m_rwx_func = m_space.get_read_func(m_intf->id());
 
 		uint32_t kseg1 = profile->kseg1();
-		m_loadaddr = kseg1 | cfg.loadaddr;
+		m_loadaddr = kseg1 | (cfg.loadaddr + (write ? 0 : 2048));
 
 		// FIXME check whether we have a custom dumpcode file
 		if (true) {
@@ -813,13 +820,19 @@ class dumpcode_rwx : public parsing_rwx
 				}
 			} else {
 				m_code = string(reinterpret_cast<const char*>(writecode), sizeof(writecode));
-				m_entry = 0x24;
+				m_entry = WRITECODE_ENTRY;
 
 				patch32(m_code, 0x10, offset);
 				patch32(m_code, 0x14, length);
 				patch32(m_code, 0x18, limits_write().max);
 				patch32(m_code, 0x1c, kseg1 | cfg.printf);
-				patch32(m_code, 0x20, kseg1 | cfg.scanf);
+
+				if (cfg.fgets) {
+					patch32(m_code, 0x20, kseg1 | cfg.sscanf);
+					patch32(m_code, 0x24, kseg1 | cfg.fgets);
+				} else {
+					patch32(m_code, 0x20, kseg1 | cfg.scanf);
+				}
 			}
 
 			uint32_t codesize = m_code.size();
@@ -828,6 +841,11 @@ class dumpcode_rwx : public parsing_rwx
 			}
 
 			m_code.resize(codesize);
+
+#if 0
+			ofstream("code.bin").write(m_code.data(), m_code.size());
+#endif
+
 			uint32_t expected = 0xc0de0000 | crc16_ccitt(m_code.substr(m_entry, m_code.size() - 4 - m_entry));
 			uint32_t actual = ntohl(extract<uint32_t>(m_ram->read(m_loadaddr + m_code.size() - 4, 4)));
 			bool quick = (expected == actual);
@@ -869,7 +887,7 @@ class dumpcode_rwx : public parsing_rwx
 	uint32_t m_loadaddr = 0;
 	uint32_t m_entry = 0;
 
-	bool m_write;
+	bool m_write = false;
 	uint32_t m_rw_offset = 0;
 	uint32_t m_rw_length = 0;
 
@@ -1201,7 +1219,12 @@ void rwx::write(uint32_t offset, const string& buf, uint32_t length)
 	unsigned retries = 0;
 
 	while (length_w) {
-		uint32_t n = length_w < lim.max ? lim.min : lim.max;
+		uint32_t n;
+		if (lim.max == lim.alignment) {
+			n = length_w < lim.max ? lim.min : lim.max;
+		} else {
+			n = min(length_w, lim.max);
+		}
 		auto begin = buf_w.size() - length_w;
 		//string chunk(buf_w.substr(buf_w.size() - length_w, n));
 		string chunk(buf_w.substr(begin, n));
