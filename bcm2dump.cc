@@ -183,7 +183,7 @@ int do_write(int argc, char** argv, int opts, const string& profile)
 	}
 
 	auto intf = interface::create(argv[1]);
-	auto rwx = rwx::create(intf, argv[2], true);
+	auto rwx = rwx::create(intf, argv[2], opts & opt_safe);
 
 	progress pg;
 
