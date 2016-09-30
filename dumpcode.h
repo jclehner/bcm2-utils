@@ -26,10 +26,12 @@
 #define WRITECODE_STROFF (WRITECODE_STACKSIZE - WRITECODE_STRSIZE)
 #define WRITECODE_CFGOFF 0x0c
 
-#define L_LOOP_WORDS ASM_LABEL(0)
-#define L_SCANF      ASM_LABEL(1)
-#define L_WORD_OK    ASM_LABEL(2)
-#define L_OUT        ASM_LABEL(3)
+#define L_SCANF      ASM_LABEL(0)
+#define L_WORD_OK    ASM_LABEL(1)
+// XXX: these are reused below; do NOT change!
+#define L_LOOP_LINE  ASM_LABEL(5)
+#define L_LOOP_WORDS ASM_LABEL(6)
+#define L_OUT        ASM_LABEL(7)
 
 uint32_t writecode[] = {
 		_WORD(CODE_MAGIC),
@@ -186,9 +188,7 @@ _DEF_LABEL(L_OUT),
 #define L_READ_FLASH ASM_LABEL(2)
 #define L_LOOP_BZERO ASM_LABEL(3)
 #define L_START_DUMP ASM_LABEL(4)
-#define L_LOOP_LINE  ASM_LABEL(5)
-#define L_LOOP_WORDS ASM_LABEL(6)
-#define L_OUT        ASM_LABEL(7)
+// labels 5-7 are reused from writecode
 #define F_PATCH      ASM_LABEL(8)
 
 #define DUMPCODE_ENTRY 0x4c
