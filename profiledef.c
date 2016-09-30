@@ -153,7 +153,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		.kseg1mask = 0x20000000,
 		.printf = 0x83f8b0c0,
 		.sscanf = 0x83f8ba94,
-		.fgets = 0x83f8ad10,
+		.getline = 0x83f8ad10,
 		.cfg_md5key = "544d4d5f544337323030000000000000",
 		.cfg_keyfun = &keyfun_tc7200,
 		.cfg_defkeys = {
@@ -189,6 +189,20 @@ struct bcm2_profile bcm2_profiles[] = {
 						.mode = BCM2_READ_FUNC_OBL,
 					}
 				},
+				.write = {
+					{
+						.addr = 0x83f810bc,
+						.intf = BCM2_INTF_BLDR,
+						.mode = BCM2_READ_FUNC_OBL,
+					}
+				},
+				.erase = {
+					{
+						.addr = 0x83f814e0,
+						.intf = BCM2_INTF_BLDR,
+						.mode = BCM2_ERASE_FUNC_OL,
+					}
+				},
 			},
 			{
 				.name = "flash",
@@ -209,6 +223,20 @@ struct bcm2_profile bcm2_profiles[] = {
 						.patch = {
 							{ 0x83f83380, 0x10000017 },
 						}
+					}
+				},
+				.write = {
+					{
+						.addr = 0x83f82e98,
+						.intf = BCM2_INTF_BLDR,
+						.mode = BCM2_READ_FUNC_OBL,
+					}
+				},
+				.erase = {
+					{
+						.addr = 0x83f82c08,
+						.intf = BCM2_INTF_BLDR,
+						.mode = BCM2_ERASE_FUNC_OS,
 					}
 				},
 			},

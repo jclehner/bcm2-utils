@@ -59,6 +59,14 @@ enum bcm2_read_func_mode
 	BCM2_READ_FUNC_OBL = 1 << 1,
 };
 
+enum bcm2_erase_func_mode
+{
+	// offset, length
+	BCM2_ERASE_FUNC_OL = 0,
+	// offset, partition size
+	BCM2_ERASE_FUNC_OS = 1 << 0,
+};
+
 enum bcm2_func_ret
 {
 	// ignore return value
@@ -132,6 +140,8 @@ struct bcm2_addrspace {
 	struct bcm2_func read[BCM2_INTF_NUM];
 	// not yet used
 	struct bcm2_func write[BCM2_INTF_NUM];
+	// not yet used
+	struct bcm2_func erase[BCM2_INTF_NUM];
 };
 
 struct bcm2_magic {
