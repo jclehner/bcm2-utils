@@ -180,9 +180,6 @@ _DEF_LABEL(L_OUT),
 		_WORD(0),
 };
 
-#undef L_LOOP_WORDS
-#undef L_OUT
-
 #define L_LOOP_PATCH ASM_LABEL(0)
 #define L_PATCH_DONE ASM_LABEL(1)
 #define L_READ_FLASH ASM_LABEL(2)
