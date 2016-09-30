@@ -877,10 +877,6 @@ class dumpcode_rwx : public parsing_rwx
 						m_ram->write(m_loadaddr + i, m_code.substr(i, 4));
 					}
 				}
-
-				if (!quick && pass == 0 && m_prog_l) {
-					logger::i("\n");
-				}
 			}
 		}
 	}
@@ -1275,6 +1271,8 @@ void rwx::write(uint32_t offset, const string& buf, uint32_t length)
 		offset_w += n;
 		length_w -= n;
 	}
+
+	update_progress(offset_w, length_w);
 }
 
 void rwx::read_special(uint32_t offset, uint32_t length, ostream& os)

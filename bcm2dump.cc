@@ -162,7 +162,6 @@ int do_dump(int argc, char** argv, int opts, const string& profile)
 	} else {
 		rwx->dump(0, 0, of);
 	}
-	logger::i() << endl;
 	return 0;
 }
 

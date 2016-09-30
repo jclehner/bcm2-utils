@@ -118,6 +118,8 @@ void progress_print(struct progress *p, FILE *fp)
 	if (p->cur < p->max) {
 		fprintf(fp, "%5u|%5u bytes/s (ETA  ", p->speed_now, p->speed_avg);
 		print_time(fp, p->eta_days, &p->eta);
+		fprintf(fp, ")");
+		fflush(fp);
 	} else {
 		struct tm elapsed;
 		unsigned days;
@@ -128,10 +130,8 @@ void progress_print(struct progress *p, FILE *fp)
 		long speed = (p->max - p->min) / (diff ? diff : 1);
 		fprintf(fp, "      %5ld bytes/s (ELT  ", speed ? speed : p->speed_now);
 		print_time(fp, days, &elapsed);
+		fprintf(fp, ")\n");
 	}
-
-	fprintf(fp, ")");
-	fflush(fp);
 }
 
 
