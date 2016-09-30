@@ -827,9 +827,9 @@ class dumpcode_rwx : public parsing_rwx
 				patch32(m_code, 0x18, limits_write().max);
 				patch32(m_code, 0x1c, kseg1 | cfg.printf);
 
-				if (cfg.fgets) {
+				if (cfg.getline) {
 					patch32(m_code, 0x20, kseg1 | cfg.sscanf);
-					patch32(m_code, 0x24, kseg1 | cfg.fgets);
+					patch32(m_code, 0x24, kseg1 | cfg.getline);
 				} else {
 					patch32(m_code, 0x20, kseg1 | cfg.scanf);
 				}

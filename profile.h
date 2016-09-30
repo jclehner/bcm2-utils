@@ -171,9 +171,9 @@ struct bcm2_profile {
 	// address of a sscanf-like function
 	// a0 = str, a1 = format, a2...aX = args
 	uint32_t sscanf;
-	// address of a fgets-like function, minus the stream:
-	// a0 = buffer, a1 = size; return v0 = length
-	uint32_t fgets;
+	// address of a getline-like function, minus the stream:
+	// a0 = buffer, a1 = size
+	uint32_t getline;
 	// a location in memory with a constant value (ideally a
 	// bootloader string), which can be used to automatically
 	// identify the connected device
@@ -344,7 +344,7 @@ struct codecfg
 	uint32_t printf;
 	uint32_t scanf;
 	uint32_t sscanf;
-	uint32_t fgets;
+	uint32_t getline;
 };
 
 class profile
