@@ -791,7 +791,7 @@ class dumpcode_rwx : public parsing_rwx
 		//m_rwx_func = m_space.get_read_func(m_intf->id());
 
 		uint32_t kseg1 = profile->kseg1();
-		m_loadaddr = kseg1 | (cfg.loadaddr + (write ? 0 : 2048));
+		m_loadaddr = kseg1 | (cfg.loadaddr + (write ? 0 : 0x10000));
 
 		// FIXME check whether we have a custom dumpcode file
 		if (true) {
