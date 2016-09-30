@@ -51,7 +51,7 @@ uint32_t writecode[] = {
 		_WORD(0), // chunk size
 		_WORD(0), // printf
 		_WORD(0), // scanf / sscanf
-		_WORD(0), // fgets
+		_WORD(0), // getline
 		// main:
 		ADDIU(SP, SP, -WRITECODE_STACKSIZE),
 		SW(RA, 0x00, SP),
@@ -79,7 +79,7 @@ uint32_t writecode[] = {
 		LW(S3, WRITECODE_CFGOFF + 0x10, S7),
 		// scanf / sscanf
 		LW(S4, WRITECODE_CFGOFF + 0x14, S7),
-		// fgets
+		// getline
 		LW(S5, WRITECODE_CFGOFF + 0x18, S7),
 
 		// bail out if length is zero
@@ -93,17 +93,15 @@ uint32_t writecode[] = {
 		SB(ZERO, WRITECODE_STROFF + WRITECODE_STRSIZE - 1, SP),
 
 _DEF_LABEL(L_LOOP_WORDS),
-		// if fgets is zero, we have a true scanf
+		// if getline is zero, we have a true scanf
 		BEQZ(S5, L_SCANF),
 
-		// set first byte of string to zero
+		// delay slot: set first byte of string to zero
 		SB(ZERO, WRITECODE_STROFF, SP),
 
-		// delay slot: string
+		// getline(string, size)
 		ADDIU(A0, SP, WRITECODE_STROFF),
-		// fgets(string, size)
 		JALR(S5),
-		// delay slot: string size
 		ORI(A1, ZERO, WRITECODE_STRSIZE - 1),
 
 #if 0
