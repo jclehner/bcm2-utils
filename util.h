@@ -317,6 +317,7 @@ class logger
 
 	BCM2UTILS_DEF_LOGF(i, info);
 	BCM2UTILS_DEF_LOGF(v, verbose);
+	BCM2UTILS_DEF_LOGF(d, debug);
 
 	static void loglevel(int level)
 	{ s_loglevel = level; }

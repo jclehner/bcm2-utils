@@ -20,11 +20,11 @@
 #define CODE_MAGIC 0xbeefc0de
 //#define WRITECODE_PRINT_OFFSETS
 
-#define WRITECODE_ENTRY 0x28
-#define WRITECODE_STRSIZE 0x10
+#define WRITECODE_ENTRY (0x28 + 0x0c)
+#define WRITECODE_STRSIZE 0x28
 #define WRITECODE_STACKSIZE (0x20 + WRITECODE_STRSIZE)
 #define WRITECODE_STROFF (WRITECODE_STACKSIZE - WRITECODE_STRSIZE)
-#define WRITECODE_CFGOFF 0x0c
+#define WRITECODE_CFGOFF (0x0c + 0x0c)
 
 #define L_SCANF      ASM_LABEL(0)
 #define L_WORD_OK    ASM_LABEL(1)
@@ -35,14 +35,12 @@
 
 uint32_t writecode[] = {
 		_WORD(CODE_MAGIC),
-#if 0
 		// ":%x:"
 		_WORD(0x3a25783a),
 		// "%x:%"
 		_WORD(0x25783a25),
 		// "x:%x"
-		_WORD(0x783a2578)
-#endif
+		_WORD(0x783a2578),
 		// ":%x"
 		_WORD(0x3a257800),
 		// "\r\n"
@@ -87,9 +85,12 @@ uint32_t writecode[] = {
 		// bail out if length is zero
 		BEQZ(S1, L_OUT),
 
-		// set s1 to MIN(length, chunk_size)
-		SLT(T0, S2, S1),
-		MOVN(S1, S2, T0),
+		// set s2 to MIN(length, chunk_size)
+		SLT(T0, S1, S2),
+		MOVN(S2, S1, T0),
+
+		// subtract chunk size from length
+		SUBU(S1, S1, S2),
 
 		// make sure that we have a NUL byte
 		SB(ZERO, WRITECODE_STROFF + WRITECODE_STRSIZE - 1, SP),
@@ -125,39 +126,53 @@ _DEF_LABEL(L_LOOP_WORDS),
 		SLTIU(V1, V0, 1),
 		BNEZ(V1, L_OUT),
 #endif
-
 		// bail out if first byte in string is zero
-		LBU(V1, 0, SP),
+		LBU(V1, WRITECODE_STROFF, SP),
 		BEQZ(V1, L_OUT),
 
 		// delay slot: string
 		ADDIU(A0, SP, WRITECODE_STROFF),
-		// sscanf(string, ":%x", buffer)
+		// sscanf(string, ":%x:%x:%x:%x", buffer, buffer + 4, buffer + 8, buffer + 12)
 		ADDIU(A1, S7, 4),
-		JALR(S4),
 		MOVE(A2, S0),
+		ADDIU(A3, S0, 4),
+		ADDIU(A4, S0, 8),
+		JALR(S4),
+		ADDIU(A5, S0, 12),
 
 		B(L_WORD_OK),
 
 _DEF_LABEL(L_SCANF),
 		// delay slot: format string
 		ADDIU(A0, S7, 4),
-		// scanf(":%x", buffer)
+		// scanf(":%x:%x:%x:%x", buffer)
+		MOVE(A1, S0),
+		ADDIU(A2, S0, 4),
+		ADDIU(A3, S0, 8),
 		JALR(S4),
-		MOVE(A2, S0),
+		ADDIU(A4, S0, 12),
 
-		// bail out if scanf returned < 1
-		SLTIU(V1, V0, 1),
+		// bail out if scanf returned < 4
+		SLTIU(V1, V0, 4),
 		BNEZ(V1, L_OUT),
 
 _DEF_LABEL(L_WORD_OK),
-		// delay slot: decrement length
-		ADDIU(S1, S1, -4),
+		// delay slot: format string (":%x")
+		ADDIU(A0, S7, 16),
+		// printf("%x", buffer)
+		JALR(S3),
+		MOVE(A1, S0),
 
+		// printf("\r\n")
+		JALR(S3),
+		ADDIU(A0, S7, 20),
+
+		// decrement length
+		ADDIU(S2, S2, -16),
 		// loop while length > 0
-		BGTZ(S1, L_LOOP_WORDS),
+		BGTZ(S2, L_LOOP_WORDS),
 		// delay slot: increment buffer
-		ADDIU(S0, S0, 4),
+		ADDIU(S0, S0, 16),
 
 		// store length and buffer
 		SW(S0, WRITECODE_CFGOFF + 0x04, S7),

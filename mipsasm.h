@@ -64,6 +64,11 @@
 #define A0 A(0)
 #define A1 A(1)
 #define A2 A(2)
+#define A3 A(3)
+#define A4 T0
+#define A5 T1
+#define A6 T2
+#define A7 T3
 
 #define T0 T(0)
 #define T1 T(1)

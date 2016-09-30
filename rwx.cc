@@ -644,7 +644,7 @@ class dumpcode_rwx : public parsing_rwx
 	{ return limits(4, 16, 0x4000); }
 
 	virtual limits limits_write() const override
-	{ return limits(4, 4, 0x4000); }
+	{ return limits(16, 16, 0x4000); }
 
 	virtual unsigned capabilities() const override
 	{ return cap_read | cap_write; }
@@ -702,27 +702,22 @@ class dumpcode_rwx : public parsing_rwx
 	virtual bool write_chunk(uint32_t offset, const string& chunk) override
 	{
 		m_ram->exec(m_loadaddr + m_entry);
-#ifdef WRITECODE_PRINT_OFFSETS
-		const uint32_t start = offset;
-		return m_intf->foreach_line([this, &offset, chunk, &start](const string& line) {
-				if (is_prompt_line(line, offset)) {
-					m_intf->writeln(":" + to_hex(chunk.substr(offset - start, 4)));
-					offset += 4;
-				}
+		for (size_t i = 0; i < chunk.size(); i += 16) {
+			string line;
+			for (size_t k = 0; k < 4; ++k) {
+				line += ":" + to_hex(chunk.substr(i + k * 4, 4));
+			}
+			m_intf->writeln(line);
 
-				return (offset - start) >= chunk.size();
-		}, 500, 500);
-#else
-		for (size_t i = 0; i < chunk.size(); i += 4) {
-			m_intf->writeln(":" + to_hex(chunk.substr(i, 4)));
-			m_intf->readln();
-			update_progress(offset + i, 4);
+			line = trim(m_intf->readln());
+			if (line.empty() || line[0] != ':' || hex_cast<uint32_t>(line.substr(1)) != (offset + i)) {
+				throw runtime_error("expected offset, got '" + line + "'");
+			}
+
+			update_progress(offset + i, 16);
 		}
 
-		m_intf->writeln();
-
 		return true;
-#endif
 	}
 
 	bool is_prompt_line(const string& line, uint32_t offset)
@@ -756,9 +751,9 @@ class dumpcode_rwx : public parsing_rwx
 			patch32(m_code, 0x1c, remaining);
 			m_ram->write(m_loadaddr + 0x1c, m_code.substr(0x1c, 4));
 		} else {
-			patch32(m_code, 0x10, offset);
-			patch32(m_code, 0x14, remaining);
-			m_ram->write(m_loadaddr + 0x10, m_code.substr(0x10, 8));
+			patch32(m_code, WRITECODE_CFGOFF + 0, offset);
+			patch32(m_code, WRITECODE_CFGOFF + 4, remaining);
+			m_ram->write(m_loadaddr + WRITECODE_CFGOFF, m_code.substr(WRITECODE_CFGOFF, 8));
 		}
 	}
 
@@ -788,7 +783,6 @@ class dumpcode_rwx : public parsing_rwx
 		m_write = write;
 		m_rw_offset = offset;
 		m_rw_length = length;
-		//m_rwx_func = m_space.get_read_func(m_intf->id());
 
 		uint32_t kseg1 = profile->kseg1();
 		m_loadaddr = kseg1 | (cfg.loadaddr + (write ? 0 : 0x10000));
@@ -798,6 +792,10 @@ class dumpcode_rwx : public parsing_rwx
 			if (!write) {
 				m_code = string(reinterpret_cast<const char*>(dumpcode), sizeof(dumpcode));
 				m_entry = 0x4c;
+
+				if (!cfg.printf || (!m_space.is_mem() && (!cfg.buffer || m_read_func.addr()))) {
+					throw user_error("profile " + profile->name() + " does not support fast dump mode; use -s flag");
+				}
 
 				patch32(m_code, 0x10, 0);
 				patch32(m_code, 0x14, kseg1 | cfg.buffer);
@@ -822,16 +820,20 @@ class dumpcode_rwx : public parsing_rwx
 				m_code = string(reinterpret_cast<const char*>(writecode), sizeof(writecode));
 				m_entry = WRITECODE_ENTRY;
 
-				patch32(m_code, 0x10, offset);
-				patch32(m_code, 0x14, length);
-				patch32(m_code, 0x18, limits_write().max);
-				patch32(m_code, 0x1c, kseg1 | cfg.printf);
+				// TODO: for now, this is okay, since we only support writing to ram
+				patch32(m_code, WRITECODE_CFGOFF + 0x04, offset);
+				patch32(m_code, WRITECODE_CFGOFF + 0x08, length);
+				patch32(m_code, WRITECODE_CFGOFF + 0x0c, limits_write().max);
+				patch32(m_code, WRITECODE_CFGOFF + 0x10, kseg1 | cfg.printf);
 
-				if (cfg.getline) {
-					patch32(m_code, 0x20, kseg1 | cfg.sscanf);
-					patch32(m_code, 0x24, kseg1 | cfg.getline);
+				if (cfg.printf && cfg.sscanf && cfg.getline) {
+					patch32(m_code, WRITECODE_CFGOFF + 0x14, kseg1 | cfg.sscanf);
+					patch32(m_code, WRITECODE_CFGOFF + 0x18, kseg1 | cfg.getline);
+				} else if (cfg.printf && cfg.scanf) {
+					patch32(m_code, WRITECODE_CFGOFF + 0x14, kseg1 | cfg.scanf);
+					patch32(m_code, WRITECODE_CFGOFF + 0x18, 0);
 				} else {
-					patch32(m_code, 0x20, kseg1 | cfg.scanf);
+					throw user_error("profile " + profile->name() + " does not support fast write mode; use -s flag");
 				}
 			}
 
@@ -842,7 +844,7 @@ class dumpcode_rwx : public parsing_rwx
 
 			m_code.resize(codesize);
 
-#if 0
+#if 1
 			ofstream("code.bin").write(m_code.data(), m_code.size());
 #endif
 
