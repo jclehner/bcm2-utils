@@ -69,6 +69,10 @@
 #define T1 T(1)
 #define T2 T(2)
 #define T3 T(3)
+#define T4 T(4)
+#define T5 T(5)
+#define T6 T(6)
+#define T7 T(7)
 
 #define S0 S(0)
 #define S1 S(1)
