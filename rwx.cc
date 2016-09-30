@@ -631,14 +631,14 @@ bool bootloader_ram::exec_impl(uint32_t offset)
 	return true;
 }
 
-// this defines uint32 dumpcode[]
-#include "dumpcode.h"
+// this defines uint32 dumpcode[] and writecode[]
+#include "rwcode.c"
 
-class dumpcode_rwx : public parsing_rwx
+class code_rwx : public parsing_rwx
 {
 	public:
-	dumpcode_rwx() {}
-	dumpcode_rwx(const func& func) : m_read_func(func) {}
+	code_rwx() {}
+	code_rwx(const func& func) : m_read_func(func) {}
 
 	virtual limits limits_read() const override
 	{ return limits(4, 16, 0x4000); }
@@ -654,13 +654,13 @@ class dumpcode_rwx : public parsing_rwx
 		parsing_rwx::set_interface(intf);
 
 		if (!intf->profile()) {
-			throw runtime_error("dumpcode requires a profile");
+			throw runtime_error("code dumper requires a profile");
 		}
 
 		const codecfg& cfg = intf->profile()->codecfg(intf->id());
 
 		if (!cfg.loadaddr || !cfg.buffer || !cfg.printf) {
-			throw runtime_error("insufficient profile infos for dumpcode");
+			throw runtime_error("insufficient profile infos for code dumper");
 		} else if (cfg.loadaddr & 0xffff) {
 			throw runtime_error("loadaddr must be aligned to 64k");
 		}
@@ -787,7 +787,7 @@ class dumpcode_rwx : public parsing_rwx
 		uint32_t kseg1 = profile->kseg1();
 		m_loadaddr = kseg1 | (cfg.loadaddr + (write ? 0 : 0x10000));
 
-		// FIXME check whether we have a custom dumpcode file
+		// FIXME check whether we have a custom code file
 		if (true) {
 			if (!write) {
 				m_code = string(reinterpret_cast<const char*>(dumpcode), sizeof(dumpcode));
@@ -902,16 +902,16 @@ template<class T> rwx::sp create_rwx(const interface::sp& intf, const addrspace&
 	return ret;
 }
 
-rwx::sp create_dumpcode_rwx(const interface::sp& intf, const addrspace& space)
+rwx::sp create_code_rwx(const interface::sp& intf, const addrspace& space)
 {
 	try {
-		rwx::sp ret = make_shared<dumpcode_rwx>(space.get_read_func(intf->id()));
+		rwx::sp ret = make_shared<code_rwx>(space.get_read_func(intf->id()));
 		ret->set_interface(intf);
 		ret->set_addrspace(space);
 		return ret;
 	} catch (const exception& e) {
 		logger::d() << e.what() << endl;
-		logger::i() << "falling back to safe dump method" << endl;
+		logger::i() << "falling back to safe method" << endl;
 		return rwx::create(intf, space.name(), true);
 	}
 }
@@ -1300,10 +1300,10 @@ rwx::sp rwx::create(const interface::sp& intf, const string& type, bool safe)
 			if (safe) {
 				return create_rwx<bootloader_ram>(intf, space);
 			} else {
-				return create_dumpcode_rwx(intf, space);
+				return create_code_rwx(intf, space);
 			}
 		} else {
-			return create_dumpcode_rwx(intf, space);
+			return create_code_rwx(intf, space);
 		}
 	} else if (intf->name() == "bfc") {
 		safe = true;
