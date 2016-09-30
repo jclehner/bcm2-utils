@@ -23,6 +23,8 @@
 #define WRITECODE_ENTRY 0x28
 #define WRITECODE_STRSIZE 0x10
 #define WRITECODE_STACKSIZE (0x20 + WRITECODE_STRSIZE)
+#define WRITECODE_STROFF (WRITECODE_STACKSIZE - WRITECODE_STRSIZE)
+#define WRITECODE_CFGOFF 0x0c
 
 #define L_LOOP_WORDS ASM_LABEL(0)
 #define L_SCANF      ASM_LABEL(1)
@@ -31,6 +33,14 @@
 
 uint32_t writecode[] = {
 		_WORD(CODE_MAGIC),
+#if 0
+		// ":%x:"
+		_WORD(0x3a25783a),
+		// "%x:%"
+		_WORD(0x25783a25),
+		// "x:%x"
+		_WORD(0x783a2578)
+#endif
 		// ":%x"
 		_WORD(0x3a257800),
 		// "\r\n"
@@ -44,14 +54,14 @@ uint32_t writecode[] = {
 		_WORD(0), // fgets
 		// main:
 		ADDIU(SP, SP, -WRITECODE_STACKSIZE),
-		SW(RA, 0x10, SP),
-		SW(S7, 0x14, SP),
-		SW(S0, 0x18, SP),
-		SW(S1, 0x1c, SP),
-		SW(S2, 0x20, SP),
-		SW(S3, 0x24, SP),
-		SW(S4, 0x28, SP),
-		SW(S5, 0x2c, SP),
+		SW(RA, 0x00, SP),
+		SW(S7, 0x04, SP),
+		SW(S0, 0x08, SP),
+		SW(S1, 0x0c, SP),
+		SW(S2, 0x10, SP),
+		SW(S3, 0x14, SP),
+		SW(S4, 0x18, SP),
+		SW(S5, 0x1c, SP),
 
 		// branch to next instruction
 		BAL(1),
@@ -60,45 +70,37 @@ uint32_t writecode[] = {
 		// store ra & 0xffff0000
 		AND(S7, RA, T0),
 		// buffer
-		LW(S0, 0x10, S7),
+		LW(S0, WRITECODE_CFGOFF + 0x04, S7),
 		// length
-		LW(S1, 0x14, S7),
+		LW(S1, WRITECODE_CFGOFF + 0x08, S7),
 		// chunk size
-		LW(S2, 0x18, S7),
+		LW(S2, WRITECODE_CFGOFF + 0x0c, S7),
 		// printf
-		LW(S3, 0x1c, S7),
+		LW(S3, WRITECODE_CFGOFF + 0x10, S7),
 		// scanf / sscanf
-		LW(S4, 0x20, S7),
+		LW(S4, WRITECODE_CFGOFF + 0x14, S7),
 		// fgets
-		LW(S5, 0x24, S7),
+		LW(S5, WRITECODE_CFGOFF + 0x18, S7),
 
 		// bail out if length is zero
 		BEQZ(S1, L_OUT),
 
 		// set s1 to MIN(length, chunk_size)
-		MOVE(T1, S1),
-		MOVE(S1, S2),
-		SLT(T0, T1, S1),
-		MOVN(S1, T1, T0),
+		SLT(T0, S2, S1),
+		MOVN(S1, S2, T0),
 
 		// make sure that we have a NUL byte
-		SB(ZERO, WRITECODE_STRSIZE - 1, SP),
+		SB(ZERO, WRITECODE_STROFF + WRITECODE_STRSIZE - 1, SP),
 
 _DEF_LABEL(L_LOOP_WORDS),
-#ifdef WRITECODE_PRINT_OFFSETS
-		// printf(":%x", buffer)
-		ADDIU(A0, S7, 4),
-		JALR(S3),
-		MOVE(A1, S0),
-#endif
 		// if fgets is zero, we have a true scanf
 		BEQZ(S5, L_SCANF),
 
 		// set first byte of string to zero
-		SB(ZERO, 0, SP),
+		SB(ZERO, WRITECODE_STROFF, SP),
 
 		// delay slot: string
-		MOVE(A0, SP),
+		ADDIU(A0, SP, WRITECODE_STROFF),
 		// fgets(string, size)
 		JALR(S5),
 		// delay slot: string size
@@ -106,7 +108,7 @@ _DEF_LABEL(L_LOOP_WORDS),
 
 #if 0
 		// load flags
-		LW(T1, 0x0c, S7),
+		LW(T1, WRITECODE_CFGOFF + 0x00, S7),
 		ANDI(T0, T1, BCM2_FGETS_RET_BUF_PLUS_LEN),
 
 		// if FGETS_RET_BUF_PLUS_LEN is set, set t0 to sp,
@@ -128,14 +130,12 @@ _DEF_LABEL(L_LOOP_WORDS),
 		LBU(V1, 0, SP),
 		BEQZ(V1, L_OUT),
 
-#if 0
 		// delay slot: string
-		MOVE(A0, SP),
+		ADDIU(A0, SP, WRITECODE_STROFF),
 		// sscanf(string, ":%x", buffer)
 		ADDIU(A1, S7, 4),
 		JALR(S4),
 		MOVE(A2, S0),
-#endif
 
 		B(L_WORD_OK),
 
@@ -160,19 +160,19 @@ _DEF_LABEL(L_WORD_OK),
 		ADDIU(S0, S0, 4),
 
 		// store length and buffer
-		SW(S0, 0x10, S7),
-		SW(S1, 0x14, S7),
+		SW(S0, WRITECODE_CFGOFF + 0x04, S7),
+		SW(S1, WRITECODE_CFGOFF + 0x08, S7),
 
 _DEF_LABEL(L_OUT),
 		// restore registers
-		LW(RA, 0x10, SP),
-		LW(S7, 0x14, SP),
-		LW(S0, 0x18, SP),
-		LW(S1, 0x1c, SP),
-		LW(S2, 0x20, SP),
-		LW(S3, 0x24, SP),
-		LW(S4, 0x28, SP),
-		LW(S5, 0x2c, SP),
+		LW(RA, 0x00, SP),
+		LW(S7, 0x04, SP),
+		LW(S0, 0x08, SP),
+		LW(S1, 0x0c, SP),
+		LW(S2, 0x10, SP),
+		LW(S3, 0x14, SP),
+		LW(S4, 0x18, SP),
+		LW(S5, 0x1c, SP),
 		JR(RA),
 		ADDIU(SP, SP, WRITECODE_STACKSIZE),
 
