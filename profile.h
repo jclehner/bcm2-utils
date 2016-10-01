@@ -62,9 +62,9 @@ enum bcm2_read_func_mode
 enum bcm2_erase_func_mode
 {
 	// offset, length
-	BCM2_ERASE_FUNC_OL = 0,
+	BCM2_ERASE_FUNC_OL = 1 << 8,
 	// offset, partition size
-	BCM2_ERASE_FUNC_OS = 1 << 0,
+	BCM2_ERASE_FUNC_OS = 1 << 9,
 };
 
 enum bcm2_func_ret
@@ -308,8 +308,11 @@ class addrspace
 	{ return m_partitions; }
 
 	const part& partition(const std::string& name) const;
+	const part& partition(uint32_t offset) const;
 
 	func get_read_func(bcm2_interface intf) const;
+	func get_write_func(bcm2_interface intf) const;
+	func get_erase_func(bcm2_interface intf) const;
 
 	bool check_offset(uint32_t offset, bool exception = true) const
 	{ return check_range(offset, 0, "", exception); }
@@ -343,6 +346,8 @@ class addrspace
 	std::string m_profile_name;
 	std::vector<part> m_partitions;
 	std::vector<func> m_read_funcs;
+	std::vector<func> m_write_funcs;
+	std::vector<func> m_erase_funcs;
 };
 
 

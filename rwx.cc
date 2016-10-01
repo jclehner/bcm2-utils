@@ -638,7 +638,6 @@ class code_rwx : public parsing_rwx
 {
 	public:
 	code_rwx() {}
-	code_rwx(const func& func) : m_read_func(func) {}
 
 	virtual limits limits_read() const override
 	{ return limits(4, 16, 0x4000); }
@@ -772,12 +771,12 @@ class code_rwx : public parsing_rwx
 		const codecfg& cfg = profile->codecfg(m_intf->id());
 
 		if (cfg.buflen && length > cfg.buflen) {
-			throw runtime_error("requested length exceeds buffer size ("
+			throw user_error("requested length exceeds buffer size ("
 					+ to_string(cfg.buflen) + " b)");
 		}
 
 		if (write && !m_space.is_ram()) {
-			throw runtime_error("writing to non-ram address space is not supported");
+			throw user_error("writing to non-ram address space is not supported");
 		}
 
 		m_write = write;
@@ -790,6 +789,8 @@ class code_rwx : public parsing_rwx
 		// FIXME check whether we have a custom code file
 		if (true) {
 			if (!write) {
+				m_read_func = m_space.get_read_func(m_intf->id());
+
 				m_code = string(reinterpret_cast<const char*>(dumpcode), sizeof(dumpcode));
 				m_entry = 0x4c;
 
@@ -817,24 +818,45 @@ class code_rwx : public parsing_rwx
 					}
 				}
 			} else {
+				m_write_func = m_space.get_write_func(m_intf->id());
+				m_erase_func = m_space.get_erase_func(m_intf->id());
+
 				m_code = string(reinterpret_cast<const char*>(writecode), sizeof(writecode));
 				m_entry = WRITECODE_ENTRY;
 
-				// TODO: for now, this is okay, since we only support writing to ram
-				patch32(m_code, WRITECODE_CFGOFF + 0x04, offset);
+				patch32(m_code, WRITECODE_CFGOFF + 0x00, m_write_func.args() | m_erase_func.args());
+				patch32(m_code, WRITECODE_CFGOFF + 0x04, m_space.is_ram() ? offset : (kseg1 | cfg.buffer));
 				patch32(m_code, WRITECODE_CFGOFF + 0x08, length);
 				patch32(m_code, WRITECODE_CFGOFF + 0x0c, limits_write().max);
-				patch32(m_code, WRITECODE_CFGOFF + 0x10, kseg1 | cfg.printf);
+
+				if (!m_space.is_ram()) {
+					patch32(m_code, WRITECODE_CFGOFF + 0x10, offset);
+					try {
+						patch32(m_code, WRITECODE_CFGOFF + 0x14, m_space.partition(offset).size());
+					} catch (const user_error& e) {
+						throw user_error("writing to random offsets within a flash partition is not supported");
+					}
+				} else {
+					patch32(m_code, WRITECODE_CFGOFF + 0x10, 0);
+					patch32(m_code, WRITECODE_CFGOFF + 0x14, 0);
+				}
+
+				patch32(m_code, WRITECODE_CFGOFF + 0x18, kseg1 | cfg.printf);
 
 				if (cfg.printf && cfg.sscanf && cfg.getline) {
-					patch32(m_code, WRITECODE_CFGOFF + 0x14, kseg1 | cfg.sscanf);
-					patch32(m_code, WRITECODE_CFGOFF + 0x18, kseg1 | cfg.getline);
+					patch32(m_code, WRITECODE_CFGOFF + 0x1c, kseg1 | cfg.sscanf);
+					patch32(m_code, WRITECODE_CFGOFF + 0x20, kseg1 | cfg.getline);
 				} else if (cfg.printf && cfg.scanf) {
-					patch32(m_code, WRITECODE_CFGOFF + 0x14, kseg1 | cfg.scanf);
-					patch32(m_code, WRITECODE_CFGOFF + 0x18, 0);
+					patch32(m_code, WRITECODE_CFGOFF + 0x1c, kseg1 | cfg.scanf);
+					patch32(m_code, WRITECODE_CFGOFF + 0x20, 0);
 				} else {
 					throw user_error("profile " + profile->name() + " does not support fast write mode; use -s flag");
 				}
+
+				patch32(m_code, WRITECODE_CFGOFF + 0x24, m_write_func.addr());
+				patch32(m_code, WRITECODE_CFGOFF + 0x28, m_erase_func.addr());
+
+				patch32(m_code, WRITECODE_CFGOFF + 0x2c, length);
 			}
 
 			uint32_t codesize = m_code.size();
@@ -890,6 +912,8 @@ class code_rwx : public parsing_rwx
 	uint32_t m_rw_length = 0;
 
 	func m_read_func;
+	func m_write_func;
+	func m_erase_func;
 
 	rwx::sp m_ram;
 };
@@ -905,7 +929,7 @@ template<class T> rwx::sp create_rwx(const interface::sp& intf, const addrspace&
 rwx::sp create_code_rwx(const interface::sp& intf, const addrspace& space)
 {
 	try {
-		rwx::sp ret = make_shared<code_rwx>(space.get_read_func(intf->id()));
+		rwx::sp ret = make_shared<code_rwx>();
 		ret->set_interface(intf);
 		ret->set_addrspace(space);
 		return ret;

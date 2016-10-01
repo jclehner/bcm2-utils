@@ -23,7 +23,7 @@
 #define CODE_MAGIC 0xbeefc0de
 //#define WRITECODE_PRINT_OFFSETS
 
-#define WRITECODE_ENTRY (0x28 + 0x0c)
+#define WRITECODE_ENTRY (0x28 + 0x0c + 0x14)
 #define WRITECODE_STRSIZE 0x28
 #define WRITECODE_STACKSIZE (0x20 + WRITECODE_STRSIZE)
 #define WRITECODE_STROFF (WRITECODE_STACKSIZE - WRITECODE_STRSIZE)
@@ -31,6 +31,8 @@
 
 #define L_SCANF      ASM_LABEL(0)
 #define L_WORD_OK    ASM_LABEL(1)
+#define L_WRITE      ASM_LABEL(2)
+#define L_UPDATE_CFG ASM_LABEL(3)
 // XXX: these are reused below; do NOT change!
 #define L_LOOP_LINE  ASM_LABEL(5)
 #define L_LOOP_WORDS ASM_LABEL(6)
@@ -50,11 +52,16 @@ uint32_t writecode[] = {
 		_WORD(0x0d0a0000),
 		_WORD(0), // flags
 		_WORD(0), // buffer
-		_WORD(0), // length
+		_WORD(0), // remaining length
 		_WORD(0), // chunk size
+		_WORD(0), // partition offset
+		_WORD(0), // partition size
 		_WORD(0), // printf
 		_WORD(0), // scanf / sscanf
 		_WORD(0), // getline
+		_WORD(0), // flash write
+		_WORD(0), // flash erase
+		_WORD(0), // buffer length
 		// main:
 		ADDIU(SP, SP, -WRITECODE_STACKSIZE),
 		SW(RA, 0x00, SP),
@@ -74,16 +81,16 @@ uint32_t writecode[] = {
 		AND(S7, RA, T4),
 		// buffer
 		LW(S0, WRITECODE_CFGOFF + 0x04, S7),
-		// length
+		// remaining length
 		LW(S1, WRITECODE_CFGOFF + 0x08, S7),
 		// chunk size
 		LW(S2, WRITECODE_CFGOFF + 0x0c, S7),
 		// printf
-		LW(S3, WRITECODE_CFGOFF + 0x10, S7),
+		LW(S3, WRITECODE_CFGOFF + 0x18, S7),
 		// scanf / sscanf
-		LW(S4, WRITECODE_CFGOFF + 0x14, S7),
+		LW(S4, WRITECODE_CFGOFF + 0x1c, S7),
 		// getline
-		LW(S5, WRITECODE_CFGOFF + 0x18, S7),
+		LW(S5, WRITECODE_CFGOFF + 0x20, S7),
 
 		// bail out if length is zero
 		BEQZ(S1, L_OUT),
@@ -178,12 +185,41 @@ _DEF_LABEL(L_WORD_OK),
 		ADDIU(S0, S0, 16),
 
 #if 0
-		// flash write function
-		LW(S4, 0, ZERO),
-		BEQZ(S4, L_WRITE_OK),
+		// skip if write function is zero
+		LW(S4, WRITECODE_CFGOFF + 0x24, S7),
+		BEQZ(S4, L_UPDATE_CFG),
 		// delay slot: flash erase function
-		LW(S5, 0, ZERO),
+		LW(S5, WRITECODE_CFGOFF + 0x28, S7),
 		BEQZ(S5, L_WRITE),
+
+		// delay slot: partition size
+		LW(A1, WRITECODE_CFGOFF + 0x14, S7),
+		// buffer length
+		LW(V1, WRITECODE_CFGOFF + 0x2c, S7),
+
+		// set a1 to buffer length if args flag is OL
+		LW(T4, WRITECODE_CFGOFF + 0x00, S7),
+		ANDI(T4, T4, BCM2_ERASE_FUNC_OL),
+		MOVN(A1, V1, T4),
+		// erase flash
+		JALR(S5),
+
+_DEF_LABEL(L_WRITE),
+		// delay slot: partition offset
+		LW(A0, WRITECODE_CFGOFF + 0x10, S7),
+		// load partition size into a1 and v1
+		LW(A1, WRITECODE_CFGOFF + 0X14, S7),
+		MOVE(V1, A1),
+
+		// swap offset and buffer args if
+		// argument order is OBL
+		LW(T4, WRITECODE_CFGOFF + 0x00, S7),
+		ANDI(T5, T4, BCM2_READ_FUNC_OBL),
+		MOVN(A1, A0, T5),
+		JALR(S4),
+		MOVN(A0, V1, T5),
+
+		_DEF_LABEL(L_UPDATE_CFG),
 #endif
 
 		// store length and buffer

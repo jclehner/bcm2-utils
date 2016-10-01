@@ -255,6 +255,36 @@ class profile_wrapper : public profile
 	addrspace m_ram;
 	codecfg_type m_codecfg;
 };
+
+func get_func(const vector<func>& funcs, int intf)
+{
+	for (auto f : funcs) {
+		if (f.intf() & intf) {
+			return f;
+		}
+	}
+
+	return func();
+}
+
+void parse_funcs(const addrspace& a, const profile& p, const bcm2_func* ifuncs, vector<func>& ofuncs)
+{
+	for (auto ifunc = ifuncs; ifunc->addr; ++ifunc) {
+		func f = get_func(ofuncs, ifunc->intf);
+		if (f.addr()) {
+			throw invalid_argument(p.name() + ": " + a.name() + " function "
+					+ "0x" + to_hex(ifunc->addr) + " conflicts with 0x" + to_hex(f.addr()));
+		}
+
+		p.ram().check_offset(ifunc->addr, "function");
+		ofuncs.push_back(func(ifunc->addr, ifunc->mode, ifunc->intf, ifunc->retv));
+
+		for (size_t i = 0; i < BCM2_PATCH_NUM; ++i) {
+			p.ram().check_offset(ifunc->patch[i].addr, "function 0x" + to_hex(ifunc->addr) + " patch " + to_string(i));
+			ofuncs.back().patches().push_back(&ifunc->patch[i]);
+		}
+	}
+}
 }
 
 addrspace::addrspace(const bcm2_addrspace* a, const profile& p)
@@ -284,23 +314,9 @@ addrspace::addrspace(const bcm2_addrspace* a, const profile& p)
 		m_partitions.push_back(part);
 	}
 
-	const bcm2_func* read = m_p->read;
-	for (; read->addr; ++read) {
-		for (auto f : m_read_funcs) {
-			if (f.intf() & read->intf) {
-				throw invalid_argument(p.name() + ": " + name() + " function "
-						+ "0x" + to_hex(read->addr) + " conflicts with 0x" + to_hex(f.addr()));
-			}
-		}
-
-		p.ram().check_offset(read->addr, "function 'read'");
-		m_read_funcs.push_back(func(read->addr, read->mode, read->intf, read->retv));
-
-		for (size_t i = 0; i < BCM2_PATCH_NUM; ++i) {
-			p.ram().check_offset(read->patch[i].addr, "function 'read', patch " + to_string(i));
-			m_read_funcs.back().patches().push_back(&read->patch[i]);
-		}
-	}
+	parse_funcs(*this, p, m_p->read, m_read_funcs);
+	parse_funcs(*this, p, m_p->write, m_write_funcs);
+	parse_funcs(*this, p, m_p->erase, m_erase_funcs);
 }
 
 bool addrspace::check_range(uint32_t offset, uint32_t length, const string& name, bool exception) const
@@ -349,16 +365,25 @@ const addrspace::part& addrspace::partition(const string& name) const
 	throw user_error(m_profile_name + ": " + this->name() + ": no such partition: " + name);
 }
 
-func addrspace::get_read_func(bcm2_interface intf) const
+const addrspace::part& addrspace::partition(uint32_t offset) const
 {
-	for (auto f : m_read_funcs) {
-		if (f.intf() & intf) {
-			return f;
+	for (const part& p : m_partitions) {
+		if (p.offset() == offset) {
+			return p;
 		}
 	}
 
-	return func();
+	throw user_error(m_profile_name + ": no partition at offset " + to_string(offset));
 }
+
+func addrspace::get_read_func(bcm2_interface intf) const
+{ return get_func(m_read_funcs, intf); }
+
+func addrspace::get_write_func(bcm2_interface intf) const
+{ return get_func(m_write_funcs, intf); }
+
+func addrspace::get_erase_func(bcm2_interface intf) const
+{ return get_func(m_erase_funcs, intf); }
 
 vector<profile::sp> profile::s_profiles;
 
