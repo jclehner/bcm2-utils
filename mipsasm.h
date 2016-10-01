@@ -48,10 +48,10 @@
 	ASM_OPCODE(ASM_X_OP(op) | (target & 0x3ffffff))
 
 #define R(n) ((n) & 0x1f)
-#define V(n) R(2 + n)
-#define A(n) R(4 + n)
-#define T(n) R(8 + n)
-#define S(n) R(16 + n)
+#define V(n) R(2 + (n))
+#define A(n) R(4 + (n))
+#define T(n) R(((n) < 8 ? 8 : 16) + (n))
+#define S(n) R(16 + (n))
 
 #define RA R(31)
 #define SP R(29)
@@ -65,19 +65,24 @@
 #define A1 A(1)
 #define A2 A(2)
 #define A3 A(3)
-#define A4 T0
-#define A5 T1
-#define A6 T2
-#define A7 T3
 
+#if 1
+#define A4 A(4)
+#define A5 A(5)
+#define A6 A(6)
+#define A7 A(7)
+#else
 #define T0 T(0)
 #define T1 T(1)
 #define T2 T(2)
 #define T3 T(3)
+#endif
 #define T4 T(4)
 #define T5 T(5)
 #define T6 T(6)
 #define T7 T(7)
+#define T8 T(8)
+#define T9 T(9)
 
 #define S0 S(0)
 #define S1 S(1)

@@ -69,9 +69,9 @@ uint32_t writecode[] = {
 		// branch to next instruction
 		BAL(1),
 		// delay slot: address mask
-		LUI(T0, 0xffff),
+		LUI(T4, 0xffff),
 		// store ra & 0xffff0000
-		AND(S7, RA, T0),
+		AND(S7, RA, T4),
 		// buffer
 		LW(S0, WRITECODE_CFGOFF + 0x04, S7),
 		// length
@@ -89,8 +89,8 @@ uint32_t writecode[] = {
 		BEQZ(S1, L_OUT),
 
 		// set s2 to MIN(length, chunk_size)
-		SLT(T0, S1, S2),
-		MOVN(S2, S1, T0),
+		SLT(T4, S1, S2),
+		MOVN(S2, S1, T4),
 
 		// subtract chunk size from length
 		SUBU(S1, S1, S2),
@@ -112,19 +112,19 @@ _DEF_LABEL(L_LOOP_WORDS),
 
 #if 0
 		// load flags
-		LW(T1, WRITECODE_CFGOFF + 0x00, S7),
-		ANDI(T0, T1, BCM2_FGETS_RET_BUF_PLUS_LEN),
+		LW(T5, WRITECODE_CFGOFF + 0x00, S7),
+		ANDI(T4, T5, BCM2_FGETS_RET_BUF_PLUS_LEN),
 
-		// if FGETS_RET_BUF_PLUS_LEN is set, set t0 to sp,
+		// if FGETS_RET_BUF_PLUS_LEN is set, set T4 to sp,
 		// otherwise leave it at zero
-		MOVN(T0, SP, T0),
+		MOVN(T4, SP, T4),
 
 		// this is a nop if FGETS_RET_BUF_PLUS_LEN is not set
-		SUBU(V0, V0, T0),
+		SUBU(V0, V0, T4),
 
 		// set v0 to (flags & FGETS_RET_VOID), if applicable
-		ANDI(T0, T1, BCM2_FGETS_RET_VOID),
-		MOVN(V0, T0, T0),
+		ANDI(T4, T5, BCM2_FGETS_RET_VOID),
+		MOVN(V0, T4, T4),
 		// bail out if fgets returned < 1
 		SLTIU(V1, V0, 1),
 		BNEZ(V1, L_OUT),
@@ -251,9 +251,9 @@ uint32_t dumpcode[] = {
 		// branch to next instruction
 		BAL(1),
 		// delay slot: address mask
-		LUI(T0, 0xffff),
+		LUI(T4, 0xffff),
 		// store ra & 0xffff0000
-		AND(S7, RA, T0),
+		AND(S7, RA, T4),
 		// buffer
 		LW(S0, 0x14, S7),
 		// offset
@@ -269,7 +269,7 @@ uint32_t dumpcode[] = {
 		// delay slot: flash read function
 		LW(S4, 0x28, S7),
 
-		// patch code (affects only t0-t3)
+		// patch code (affects only t4-t7)
 		BAL(F_PATCH),
 		NOP,
 
@@ -284,33 +284,33 @@ uint32_t dumpcode[] = {
 		SW(S0, 0x14, S7),
 
 _DEF_LABEL(L_READ_FLASH),
-		// set t0 to buffer
-		MOVE(T0, S0),
-		// set t1 to length
-		MOVE(T1, T2),
+		// set t4 to buffer
+		MOVE(T4, S0),
+		// set t5 to length
+		MOVE(T5, T6),
 
 _DEF_LABEL(L_LOOP_BZERO),
-		// zero word at t0
-		SW(ZERO, 0, T0),
-		// loop until T1 == 0
-		ADDIU(T1, T1, -4),
-		BGTZ(T1, L_LOOP_BZERO),
+		// zero word at t4
+		SW(ZERO, 0, T4),
+		// loop until T5 == 0
+		ADDIU(T5, T5, -4),
+		BGTZ(T5, L_LOOP_BZERO),
 		// delay slot: increment buffer
-		ADDIU(T0, T0, 4),
+		ADDIU(T4, T4, 4),
 
-		// set t0 if dump function is (buffer, offset, length)
-		ANDI(T0, V0, BCM2_READ_FUNC_BOL),
-		// set t1 if dump dunfction is (offset, buffer, length)
-		ANDI(T1, V0, BCM2_READ_FUNC_OBL),
+		// set t4 if dump function is (buffer, offset, length)
+		ANDI(T4, V0, BCM2_READ_FUNC_BOL),
+		// set t5 if dump dunfction is (offset, buffer, length)
+		ANDI(T5, V0, BCM2_READ_FUNC_OBL),
 		// set a0 = &buffer, a1 = offset, a2 = length
 		ADDIU(A0, S7, 0x14),
 		MOVE(A1, S1),
 		MOVE(A2, S2),
-		// if t0: set a0 = buffer
-		MOVN(A0, S0, T0),
-		// if t1: set a0 = offset and a1 = buffer
-		MOVN(A0, S1, T1),
-		MOVN(A1, S0, T1),
+		// if t4: set a0 = buffer
+		MOVN(A0, S0, T4),
+		// if t5: set a0 = offset and a1 = buffer
+		MOVN(A0, S1, T5),
+		MOVN(A1, S0, T5),
 		// read from flash
 		JALR(S4),
 		// leave this here!
@@ -318,11 +318,11 @@ _DEF_LABEL(L_LOOP_BZERO),
 
 _DEF_LABEL(L_START_DUMP),
 		// save s2 (remaining length)
-		MOVE(T2, S2),
+		MOVE(T6, S2),
 		// set s2 to MIN(remaining length, chunk size)
 		LW(S2, 0x20, S7),
-		SLT(T0, T2, S2),
-		MOVN(S2, T2, T0),
+		SLT(T4, T6, S2),
+		MOVN(S2, T6, T4),
 		// increment buffer, offset and dump offset
 		ADDU(S0, S0, S3),
 		ADDU(S1, S1, S3),
@@ -330,9 +330,9 @@ _DEF_LABEL(L_START_DUMP),
 		// store dump offset
 		SW(S3, 0x10, S7),
 		// load remaining length, decrement by s2, and store
-		LW(T0, 0x1c, S7),
-		SUBU(T0, T0, S2),
-		SW(T0, 0x1c, S7),
+		LW(T4, 0x1c, S7),
+		SUBU(T4, T4, S2),
+		SW(T4, 0x1c, S7),
 		// set s4 to print function
 		LW(S4, 0x24, S7),
 
@@ -388,20 +388,20 @@ _DEF_LABEL(L_LOOP_PATCH),
 		// break if patch offset is zero
 		BEQZ(A0, L_PATCH_DONE),
 		// delay slot: load patch word
-		LW(T0, 4, V1),
+		LW(T4, 4, V1),
 		// load current word at offset
-		LW(T1, 0, A0),
+		LW(T5, 0, A0),
 		// patch word at offset
-		SW(T0, 0, A0),
+		SW(T4, 0, A0),
 		// store original word in patch (this way, calling this
 		// function again will restore the original code)
-		SW(T1, 4, V1),
+		SW(T5, 4, V1),
 		// decrement counter
 		ADDIU(V0, V0, -1),
 		// loop until we've reached the end
 		BGTZ(V0, L_LOOP_PATCH),
 		// delay slot: set pointer to next patch blob
-		ADDIU(T1, T1, 8),
+		ADDIU(T5, T5, 8),
 _DEF_LABEL(L_PATCH_DONE),
 		JR(RA),
 		NOP,
