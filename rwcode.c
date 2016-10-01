@@ -17,6 +17,9 @@
  *
  */
 
+#include "mipsasm.h"
+#include "profile.h"
+
 #define CODE_MAGIC 0xbeefc0de
 //#define WRITECODE_PRINT_OFFSETS
 
@@ -174,6 +177,15 @@ _DEF_LABEL(L_WORD_OK),
 		// delay slot: increment buffer
 		ADDIU(S0, S0, 16),
 
+#if 0
+		// flash write function
+		LW(S4, 0, ZERO),
+		BEQZ(S4, L_WRITE_OK),
+		// delay slot: flash erase function
+		LW(S5, 0, ZERO),
+		BEQZ(S5, L_WRITE),
+#endif
+
 		// store length and buffer
 		SW(S0, WRITECODE_CFGOFF + 0x04, S7),
 		SW(S1, WRITECODE_CFGOFF + 0x08, S7),
@@ -287,9 +299,9 @@ _DEF_LABEL(L_LOOP_BZERO),
 		ADDIU(T0, T0, 4),
 
 		// set t0 if dump function is (buffer, offset, length)
-		ANDI(T0, V0, CODE_DUMP_PARAMS_BOL),
+		ANDI(T0, V0, BCM2_READ_FUNC_BOL),
 		// set t1 if dump dunfction is (offset, buffer, length)
-		ANDI(T1, V0, CODE_DUMP_PARAMS_OBL),
+		ANDI(T1, V0, BCM2_READ_FUNC_OBL),
 		// set a0 = &buffer, a1 = offset, a2 = length
 		ADDIU(A0, S7, 0x14),
 		MOVE(A1, S1),
