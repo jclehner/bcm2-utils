@@ -52,7 +52,7 @@ uint32_t writecode[] = {
 		_WORD(0x0d0a0000),
 		_WORD(0), // flags
 		_WORD(0), // buffer
-		_WORD(0), // remaining length
+		_WORD(0), // index
 		_WORD(0), // chunk size
 		_WORD(0), // partition offset
 		_WORD(0), // partition size
@@ -61,7 +61,7 @@ uint32_t writecode[] = {
 		_WORD(0), // getline
 		_WORD(0), // flash write
 		_WORD(0), // flash erase
-		_WORD(0), // buffer length
+		_WORD(0), // length
 		// main:
 		ADDIU(SP, SP, -WRITECODE_STACKSIZE),
 		SW(RA, 0x00, SP),
@@ -81,8 +81,8 @@ uint32_t writecode[] = {
 		AND(S7, RA, T4),
 		// buffer
 		LW(S0, WRITECODE_CFGOFF + 0x04, S7),
-		// remaining length
-		LW(S1, WRITECODE_CFGOFF + 0x08, S7),
+		// buffer length
+		LW(S1, WRITECODE_CFGOFF + 0x2c, S7),
 		// chunk size
 		LW(S2, WRITECODE_CFGOFF + 0x0c, S7),
 		// printf
@@ -95,12 +95,16 @@ uint32_t writecode[] = {
 		// bail out if length is zero
 		BEQZ(S1, L_OUT),
 
+		// delay slot: buffer index
+		LW(V1, WRITECODE_CFGOFF + 0x08, S7),
+		// buflen -= index (= remaining size)
+		SUBU(S1, S1, V1),
+		// buffer += index
+		ADDU(S0, S0, V1),
+
 		// set s2 to MIN(length, chunk_size)
 		SLT(T4, S1, S2),
 		MOVN(S2, S1, T4),
-
-		// subtract chunk size from length
-		SUBU(S1, S1, S2),
 
 		// make sure that we have a NUL byte
 		SB(ZERO, WRITECODE_STROFF + WRITECODE_STRSIZE - 1, SP),
@@ -201,7 +205,7 @@ _DEF_LABEL(L_WORD_OK),
 		LW(T4, WRITECODE_CFGOFF + 0x00, S7),
 		ANDI(T4, T4, BCM2_ERASE_FUNC_OL),
 		MOVN(A1, V1, T4),
-		// erase flash
+		// erase flash (a0 is loaded in delay slot!)
 		JALR(S5),
 
 _DEF_LABEL(L_WRITE),
@@ -221,10 +225,11 @@ _DEF_LABEL(L_WRITE),
 
 		_DEF_LABEL(L_UPDATE_CFG),
 #endif
-
-		// store length and buffer
-		SW(S0, WRITECODE_CFGOFF + 0x04, S7),
-		SW(S1, WRITECODE_CFGOFF + 0x08, S7),
+		// load buffer
+		LW(V0, WRITECODE_CFGOFF + 0x04, S7),
+		// calculate and store new index
+		SUBU(V1, S0, V0),
+		SW(V1, WRITECODE_CFGOFF + 0x08, S7),
 
 _DEF_LABEL(L_OUT),
 		// restore registers

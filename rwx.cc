@@ -750,9 +750,7 @@ class code_rwx : public parsing_rwx
 			patch32(m_code, 0x1c, remaining);
 			m_ram->write(m_loadaddr + 0x1c, m_code.substr(0x1c, 4));
 		} else {
-			patch32(m_code, WRITECODE_CFGOFF + 0, offset);
-			patch32(m_code, WRITECODE_CFGOFF + 4, remaining);
-			m_ram->write(m_loadaddr + WRITECODE_CFGOFF, m_code.substr(WRITECODE_CFGOFF, 8));
+			// TODO: implement if we ever use on_chunk_retry for writes
 		}
 	}
 
@@ -786,7 +784,7 @@ class code_rwx : public parsing_rwx
 		uint32_t kseg1 = profile->kseg1();
 		m_loadaddr = kseg1 | (cfg.loadaddr + (write ? 0 : 0x10000));
 
-		// FIXME check whether we have a custom code file
+		// TODO: check whether we have a custom code file
 		if (true) {
 			if (!write) {
 				m_read_func = m_space.get_read_func(m_intf->id());
@@ -826,7 +824,7 @@ class code_rwx : public parsing_rwx
 
 				patch32(m_code, WRITECODE_CFGOFF + 0x00, m_write_func.args() | m_erase_func.args());
 				patch32(m_code, WRITECODE_CFGOFF + 0x04, m_space.is_ram() ? offset : (kseg1 | cfg.buffer));
-				patch32(m_code, WRITECODE_CFGOFF + 0x08, length);
+				patch32(m_code, WRITECODE_CFGOFF + 0x08, 0);
 				patch32(m_code, WRITECODE_CFGOFF + 0x0c, limits_write().max);
 
 				if (!m_space.is_ram()) {
@@ -1212,7 +1210,7 @@ void rwx::write(uint32_t offset, const string& buf, uint32_t length)
 	if (offset_w != offset || length_w != length) {
 		logger::d() << "adjusting write params: 0x" << to_hex(offset) << "," << length
 				<< " -> 0x" << to_hex(offset_w) << "," << length_w << endl;
-		throw user_error("non-aligned writes are not yet supported");
+		throw user_error("non-aligned writes are not yet supported; alignment is " + to_string(lim.min));
 	}
 
 	string contents;
