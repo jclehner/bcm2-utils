@@ -65,8 +65,13 @@ void usage(bool help = false)
 	}
 	os << endl;
 	os << "Interfaces: " << endl;
+#ifndef _WIN32
 	os << "  /dev/ttyUSB0             Serial console with default baud rate" << endl;
 	os << "  /dev/ttyUSB0,115200      Serial console, 115200 baud" << endl;
+#else
+	os << "  COM1                     Serial console with default baud rate" << endl;
+	os << "  COM1,115200              Serial console, 115200 baud" << endl;
+#endif
 	os << "  192.168.0.1,2323         Raw TCP connection to 192.168.0.1, port 2323" << endl;
 	os << "  192.168.0.1,foo,bar      Telnet, server 192.168.0.1, user 'foo', password 'bar'" << endl;
 	os << "  192.168.0.1,foo,bar,233  Same as above, port 233" << endl;

@@ -17,11 +17,9 @@
  *
  */
 
-#include <sys/socket.h>
 #include <sys/stat.h>
 #include <algorithm>
 #include <unistd.h>
-#include <netdb.h>
 #include <list>
 #include "interface.h"
 #include "rwx.h"
@@ -250,15 +248,16 @@ bool bfc_telnet::login(const string& user, const string& pass)
 
 	if (m_status == authenticated) {
 		runcmd("su");
-		while (pending()) {
-			string line = readln();
+		foreach_line([this] (const string& line) {
 			if (contains(line, "Password:")) {
 				writeln("brcm");
 				writeln();
 			} else if (is_bfc_prompt(line, "CM")) {
 				m_status = rooted;
 			}
-		}
+
+			return true;
+		});
 	}
 
 	if (m_status == authenticated) {

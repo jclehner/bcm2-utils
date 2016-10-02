@@ -42,7 +42,7 @@ template<class T> T hex_cast(const std::string& str)
 
 inline void patch32(string& buf, string::size_type offset, uint32_t n)
 {
-	patch<uint32_t>(buf, offset, htonl(n));
+	patch<uint32_t>(buf, offset, hton(n));
 }
 
 template<class T> string to_buf(const T& t)
@@ -219,7 +219,12 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 		while ((!length || chunk.size() < length) && m_intf->pending()) {
 			throw_if_interrupted();
 
-			line = trim(m_intf->readln());
+			line = m_intf->readln();
+			if (line.empty()) {
+				break;
+			}
+
+			line = trim(line);
 
 			if (is_ignorable_line(line)) {
 				continue;
@@ -304,7 +309,7 @@ bool bfc_ram::exec_impl(uint32_t offset)
 bool bfc_ram::write_chunk(uint32_t offset, const string& chunk)
 {
 	if (m_rooted) {
-		uint32_t val = chunk.size() == 4 ? ntohl(extract<uint32_t>(chunk)) : chunk[0];
+		uint32_t val = chunk.size() == 4 ? ntoh(extract<uint32_t>(chunk)) : chunk[0];
 		return m_intf->runcmd("/write_memory -s " + to_string(chunk.size()) + " 0x" +
 				to_hex(offset, 0) + " 0x" + to_hex(val, 0), "Writing");
 	} else {
@@ -356,7 +361,7 @@ string bfc_ram::parse_chunk_line(const string& line, uint32_t offset)
 			throw runtime_error("offset mismatch");
 		}
 		for (unsigned i = 0; i < 4; ++i) {
-			linebuf += to_buf(htonl(hex_cast<uint32_t>(line.substr((i + 1) * 10, 8))));
+			linebuf += to_buf(hton(hex_cast<uint32_t>(line.substr((i + 1) * 10, 8))));
 		}
 	} else {
 		auto beg = line.find(": ");
@@ -367,7 +372,7 @@ string bfc_ram::parse_chunk_line(const string& line, uint32_t offset)
 		for (unsigned i = 0; i < 4; ++i) {
 			beg = line.find_first_of("0123456789", beg);
 			auto end = line.find_first_not_of("0123456789", beg);
-			linebuf += to_buf(htonl(lexical_cast<uint32_t>(line.substr(beg, end - beg))));
+			linebuf += to_buf(hton(lexical_cast<uint32_t>(line.substr(beg, end - beg))));
 			beg = end;
 		}
 	}
@@ -381,12 +386,13 @@ void bfc_ram::init(uint32_t offset, uint32_t length, bool write)
 
 	if (m_check_root) {
 		m_intf->runcmd("cd /");
-		while (m_intf->pending()) {
-			string line = m_intf->readln();
+		m_intf->foreach_line([this] (const string& line) {
 			if (is_bfc_prompt(line, "Console")) {
 				m_rooted = false;
 			}
-		}
+
+			return true;
+		});
 		m_check_root = false;
 	}
 }
@@ -434,15 +440,16 @@ void bfc_flash::init(uint32_t offset, uint32_t length, bool write)
 		bool opened = false;
 		bool retry = false;
 
-		while (m_intf->pending()) {
-			string line = m_intf->readln();
+		m_intf->foreach_line([&opened, &retry] (const string& line) {
 			if (contains(line, "opened twice")) {
 				retry = true;
 				opened = false;
 			} else if (contains(line, "driver opened")) {
 				opened = true;
 			}
-		}
+
+			return true;
+		});
 
 		if (opened) {
 			break;
@@ -466,7 +473,7 @@ void bfc_flash::cleanup()
 bool bfc_flash::write_chunk(uint32_t offset, const std::string& chunk)
 {
 	offset = to_partition_offset(offset);
-	uint32_t val = chunk.size() == 4 ? ntohl(extract<uint32_t>(chunk)) : chunk[0];
+	uint32_t val = chunk.size() == 4 ? ntoh(extract<uint32_t>(chunk)) : chunk[0];
 	return m_intf->runcmd("/flash/write " + to_string(chunk.size()) + " 0x"
 			+ to_hex(offset) + " 0x" + to_hex(val), "successfully written");
 }
@@ -516,7 +523,7 @@ string bfc_flash::parse_chunk_line(const string& line, uint32_t offset)
 	}
 #else
 	for (size_t i = 0; i < line.size(); i += 9) {
-		linebuf += to_buf(htonl(hex_cast<uint32_t>(line.substr(i, 8))));
+		linebuf += to_buf(hton(hex_cast<uint32_t>(line.substr(i, 8))));
 
 		if (!(i % 128)) {
 			update_progress(offset + i, 0);
@@ -586,7 +593,7 @@ bool bootloader_ram::write_chunk(uint32_t offset, const string& chunk)
 		}
 
 		m_intf->writeln(to_hex(offset, 0));
-		uint32_t val = ntohl(extract<uint32_t>(chunk));
+		uint32_t val = ntoh(extract<uint32_t>(chunk));
 		return m_intf->runcmd(to_hex(val) + "\r\n", "Main Menu");
 	} catch (const exception& e) {
 		// ensure that we're in a sane state
@@ -616,7 +623,7 @@ string bootloader_ram::parse_chunk_line(const string& line, uint32_t offset)
 			throw runtime_error("offset mismatch");
 		}
 
-		return to_buf(htonl(hex_cast<uint32_t>(line.substr(19, 8))));
+		return to_buf(hton(hex_cast<uint32_t>(line.substr(19, 8))));
 	}
 
 	throw runtime_error("unexpected line");
@@ -690,7 +697,7 @@ class code_rwx : public parsing_rwx
 		auto values = split(line.substr(1), ':');
 		if (values.size() == 4) {
 			for (string val : values) {
-				linebuf += to_buf(htonl(hex_cast<uint32_t>(val)));
+				linebuf += to_buf(hton(hex_cast<uint32_t>(val)));
 			}
 		}
 
@@ -869,7 +876,7 @@ class code_rwx : public parsing_rwx
 #endif
 
 			uint32_t expected = 0xc0de0000 | crc16_ccitt(m_code.substr(m_entry, m_code.size() - 4 - m_entry));
-			uint32_t actual = ntohl(extract<uint32_t>(m_ram->read(m_loadaddr + m_code.size() - 4, 4)));
+			uint32_t actual = ntoh(extract<uint32_t>(m_ram->read(m_loadaddr + m_code.size() - 4, 4)));
 			bool quick = (expected == actual);
 
 			patch32(m_code, codesize - 4, expected);
@@ -996,7 +1003,7 @@ string bfc_cmcfg::parse_chunk_line(const string& line, uint32_t offset)
 }
 
 unsigned rwx::s_count = 0;
-sig_t rwx::s_sighandler_orig = nullptr;
+sigh_type rwx::s_sighandler_orig = nullptr;
 volatile sig_atomic_t rwx::s_sigint = 0;
 
 rwx::rwx()

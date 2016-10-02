@@ -18,19 +18,25 @@
  */
 
 #include <system_error>
-#include <sys/socket.h>
 #include <sys/types.h>
-#include <arpa/inet.h>
 #include <stdexcept>
-#include <termios.h>
-#include <unistd.h>
-#include <netdb.h>
 #include <fcntl.h>
 #include <cstring>
 #include <cerrno>
 #include <list>
 #include "util.h"
 #include "io.h"
+
+#ifndef _WIN32
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <termios.h>
+#include <unistd.h>
+#include <netdb.h>
+#else
+#include <io.h>
+#endif
+
 using namespace std;
 
 #define DEBUG
@@ -53,6 +59,7 @@ void add_line(const string& line, bool in)
 	logger::t() << lines.back() << endl;
 }
 
+#ifndef _WIN32
 class scoped_flags
 {
 	public:
@@ -82,13 +89,13 @@ class scoped_flags
 	int m_orig;
 };
 
-ssize_t recv_dontwait(int fd, void* buf, size_t len, int flags = 0)
+ssize_t recv_dontwait(int fd, char* buf, size_t len, int flags = 0)
 {
 	scoped_flags f(fd, O_NONBLOCK);
 	return recv(fd, buf, len, flags);
 }
 
-ssize_t send_nosignal(int fd, const void* buf, size_t len, int flags = 0)
+ssize_t send_nosignal(int fd, const char* buf, size_t len, int flags = 0)
 {
 #ifdef __linux__
 	flags |= MSG_NOSIGNAL;
@@ -161,12 +168,17 @@ string addr_to_string(sockaddr* sa)
 
 	return buf;
 }
+#endif
 
-unsigned to_termspeed(unsigned speed)
+int to_termspeed(unsigned speed)
 {
 	switch (speed) {
+#ifndef _WIN32
 #define CASE(n) case n: return B ## n
 		CASE(230400);
+#else
+#define CASE(n) case n: return CBR_ ## n;
+#endif
 		CASE(115200);
 		CASE(57600);
 		CASE(38400);
@@ -178,9 +190,8 @@ unsigned to_termspeed(unsigned speed)
 		CASE(1200);
 		CASE(300);
 #undef CASE
-		default:
-			return 0;
 	}
+	throw user_error("invalid baud rate: " + to_string(speed));
 }
 
 class fdio : public io
@@ -205,13 +216,45 @@ class fdio : public io
 	int m_fd;
 };
 
-class serial : public fdio
+#if defined(_WIN32)
+class hio : public io
+{
+	public:
+	hio() : m_h(INVALID_HANDLE_VALUE) {}
+
+	virtual ~hio()
+	{ close(); }
+
+	//virtual bool pending(unsigned timeout) override;
+	virtual void write(const string& str) override;
+	virtual string read(size_t length, bool partial = true) override;
+
+	protected:
+	virtual int getc() override;
+
+	virtual void close()
+	{ CloseHandle(m_h); }
+
+	HANDLE m_h;
+};
+#endif
+
+class serial :
+#ifndef _WIN32
+		public fdio
+#else
+		public hio
+#endif
 {
 	public:
 	serial(const char* tty, unsigned speed);
 	virtual ~serial() {}
-	virtual void write(const string& str) override;
 	virtual void writeln(const string& str) override;
+#ifndef _WIN32
+	virtual void write(const string& str) override;
+#else
+	virtual bool pending(unsigned timeout) override;
+#endif
 };
 
 class tcp : public fdio
@@ -313,6 +356,7 @@ void fdio::write(const string& str)
 #endif
 }
 
+#ifndef _WIN32
 void serial::write(const string& str)
 {
 	fdio::write(str);
@@ -320,6 +364,7 @@ void serial::write(const string& str)
 		throw errno_error("tcdrain");
 	}
 }
+#endif
 
 void serial::writeln(const string& str)
 {
@@ -328,8 +373,76 @@ void serial::writeln(const string& str)
 	readln();
 }
 
+#ifdef _WIN32
+void hio::write(const string& str)
+{
+	DWORD written;
+	if (!WriteFile(m_h, str.data(), str.size(), &written, nullptr) || written != str.size()) {
+		throw winapi_error("WriteFile");
+	}
+
+#ifdef DEBUG
+	add_line("'" + trim(str) + "'", false);
+#endif
+}
+
+string hio::read(size_t length, bool all)
+{
+	DWORD bytes = 0;
+	string buf(length, '\0');
+	if (!ReadFile(m_h, &buf[0], length, &bytes, nullptr) || (all && bytes != length)) {
+		throw winapi_error("ReadFile");
+	}
+
+	return buf;
+}
+
+int hio::getc()
+{
+	DWORD bytes = 0;
+	char c;
+	if (!ReadFile(m_h, &c, 1, &bytes, nullptr)) {
+		throw winapi_error("ReadFile");
+	}
+
+	return bytes ? c : eof;
+}
+
+bool serial::pending(unsigned timeout)
+{
+	DWORD status = WaitForSingleObject(m_h, timeout);
+	if (status != WAIT_FAILED) {
+		return status == WAIT_OBJECT_0;
+	} else {
+		static bool b = false;
+		if (!b) {
+			logger::d("\n\nserial::pending: WaitForSingleObject failed\n\n");
+			b = true;
+		}
+	}
+
+	DWORD mask = 0;
+
+	while (GetCommMask(m_h, &mask)) {
+		if (mask & EV_RXCHAR) {
+			return true;
+		} else if (mask & EV_ERR) {
+			throw runtime_error("line status error");
+		} else if (timeout--) {
+			Sleep(1);
+		} else {
+			logger::d("serial::pending: returning false!\n");
+			return false;
+		}
+	}
+
+	throw winapi_error("GetCommMask");
+}
+#endif
+
 serial::serial(const char* tty, unsigned speed)
 {
+#ifndef _WIN32
 	m_fd = open(tty, O_RDWR | O_NOCTTY | O_SYNC);
 	if (m_fd < 0) {
 		throw errno_error(string(errno != ENOENT ? "open: " : "") + tty);
@@ -342,10 +455,6 @@ serial::serial(const char* tty, unsigned speed)
 	}
 
 	int tspeed = to_termspeed(speed);
-	if (!tspeed) {
-		throw user_error("invalid baud rate: " + to_string(speed));
-	}
-
 	if (cfsetispeed(&cf, tspeed) < 0 || cfsetospeed(&cf, tspeed) < 0) {
 		throw errno_error("cfsetXspeed");
 	}
@@ -361,8 +470,51 @@ serial::serial(const char* tty, unsigned speed)
 	if (tcsetattr(m_fd, TCSANOW, &cf) != 0) {
 		throw errno_error("tcsetattr");
 	}
+#else
+	m_h = CreateFile(tty,
+			GENERIC_READ | GENERIC_WRITE,
+			0,
+			0,
+			OPEN_EXISTING,
+			0,
+			0);
+	if (m_h == INVALID_HANDLE_VALUE) {
+		DWORD error = GetLastError();
+		throw winapi_error(string(error != ERROR_FILE_NOT_FOUND ? "CreateFile: " : "") + tty);
+	}
+
+	DCB dcb = { 0 };
+	dcb.DCBlength = sizeof(dcb);
+
+	if (!GetCommState(m_h, &dcb)) {
+		throw winapi_error("GetCommState");
+	}
+
+	dcb.BaudRate = to_termspeed(speed);
+	dcb.ByteSize = 8;
+	dcb.StopBits = ONESTOPBIT;
+	dcb.Parity = NOPARITY;
+
+	if (!SetCommState(m_h, &dcb)) {
+		throw winapi_error("SetCommState");
+	}
+
+	COMMTIMEOUTS timeouts = { 0 };
+	timeouts.ReadIntervalTimeout = 50;
+	timeouts.ReadTotalTimeoutConstant = 50;
+	timeouts.ReadTotalTimeoutMultiplier = 0;
+
+	if (!SetCommTimeouts(m_h, &timeouts)) {
+		throw winapi_error("SetCommTimeouts");
+	}
+
+	if (!SetCommMask(m_h, EV_RXCHAR | EV_ERR)) {
+		throw winapi_error("SetCommMask");
+	}
+#endif
 }
 
+#ifndef _WIN32
 tcp::tcp(const string& addr, uint16_t port)
 {
 	addrinfo hints = { 0 };
@@ -532,6 +684,7 @@ void telnet::close()
 {
 	tcp::close();
 }
+#endif
 }
 
 string io::readln(unsigned timeout)
@@ -574,11 +727,7 @@ string io::readln(unsigned timeout)
 	return lf ? string("\0", 1) : "";
 }
 
-shared_ptr<io> io::open_serial(const char* tty, unsigned speed)
-{
-	return make_shared<serial>(tty, speed);	
-}
-
+#ifndef _WIN32
 shared_ptr<io> io::open_telnet(const string& address, unsigned short port)
 {
 	return make_shared<telnet>(address, port);
@@ -587,6 +736,22 @@ shared_ptr<io> io::open_telnet(const string& address, unsigned short port)
 shared_ptr<io> io::open_tcp(const string& address, unsigned short port)
 {
 	return make_shared<tcp>(address, port);
+}
+#else
+shared_ptr<io> io::open_telnet(const string& address, unsigned short port)
+{
+	throw user_error("not supported on this platform");
+}
+
+shared_ptr<io> io::open_tcp(const string& address, unsigned short port)
+{
+	throw user_error("not supported on this platform");
+}
+#endif
+
+shared_ptr<io> io::open_serial(const char* tty, unsigned speed)
+{
+	return make_shared<serial>(tty, speed);	
 }
 
 list<string> io::get_last_lines()

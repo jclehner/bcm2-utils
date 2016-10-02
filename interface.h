@@ -28,6 +28,8 @@
 #include "util.h"
 #include "io.h"
 
+#undef interface
+
 namespace bcm2dump {
 
 class interface

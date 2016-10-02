@@ -17,6 +17,7 @@
  *
  */
 
+#include <time.h>
 #include "progress.h"
 
 static void gmtime_days(time_t time, unsigned *days, struct tm *tm)
@@ -26,7 +27,11 @@ static void gmtime_days(time_t time, unsigned *days, struct tm *tm)
 		time -= *days * 86400;
 	}
 
+#ifndef _WIN32
 	gmtime_r(&time, tm);
+#else
+	memcpy(tm, gmtime(&time), sizeof(struct tm));
+#endif
 }
 
 static void print_time(FILE *fp, unsigned days, struct tm *tm)
@@ -38,7 +43,7 @@ static void print_time(FILE *fp, unsigned days, struct tm *tm)
 	}
 
 	char buf[128];
-	if (tm->tm_year != 0xffff && strftime(buf, sizeof(buf) - 1, "%T", tm) > 0) {
+	if (tm->tm_year != 0xffff && strftime(buf, sizeof(buf) - 1, "%H:%M:%S", tm) > 0) {
 		fprintf(fp, "%s", buf);
 	} else {
 		fprintf(fp, "--:--:--");

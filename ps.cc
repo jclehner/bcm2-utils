@@ -17,7 +17,6 @@
  *
  */
 
-#include <arpa/inet.h>
 #include <cstring>
 #include "util.h"
 #include "ps.h"
@@ -29,22 +28,20 @@ namespace {
 
 void ntoh_header(ps_header::raw& raw)
 {
-#define BCM2_NTOHL(x) raw.x = ntohl(raw.x)
-#define BCM2_NTOHS(x) raw.x = ntohs(raw.x)
-	BCM2_NTOHS(signature);
-	BCM2_NTOHS(control);
-	BCM2_NTOHS(ver_maj);
-	BCM2_NTOHS(ver_min);
-	BCM2_NTOHL(timestamp);
-	BCM2_NTOHL(length);
-	BCM2_NTOHL(loadaddr);
-	BCM2_NTOHL(length1);
-	BCM2_NTOHL(length2);
-	BCM2_NTOHS(hcs);
-	BCM2_NTOHS(reserved);
-	BCM2_NTOHL(crc);
-#undef BCM2_NTOHL
-#undef BCM2_NTOHS
+#define BCM2_NTOH(x) raw.x = ntoh(raw.x)
+	BCM2_NTOH(signature);
+	BCM2_NTOH(control);
+	BCM2_NTOH(ver_maj);
+	BCM2_NTOH(ver_min);
+	BCM2_NTOH(timestamp);
+	BCM2_NTOH(length);
+	BCM2_NTOH(loadaddr);
+	BCM2_NTOH(length1);
+	BCM2_NTOH(length2);
+	BCM2_NTOH(hcs);
+	BCM2_NTOH(reserved);
+	BCM2_NTOH(crc);
+#undef BCM2_NTOH
 }
 }
 
