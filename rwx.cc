@@ -448,7 +448,7 @@ void bfc_flash::init(uint32_t offset, uint32_t length, bool write)
 				opened = true;
 			}
 
-			return true;
+			return false;
 		});
 
 		if (opened) {
