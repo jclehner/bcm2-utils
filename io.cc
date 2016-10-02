@@ -399,13 +399,8 @@ string hio::read(size_t length, bool all)
 
 int hio::getc()
 {
-	DWORD bytes = 0;
-	char c;
-	if (!ReadFile(m_h, &c, 1, &bytes, nullptr)) {
-		throw winapi_error("ReadFile");
-	}
-
-	return bytes ? c : eof;
+	string c = read(1, false);
+	return !c.empty() ? c[0] : eof;
 }
 
 bool serial::pending(unsigned timeout)
