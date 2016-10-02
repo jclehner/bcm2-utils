@@ -1,2 +1,3 @@
 bcm2cfg.dev text eol=crlf
+bcm2dump.dev text eol=crlf
 rwcode.c linguist-language=asm
