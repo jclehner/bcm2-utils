@@ -89,7 +89,7 @@ class interface
 
 	protected:
 	virtual uint32_t timeout() const
-	{ return 50; }
+	{ return 200; }
 
 	std::shared_ptr<io> m_io;
 	profile::sp m_profile;
