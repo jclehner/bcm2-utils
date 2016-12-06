@@ -799,7 +799,7 @@ class code_rwx : public parsing_rwx
 				m_code = string(reinterpret_cast<const char*>(dumpcode), sizeof(dumpcode));
 				m_entry = 0x4c;
 
-				if (!cfg.printf || (!m_space.is_mem() && (!cfg.buffer || m_read_func.addr()))) {
+				if (!cfg.printf || (!m_space.is_mem() && (!cfg.buffer || !m_read_func.addr()))) {
 					throw user_error("profile " + profile->name() + " does not support fast dump mode; use -s flag");
 				}
 
