@@ -27,19 +27,23 @@
 #define BCM2_PATCH_NUM 4
 #define BCM2_INTF_NUM 2
 
+#define BCM2DUMP_WITH_VERSIONS
+
 #ifdef __cplusplus
 #include <string>
 #include <vector>
 #include <memory>
+#include <map>
 
 extern "C" {
 #endif
 
 enum bcm2_interface
 {
-	BCM2_INTF_ALL = 0,
-	BCM2_INTF_BLDR = 1,
-	BCM2_INTF_BFC = 2
+	BCM2_INTF_NONE = 0,
+	BCM2_INTF_ALL = ~0,
+	BCM2_INTF_BLDR = 2,
+	BCM2_INTF_BFC = 3
 };
 
 enum bcm2_mem
@@ -65,6 +69,14 @@ enum bcm2_erase_func_mode
 	BCM2_ERASE_FUNC_OL = 1 << 8,
 	// offset, partition size
 	BCM2_ERASE_FUNC_OS = 1 << 9,
+};
+
+enum bcm2_func_args
+{
+	// offset, end
+	BCM2_ARGS_OE = 1 << 16,
+	// offset, length
+	BCM2_ARGS_OL = 1 << 17,
 };
 
 enum bcm2_func_ret
@@ -104,13 +116,13 @@ struct bcm2_func {
 	// mode of this function. interpretation
 	// depends on actual function.
 	uint32_t mode;
+	// patches to be applied to the bootloader
+	// before using this function.
+	struct bcm2_patch patch[BCM2_PATCH_NUM];
 	// return value type
 	enum bcm2_func_ret retv;
 	// interface(s) this function is valid for
 	int intf;
-	// patches to be applied to the bootloader
-	// before using this function.
-	struct bcm2_patch patch[BCM2_PATCH_NUM];
 };
 
 struct bcm2_addrspace {
@@ -148,6 +160,32 @@ struct bcm2_magic {
 	uint32_t addr;
 	char data[32];
 };
+
+#ifdef BCM2DUMP_WITH_VERSIONS
+struct bcm2_version_addrspace
+{
+	char name[16];
+	struct bcm2_func open;
+	struct bcm2_func read;
+	struct bcm2_func write;
+	struct bcm2_func erase;
+	struct bcm2_func close;
+};
+
+struct bcm2_version {
+	char version[16];
+	int intf;
+	struct bcm2_magic magic;
+	uint32_t loadaddr;
+	uint32_t buffer;
+	uint32_t buflen;
+	uint32_t printf;
+	uint32_t scanf;
+	uint32_t sscanf;
+	uint32_t getline;
+	struct bcm2_version_addrspace spaces[8];
+};
+#endif
 
 struct bcm2_profile {
 	// short name that is used to select a profile
@@ -199,6 +237,9 @@ struct bcm2_profile {
 	bool (*cfg_keyfun)(const char *password, unsigned char *key);
 	// address spaces that can be dumped
 	struct bcm2_addrspace spaces[8];
+#ifdef BCM2DUMP_WITH_VERSIONS
+	struct bcm2_version versions[8];
+#endif
 };
 
 extern struct bcm2_profile bcm2_profiles[];
@@ -248,6 +289,61 @@ class func
 };
 
 class profile;
+
+class version
+{
+	public:
+	typedef std::map<std::string, uint32_t> u32map;
+	typedef std::map<std::string, func> funcmap;
+
+	version()
+	: m_p(nullptr), m_prof(nullptr), m_def(nullptr)
+	{}
+
+	version(const bcm2_version* v, const profile* p, const bcm2_version* def)
+	: m_p(v), m_prof(p), m_def(def ? def : v)
+	{
+		parse_codecfg();
+		parse_functions();
+	}
+
+	std::string name() const
+	{ return m_p ? (m_p->version[0] ? m_p->version : "any") : ""; }
+
+	int intf() const
+	{ return m_p->intf; }
+
+	const bcm2_magic* magic() const
+	{ return &m_p->magic; }
+
+	u32map codecfg() const
+	{ return m_codecfg; }
+
+	uint32_t codecfg(const std::string& str) const
+	{
+		auto iter = m_codecfg.find(str);
+		return iter != m_codecfg.end() ? iter->second : 0;
+	}
+
+	funcmap functions(const std::string& space) const
+	{
+		auto iter = m_functions.find(space);
+		return iter != m_functions.end() ? iter->second : funcmap();
+	}
+
+	const bcm2_version* raw() const
+	{ return m_p; }
+
+	private:
+	void parse_codecfg();
+	void parse_functions();
+
+	const bcm2_version* m_p;
+	const profile* m_prof;
+	const bcm2_version* m_def;
+	u32map m_codecfg;
+	std::map<std::string, funcmap> m_functions;
+};
 
 class addrspace
 {
@@ -380,6 +476,10 @@ class profile
 	virtual uint16_t blsig() const = 0;
 	virtual uint32_t kseg1() const = 0;
 	virtual std::vector<const bcm2_magic*> magics() const = 0;
+#ifdef BCM2DUMP_WITH_VERSIONS
+	virtual std::vector<version> versions() const = 0;
+	virtual const version& default_version(int intf) const = 0;
+#endif
 	virtual std::vector<addrspace> spaces() const = 0;
 	virtual const addrspace& space(const std::string& name, bcm2_interface intf) const = 0;
 	virtual const addrspace& ram() const = 0;

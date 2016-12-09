@@ -405,7 +405,7 @@ _DEF_LABEL(L_LOOP_WORDS),
 		NOP,
 _DEF_LABEL(L_OUT),
 		// restore code
-		BAL(F_PATCH),
+		//BAL(F_PATCH),
 		NOP,
 		// restore registers
 		LW(RA, 0x00, SP),

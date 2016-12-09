@@ -26,14 +26,14 @@
 #include "rwx.h"
 #include "ps.h"
 
-//#define BFC_FLASH_READ_DIRECT
+#define BFC_FLASH_READ_DIRECT
 
 using namespace std;
 
 namespace bcm2dump {
 namespace {
 
-const unsigned max_retry_count = 3;
+const unsigned max_retry_count = 5;
 
 template<class T> T hex_cast(const std::string& str)
 {
@@ -289,8 +289,8 @@ class bfc_ram : public parsing_rwx
 	protected:
 	virtual bool exec_impl(uint32_t offset) override;
 	virtual bool write_chunk(uint32_t offset, const string& chunk) override;
-	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
 	virtual bool is_ignorable_line(const string& line) override;
+	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
 
 	virtual void init(uint32_t offset, uint32_t length, bool write) override;
@@ -397,6 +397,164 @@ void bfc_ram::init(uint32_t offset, uint32_t length, bool write)
 	}
 }
 
+class bfc_flash2 : public bfc_ram
+{
+	public:
+	virtual ~bfc_flash2() {}
+
+	virtual unsigned capabilities() const override
+	{ return cap_read; }
+
+	static bool is_supported(const interface::sp& intf, const string& space)
+	{
+		auto ver = intf->version();
+		if (ver.name().empty()) {
+			return false;
+		}
+
+		auto cfg = ver.codecfg();
+		if (!cfg["buffer"]) {
+			return false;
+		}
+
+		auto funcs = ver.functions(space);
+		if (!funcs["read"].addr() && !funcs["write"].addr()) {
+			return false;
+		}
+
+		return true;
+	}
+
+	protected:
+	virtual void init(uint32_t offset, uint32_t length, bool write) override
+	{
+		bfc_ram::init(offset, length, write);
+
+		auto ver = m_intf->version();
+		m_cfg = ver.codecfg();
+		uint32_t buflen = m_cfg["buflen"];
+
+		if (buflen && length > buflen) {
+			throw user_error("requested length exceeds buffer size ("
+					+ to_string(buflen) + " b)");
+		}
+
+		m_dump_offset = offset;
+		m_dump_length = length;
+		m_funcs = ver.functions(m_space.name());
+		m_read = true;
+
+		call_open_close("open", offset, length);
+	}
+
+	virtual void cleanup() override
+	{
+		bfc_ram::cleanup();
+		call_open_close("close", m_dump_offset, m_dump_length);
+	}
+
+	virtual unsigned chunk_timeout(uint32_t offset, uint32_t length) const override
+	{
+		return offset == m_dump_offset ? 60 * 1000 : 0;
+	}
+
+	virtual string parse_chunk_line(const string& line, uint32_t offset) override
+	{
+		return bfc_ram::parse_chunk_line(line, m_cfg["buffer"] + (offset - m_dump_offset));
+	}
+
+	virtual void do_read_chunk(uint32_t offset, uint32_t length) override
+	{
+		if (m_read) {
+			call_read(m_dump_offset, m_dump_length);
+			m_read = false;
+		}
+
+		bfc_ram::do_read_chunk(m_cfg["buffer"] + (offset - m_dump_offset), length);
+	}
+
+	private:
+	void patch(const func& f)
+	{
+		for (auto p : f.patches()) {
+			if (p->addr && !write_chunk(p->addr | m_intf->profile()->kseg1(), to_buf(hton(p->word)))) {
+				throw runtime_error("failed to patch word at 0x" + to_hex(p->addr));
+			}
+		}
+	}
+
+	void call(const string& cmd, const string& name, unsigned timeout = 5)
+	{
+		m_intf->runcmd(cmd);
+
+#if 0
+		if (!m_intf->wait_ready(timeout)) {
+			throw runtime_error("timeout while waiting for function '" + name + "' to finish");
+		}
+#endif
+	}
+
+	void call_read(uint32_t offset, uint32_t length)
+	{
+		func read = m_funcs["read"];
+		if (read.addr()) {
+			string cmd = mkcmd(read);
+			if (read.args() == BCM2_READ_FUNC_BOL) {
+				args(cmd, { m_cfg["buffer"], offset, length });
+			} else if (read.args() == BCM2_READ_FUNC_OBL) {
+				args(cmd, { offset, m_cfg["buffer"], length });
+			} else {
+				throw runtime_error("unsupported 'read' args");
+			}
+
+			patch(read);
+			call(cmd, "read", 60);
+		}
+	}
+
+	void call_open_close(const string& name, uint32_t offset, uint32_t length)
+	{
+		func f = m_funcs[name];
+		if (f.addr()) {
+			string cmd = mkcmd(f, { offset });
+
+			if (f.args() == BCM2_ARGS_OL) {
+				arg(cmd, length);
+			} else if (f.args() == BCM2_ARGS_OE) {
+				arg(cmd, offset + length);
+			} else {
+				throw runtime_error("unsupported '" + name + "' args");
+			}
+
+			patch(f);
+			call(cmd, name);
+		}
+	}
+
+	string mkcmd(const func& f, vector<uint32_t> a = {})
+	{
+		string ret = "/call func -a 0x" + to_hex(f.addr() | m_intf->profile()->kseg1());
+		args(ret, a);
+		return ret;
+	}
+
+	static void arg(string& cmd, uint32_t arg)
+	{ cmd += " 0x" + to_hex(arg); }
+
+	static void args(string& cmd, vector<uint32_t> args)
+	{
+		for (auto a : args) {
+			arg(cmd, a);
+		}
+	}
+
+	bool m_read = true;
+	uint32_t m_dump_offset;
+	uint32_t m_dump_length;
+	version::funcmap m_funcs;
+	version::u32map m_cfg;
+};
+
 class bfc_flash : public parsing_rwx
 {
 	public:
@@ -435,6 +593,10 @@ void bfc_flash::init(uint32_t offset, uint32_t length, bool write)
 	}
 
 	for (unsigned pass = 0; pass < 2; ++pass) {
+#if 1
+		m_intf->runcmd("/write_memory -s 4 0xa03f6ca4 0x10000018");
+#endif
+
 		m_intf->runcmd("/flash/open " + m_partition.altname());
 
 		bool opened = false;
@@ -449,7 +611,7 @@ void bfc_flash::init(uint32_t offset, uint32_t length, bool write)
 			}
 
 			return false;
-		});
+		}, 10000, 10000);
 
 		if (opened) {
 			break;
@@ -663,13 +825,13 @@ class code_rwx : public parsing_rwx
 			throw runtime_error("code dumper requires a profile");
 		}
 
-		const codecfg& cfg = intf->profile()->codecfg(intf->id());
-
-		if (!cfg.loadaddr || !cfg.buffer || !cfg.printf) {
-			throw runtime_error("insufficient profile infos for code dumper");
-		} else if (cfg.loadaddr & 0xffff) {
+		auto cfg = intf->version().codecfg();
+		if (!cfg["loadaddr"] || !cfg["buffer"] || !cfg["printf"]) {
+			throw runtime_error("insufficient profile information for code dumper");
+		} else if (cfg["loadaddr"] & 0xffff) {
 			throw runtime_error("loadaddr must be aligned to 64k");
 		}
+
 		m_ram = rwx::create(intf, "ram");
 	}
 
@@ -773,11 +935,11 @@ class code_rwx : public parsing_rwx
 	void init(uint32_t offset, uint32_t length, bool write) override
 	{
 		const profile::sp& profile = m_intf->profile();
-		const codecfg& cfg = profile->codecfg(m_intf->id());
+		auto cfg = m_intf->version().codecfg();
 
-		if (cfg.buflen && length > cfg.buflen) {
+		if (cfg["buflen"] && length > cfg["buflen"]) {
 			throw user_error("requested length exceeds buffer size ("
-					+ to_string(cfg.buflen) + " b)");
+					+ to_string(cfg["buflen"]) + " b)");
 		}
 
 		if (write && !m_space.is_ram()) {
@@ -789,7 +951,7 @@ class code_rwx : public parsing_rwx
 		m_rw_length = length;
 
 		uint32_t kseg1 = profile->kseg1();
-		m_loadaddr = kseg1 | (cfg.loadaddr + (write ? 0 : 0x10000));
+		m_loadaddr = kseg1 | (cfg["loadaddr"] + (write ? 0 : 0x10000));
 
 		// TODO: check whether we have a custom code file
 		if (true) {
@@ -799,16 +961,16 @@ class code_rwx : public parsing_rwx
 				m_code = string(reinterpret_cast<const char*>(dumpcode), sizeof(dumpcode));
 				m_entry = 0x4c;
 
-				if (!cfg.printf || (!m_space.is_mem() && (!cfg.buffer || !m_read_func.addr()))) {
+				if (!cfg["printf"] || (!m_space.is_mem() && (!cfg["buffer"] || !m_read_func.addr()))) {
 					throw user_error("profile " + profile->name() + " does not support fast dump mode; use -s flag");
 				}
 
 				patch32(m_code, 0x10, 0);
-				patch32(m_code, 0x14, kseg1 | cfg.buffer);
+				patch32(m_code, 0x14, kseg1 | cfg["buffer"]);
 				patch32(m_code, 0x18, offset);
 				patch32(m_code, 0x1c, length);
 				patch32(m_code, 0x20, limits_read().max);
-				patch32(m_code, 0x24, kseg1 | cfg.printf);
+				patch32(m_code, 0x24, kseg1 | cfg["printf"]);
 
 				if (m_read_func.addr()) {
 					patch32(m_code, 0x0c, m_read_func.args());
@@ -830,7 +992,7 @@ class code_rwx : public parsing_rwx
 				m_entry = WRITECODE_ENTRY;
 
 				patch32(m_code, WRITECODE_CFGOFF + 0x00, m_write_func.args() | m_erase_func.args());
-				patch32(m_code, WRITECODE_CFGOFF + 0x04, m_space.is_ram() ? offset : (kseg1 | cfg.buffer));
+				patch32(m_code, WRITECODE_CFGOFF + 0x04, m_space.is_ram() ? offset : (kseg1 | cfg["buffer"]));
 				patch32(m_code, WRITECODE_CFGOFF + 0x08, 0);
 				patch32(m_code, WRITECODE_CFGOFF + 0x0c, limits_write().max);
 
@@ -846,13 +1008,13 @@ class code_rwx : public parsing_rwx
 					patch32(m_code, WRITECODE_CFGOFF + 0x14, 0);
 				}
 
-				patch32(m_code, WRITECODE_CFGOFF + 0x18, kseg1 | cfg.printf);
+				patch32(m_code, WRITECODE_CFGOFF + 0x18, kseg1 | cfg["printf"]);
 
-				if (cfg.printf && cfg.sscanf && cfg.getline) {
-					patch32(m_code, WRITECODE_CFGOFF + 0x1c, kseg1 | cfg.sscanf);
-					patch32(m_code, WRITECODE_CFGOFF + 0x20, kseg1 | cfg.getline);
-				} else if (cfg.printf && cfg.scanf) {
-					patch32(m_code, WRITECODE_CFGOFF + 0x1c, kseg1 | cfg.scanf);
+				if (cfg["printf"] && cfg["sscanf"] && cfg["getline"]) {
+					patch32(m_code, WRITECODE_CFGOFF + 0x1c, kseg1 | cfg["sscanf"]);
+					patch32(m_code, WRITECODE_CFGOFF + 0x20, kseg1 | cfg["getline"]);
+				} else if (cfg["printf"] && cfg["scanf"]) {
+					patch32(m_code, WRITECODE_CFGOFF + 0x1c, kseg1 | cfg["scanf"]);
 					patch32(m_code, WRITECODE_CFGOFF + 0x20, 0);
 				} else {
 					throw user_error("profile " + profile->name() + " does not support fast write mode; use -s flag");
@@ -1340,6 +1502,10 @@ rwx::sp rwx::create(const interface::sp& intf, const string& type, bool safe)
 			if (space.is_mem()) {
 				return create_rwx<bfc_ram>(intf, space);
 			} else {
+				if (bfc_flash2::is_supported(intf, space.name())) {
+					return create_rwx<bfc_flash2>(intf, space);
+				}
+
 				return create_rwx<bfc_flash>(intf, space);
 			}
 		}

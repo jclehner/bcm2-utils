@@ -215,7 +215,7 @@ bool bfc_telnet::login(const string& user, const string& pass)
 	}
 
 	writeln(user);
-	while (pending()) {
+	while (pending(1000)) {
 		string line = readln();
 		if (contains(line, "Password:") || contains(line, "password:")) {
 			break;
@@ -227,7 +227,7 @@ bool bfc_telnet::login(const string& user, const string& pass)
 
 	send_crlf = true;
 
-	while (pending()) {
+	while (pending(1000)) {
 		string line = readln();
 		if (contains(line, "Invalid login")) {
 			break;
@@ -256,7 +256,7 @@ bool bfc_telnet::login(const string& user, const string& pass)
 				m_status = rooted;
 			}
 
-			return true;
+			return false;
 		});
 	}
 
@@ -303,18 +303,42 @@ void detect_profile_if_not_set(const interface::sp& intf, const profile::sp& pro
 	// 0x80000000!
 
 	for (auto p : get_profiles_sorted_by_ram_size()) {
+		for (auto v : p->versions()) {
+			string data = v.magic()->data;
+			if (ram->read(v.magic()->addr, data.size()) == data) {
+				intf->set_profile(p, v);
+				logger::i() << "detected profile " << p->name() << "(" << intf->name() << "), version " << v.name() << endl;
+				return;
+			}
+		}
+
 		for (auto magic : p->magics()) {
 			string data = magic->data;
 			if (ram->read(magic->addr, data.size()) == data) {
-				intf->set_profile(p);
+				intf->set_profile(p, p->default_version(intf->id()));
 				logger::i() << "detected profile " << p->name() << " (" << intf->name() << ")" << endl;
 				return;
 			}
 		}
+
 	}
 
 	logger::i() << "profile auto-detection failed" << endl;
 }
+}
+
+bool interface::wait_ready(unsigned timeout)
+{
+	time_t begin = time(NULL);
+
+	while ((time(nullptr) - begin) < timeout) {
+		if (is_ready()) {
+			return true;
+		}
+		usleep(10000);
+	}
+
+	return false;
 }
 
 bool interface::runcmd(const string& cmd, const string& expect, bool stop_on_match)

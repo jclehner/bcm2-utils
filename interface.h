@@ -35,6 +35,7 @@ namespace bcm2dump {
 class interface
 {
 	typedef bcm2dump::profile profile_type;
+	typedef bcm2dump::version version_type;
 
 	public:
 	typedef std::shared_ptr<interface> sp;
@@ -45,14 +46,26 @@ class interface
 	virtual void runcmd(const std::string& cmd) = 0;
 	virtual bool runcmd(const std::string& cmd, const std::string& expect, bool stop_on_match = false);
 
+	virtual void set_profile(const profile::sp& profile, const version& version)
+	{
+		set_profile(profile);
+		m_version = version;
+	}
+
 	virtual void set_profile(const profile::sp& profile)
 	{ m_profile = profile; }
 
 	virtual profile_type::sp profile() const
 	{ return m_profile; }
 
+	virtual const version_type& version() const
+	{ return m_version; }
+
+	virtual bool has_version() const
+	{ return !m_version.name().empty(); }
 
 	virtual bool is_ready(bool passive = false) = 0;
+	virtual bool wait_ready(unsigned timeout = 5);
 
 	virtual bool is_active()
 	{ return is_ready(false); }
@@ -93,6 +106,7 @@ class interface
 
 	std::shared_ptr<io> m_io;
 	profile::sp m_profile;
+	version_type m_version;
 };
 }
 

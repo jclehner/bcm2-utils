@@ -139,7 +139,6 @@ struct bcm2_profile bcm2_profiles[] = {
 					{ "dynnv",      0x7e0000, 0x010000, "dyn" }
 				}
 			},
-
 		}
 	},
 	{
@@ -182,6 +181,7 @@ struct bcm2_profile bcm2_profiles[] = {
 					{ "permnv",     0x10000, 0x10000, "perm" },
 					{ "dynnv",      0xe0000, 0x20000, "dyn" }
 				},
+#if 0
 				.read = {
 					{
 						.addr = 0x83f81298,
@@ -203,6 +203,7 @@ struct bcm2_profile bcm2_profiles[] = {
 						.mode = BCM2_ERASE_FUNC_OL,
 					}
 				},
+#endif
 			},
 			{
 				.name = "flash",
@@ -215,32 +216,81 @@ struct bcm2_profile bcm2_profiles[] = {
 					{ "linuxkfs",  0x2bc0000, 0x1200000, "" },
 					{ "dhtml",     0x3dc0000, 0x0240000 },
 				},
-				.read = {
-					{
-						.addr = 0x83f831b4,
-						.intf = BCM2_INTF_BLDR,
-						.mode = BCM2_READ_FUNC_BOL,
-						.patch = {
-							{ 0x83f83380, 0x10000017 },
-						}
-					}
-				},
-				.write = {
-					{
-						.addr = 0x83f82e98,
-						.intf = BCM2_INTF_BLDR,
-						.mode = BCM2_READ_FUNC_OBL,
-					}
-				},
-				.erase = {
-					{
-						.addr = 0x83f82c08,
-						.intf = BCM2_INTF_BLDR,
-						.mode = BCM2_ERASE_FUNC_OS,
-					}
-				},
 			},
-		}
+		},
+		.versions = {
+			{
+				.intf = BCM2_INTF_BLDR,
+				.loadaddr = 0x84010000,
+				.buffer = 0x85f00000
+			},
+			{
+				.version = "2.4.0alpha18p1",
+				.intf = BCM2_INTF_BLDR,
+				.magic = { 0x83f8e618, "2.4.0alpha18p1" },
+				.printf = 0x83f8b0c0,
+				.sscanf = 0x83f8ba94,
+				.getline = 0x83f8ad10,
+				.spaces = {
+					{
+						.name = "flash",
+						.read = {
+								.addr = 0x83f831b4,
+								.mode = BCM2_READ_FUNC_BOL,
+								.patch = {{ 0x83f83380, 0x10000017 }}
+						},
+						.write = { 0x83f82e98, BCM2_READ_FUNC_OBL },
+						.erase = { 0x83f82c08, BCM2_ERASE_FUNC_OS },
+					},
+					{
+						.name = "nvram",
+						.read = { 0x83f81298, BCM2_READ_FUNC_OBL },
+						.write = { 0x83f810bc, BCM2_READ_FUNC_OBL },
+						.erase = { 0x83f814e0, BCM2_ERASE_FUNC_OL },
+					}
+				}
+			},
+			{
+				.intf = BCM2_INTF_BFC,
+				.loadaddr = 0x80004000,
+				.buffer = 0x85f00000,
+				.buflen = 0x19c0000
+			},
+			{
+				.version = "STD6.02.41",
+				.intf = BCM2_INTF_BFC,
+				.magic = { 0x814e8eac, "STD6.02.41" },
+				.spaces = {
+						{
+							.name = "flash",
+							.open = { 0x803f704c, BCM2_ARGS_OE },
+							.read = { 0x803f6af8, BCM2_READ_FUNC_BOL,
+									.patch = {{ 0x803f6ca4, 0x10000018 }},
+							}
+						},
+						{
+							"nvram",
+						}
+				}
+			},
+			{
+				.version = "STD6.01.27",
+				.intf = BCM2_INTF_BFC,
+				.magic = { 0x85f00014, "TC7200U-D6.01.27" },
+				.spaces = {
+						{
+							"flash",
+							.open = { 0x8039eabc, BCM2_ARGS_OE },
+							.read = { 0x8039e868, BCM2_READ_FUNC_BOL,
+									.patch = {{ 0x8039e9bc, 0x10000018 }},
+							}
+						},
+						{
+							"nvram",
+						}
+				}
+			},
+		},
 	},
 	{
 		.name = "generic",

@@ -28,6 +28,11 @@ using namespace std;
 namespace bcm2dump {
 namespace {
 
+template<class T> constexpr size_t array_size(const T array)
+{
+	return sizeof(array) / sizeof(array[0]);
+}
+
 string from_hex(const string& hex)
 {
 	if (hex.empty()) {
@@ -72,6 +77,13 @@ template<class T> string row(const string& name, size_t padding, const T& value)
 	return row(name, padding, to_string(value));
 }
 
+template<class T> void set_if_unset(T& dest, const T& src)
+{
+	if (!dest) {
+		dest = src;
+	}
+}
+
 string to_pretty_size(size_t size)
 {
 	if (!(size % (1024 * 1024))) {
@@ -90,9 +102,10 @@ class profile_wrapper : public profile
 	: m_p(p)
 	{
 		parse_spaces();
-		parse_codecfg();
+		//parse_codecfg();
 		parse_magic();
 		parse_keys();
+		parse_versions();
 	}
 
 	virtual ~profile_wrapper() {}
@@ -123,6 +136,16 @@ class profile_wrapper : public profile
 
 	virtual vector<addrspace> spaces() const override
 	{ return m_spaces; }
+
+	virtual vector<version> versions() const override
+	{ return m_versions; }
+
+	virtual const version& default_version(int intf) const override
+	{
+		static version dummy;
+		auto iter = m_defaults.find(intf);
+		return iter != m_defaults.end() ? iter->second : dummy;
+	}
 
 	virtual const addrspace& space(const string& name, bcm2_interface intf) const override
 	{
@@ -194,6 +217,7 @@ class profile_wrapper : public profile
 		}
 	}
 
+#if 0
 	void parse_codecfg()
 	{
 		m_codecfg.loadaddr = check_addr(m_p->loadaddr, "loadaddr");
@@ -222,6 +246,7 @@ class profile_wrapper : public profile
 		m_codecfg.getline = check_addr(m_p->getline, "getline");
 		m_codecfg.scanf = check_addr(m_p->scanf, "scanf");
 	}
+#endif
 
 	void parse_magic()
 	{
@@ -248,9 +273,32 @@ class profile_wrapper : public profile
 		}
 	}
 
+	void parse_versions()
+	{
+		const bcm2_version* v = m_p->versions;
+
+		for (size_t i = 0; i < ARRAY_SIZE(m_p->versions); ++i) {
+			if (!v[i].version[0]) {
+				m_defaults[v[i].intf] = version(&v[i], this, nullptr);
+			}
+		}
+
+		for (size_t i = 0; i < ARRAY_SIZE(m_p->versions); ++i) {
+			if (!v[i].version[0]) {
+				continue;
+			}
+
+			m_versions.push_back(version(&v[i], this, m_defaults[v[i].intf].raw()));
+		}
+	}
+
 	const bcm2_profile* m_p = nullptr;
 	vector<string> m_keys;
 	vector<const bcm2_magic*> m_magic;
+#ifdef BCM2DUMP_WITH_VERSIONS
+	vector<version> m_versions;
+	map<int, version> m_defaults;
+#endif
 	vector<addrspace> m_spaces;
 	addrspace m_ram;
 	codecfg_type m_codecfg;
@@ -285,6 +333,53 @@ void parse_funcs(const addrspace& a, const profile& p, const bcm2_func* ifuncs, 
 		}
 	}
 }
+}
+
+void version::parse_codecfg()
+{
+	auto ram = m_prof->ram();
+
+#define PARSE_ADDR(x) m_codecfg[#x] = ram.check_offset(m_p->x ? m_p->x : m_def->x, "function " #x)
+	PARSE_ADDR(printf);
+	PARSE_ADDR(sscanf);
+	PARSE_ADDR(scanf);
+	PARSE_ADDR(getline);
+	PARSE_ADDR(buffer);
+#undef PARSE_ADDR
+
+	if ((m_codecfg["buflen"] = m_p->buflen ? m_p->buflen : m_def->buflen)) {
+		auto buffer = m_codecfg["buffer"];
+		ram.check_range(buffer, buffer + m_codecfg["buflen"]);
+	}
+}
+
+void version::parse_functions()
+{
+	for (size_t i = 0; i < ARRAY_SIZE(m_p->spaces); ++i) {
+		const bcm2_version_addrspace* s = m_p->spaces + i;
+		if (!s->name[0]) {
+			break;
+		}
+
+		// this throws if the address space does not exist
+		m_prof->space(s->name, static_cast<bcm2_interface>(m_p->intf));
+#define PARSE_ADDR(x) \
+do { \
+	auto addr = m_prof->ram().check_offset(s->x.addr, "function " #x); \
+	m_functions[s->name][#x] = func(addr, s->x.mode, m_p->intf, s->x.retv); \
+	for (size_t k = 0; k < ARRAY_SIZE(s->x.patch); ++k) { \
+		m_prof->ram().check_offset(s->x.patch[k].addr, "patch " #x); \
+		m_functions[s->name][#x].patches().push_back(&s->x.patch[k]); \
+	} \
+} while(0)
+
+		PARSE_ADDR(open);
+		PARSE_ADDR(read);
+		PARSE_ADDR(write);
+		PARSE_ADDR(erase);
+		PARSE_ADDR(close);
+#undef PARSE_ADDR
+	}
 }
 
 addrspace::addrspace(const bcm2_addrspace* a, const profile& p)
