@@ -27,8 +27,6 @@
 #define BCM2_PATCH_NUM 4
 #define BCM2_INTF_NUM 2
 
-#define BCM2DUMP_WITH_VERSIONS
-
 #ifdef __cplusplus
 #include <string>
 #include <vector>
@@ -161,7 +159,6 @@ struct bcm2_magic {
 	char data[32];
 };
 
-#ifdef BCM2DUMP_WITH_VERSIONS
 struct bcm2_version_addrspace
 {
 	char name[16];
@@ -176,16 +173,28 @@ struct bcm2_version {
 	char version[16];
 	int intf;
 	struct bcm2_magic magic;
+	// address where dump code can be loaded (dump code
+	// is short, currently around 512 bytes)
 	uint32_t loadaddr;
+	// location in memory where we can store read images
 	uint32_t buffer;
+	// length of buffer (if 0, buffer will be checked 
+	// against "ram" address space)
 	uint32_t buflen;
+	// address of a function that behaves like printf:
+	// printf a0 = format string, a1...aX format args
 	uint32_t printf;
+	// address of a function that behaves like scanf:
+	// a0 = format, a1...aX = args
 	uint32_t scanf;
+	// address of a sscanf-like function
+	// a0 = str, a1 = format, a2...aX = args
 	uint32_t sscanf;
+	// address of a getline-like function, minus the stream:
+	// a0 = buffer, a1 = size
 	uint32_t getline;
 	struct bcm2_version_addrspace spaces[8];
 };
-#endif
 
 struct bcm2_profile {
 	// short name that is used to select a profile
@@ -200,27 +209,14 @@ struct bcm2_profile {
 	uint16_t blsig;
 	// baudrate of the bootloader console
 	uint32_t baudrate;
-	// location in memory where we can store read images
 	uint32_t buffer;
-	// length of buffer (if 0, buffer will be checked 
-	// against "ram" address space)
 	uint32_t buflen;
 	// address mask for uncached mips segment
 	uint32_t kseg1mask;
-	// address where dump code can be loaded (dump code
-	// is short, currently around 512 bytes)
 	uint32_t loadaddr;
-	// address of a function that behaves like printf:
-	// printf a0 = format string, a1...aX format args
 	uint32_t printf;
-	// address of a function that behaves like scanf:
-	// a0 = format, a1...aX = args
 	uint32_t scanf;
-	// address of a sscanf-like function
-	// a0 = str, a1 = format, a2...aX = args
 	uint32_t sscanf;
-	// address of a getline-like function, minus the stream:
-	// a0 = buffer, a1 = size
 	uint32_t getline;
 	// a location in memory with a constant value (ideally a
 	// bootloader string), which can be used to automatically
@@ -237,9 +233,7 @@ struct bcm2_profile {
 	bool (*cfg_keyfun)(const char *password, unsigned char *key);
 	// address spaces that can be dumped
 	struct bcm2_addrspace spaces[8];
-#ifdef BCM2DUMP_WITH_VERSIONS
 	struct bcm2_version versions[8];
-#endif
 };
 
 extern struct bcm2_profile bcm2_profiles[];
@@ -476,10 +470,8 @@ class profile
 	virtual uint16_t blsig() const = 0;
 	virtual uint32_t kseg1() const = 0;
 	virtual std::vector<const bcm2_magic*> magics() const = 0;
-#ifdef BCM2DUMP_WITH_VERSIONS
 	virtual std::vector<version> versions() const = 0;
 	virtual const version& default_version(int intf) const = 0;
-#endif
 	virtual std::vector<addrspace> spaces() const = 0;
 	virtual const addrspace& space(const std::string& name, bcm2_interface intf) const = 0;
 	virtual const addrspace& ram() const = 0;
