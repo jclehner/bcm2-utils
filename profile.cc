@@ -295,10 +295,8 @@ class profile_wrapper : public profile
 	const bcm2_profile* m_p = nullptr;
 	vector<string> m_keys;
 	vector<const bcm2_magic*> m_magic;
-#ifdef BCM2DUMP_WITH_VERSIONS
 	vector<version> m_versions;
 	map<int, version> m_defaults;
-#endif
 	vector<addrspace> m_spaces;
 	addrspace m_ram;
 	codecfg_type m_codecfg;
