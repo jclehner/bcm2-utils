@@ -102,6 +102,14 @@ uint32_t parse_num(const string& str)
 	return lexical_cast<uint32_t>(str, 0);
 }
 
+uint32_t read_image_length(rwx& rwx, uint32_t offset)
+{
+	rwx.silent(true);
+	ps_header hdr(rwx.read(offset, 92));
+	rwx.silent(false);
+	return hdr.hcs_valid() ? hdr.length() : 0;
+}
+
 void parse_offset_size(rwx& rwx, const string& arg, uint32_t& offset, uint32_t& length, bool write)
 {
 	auto tokens = split(arg, ',');
@@ -109,15 +117,23 @@ void parse_offset_size(rwx& rwx, const string& arg, uint32_t& offset, uint32_t& 
 		throw user_error("invalid argument '" + arg + "'");
 	}
 
+	bool read_hdr = false;
 	offset = 0;
 	length = 0;
 
 	if (tokens.size() == 2) {
-		length = parse_num(tokens[1]);
+		if (tokens[1] != "auto") {
+			length = parse_num(tokens[1]);
+		} else if (!write) {
+			read_hdr = true;
+		}
 	}
 
 	try {
 		offset = parse_num(tokens[0]);
+		if (!length && !write) {
+			length = read_image_length(rwx, offset);
+		}
 	} catch (const bad_lexical_cast& e) {
 		tokens = split(tokens[0], '+');
 		if (tokens.empty() || tokens.size() > 2) {
@@ -125,12 +141,19 @@ void parse_offset_size(rwx& rwx, const string& arg, uint32_t& offset, uint32_t& 
 		}
 
 		const addrspace::part& p = rwx.space().partition(tokens[0]);
+		rwx.set_partition(p);
+		offset = p.offset();
+		if (!length && !read_hdr) {
+			length = p.size();
+		}
+
+		if (!length && !write) {
+			length = read_image_length(rwx, offset);
+		}
+
 		if (!write && !length && !p.size()) {
 			throw user_error("size of partition '" + p.name() + "' is unknown, and size argument is missing");
 		}
-
-		rwx.set_partition(p);
-		offset = p.offset();
 
 		if (tokens.size() == 2) {
 			uint32_t n = parse_num(tokens[1]);
@@ -1263,8 +1286,8 @@ void rwx::dump(uint32_t offset, uint32_t length, std::ostream& os, bool resume)
 	do_init(offset_r, length_r, false);
 	init_progress(offset_r, length_r, false);
 
-	string hdrbuf;
 	bool show_hdr = true;
+	string hdrbuf;
 
 	while (length_r) {
 		throw_if_interrupted();
@@ -1497,17 +1520,12 @@ rwx::sp rwx::create(const interface::sp& intf, const string& type, bool safe)
 			return create_code_rwx(intf, space);
 		}
 	} else if (intf->name() == "bfc") {
-		safe = true;
-		if (safe) {
-			if (space.is_mem()) {
-				return create_rwx<bfc_ram>(intf, space);
-			} else {
-				if (bfc_flash2::is_supported(intf, space.name())) {
-					return create_rwx<bfc_flash2>(intf, space);
-				}
-
-				return create_rwx<bfc_flash>(intf, space);
-			}
+		if (space.is_mem()) {
+			return create_rwx<bfc_ram>(intf, space);
+		} else if (!safe && bfc_flash2::is_supported(intf, space.name())) {
+			return create_rwx<bfc_flash2>(intf, space);
+		} else {
+			return create_rwx<bfc_flash>(intf, space);
 		}
 	}
 

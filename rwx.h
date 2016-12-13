@@ -95,6 +95,9 @@ class rwx //: public rwx_writer
 	virtual const addrspace& space() const
 	{ return m_space; }
 
+	virtual void silent(bool silent) final
+	{ m_silent = silent; }
+
 	static bool was_interrupted()
 	{ return s_sigint; }
 
@@ -143,7 +146,7 @@ class rwx //: public rwx_writer
 
 	virtual void update_progress(uint32_t offset, uint32_t length, bool write = false, bool init = false)
 	{
-		if (m_prog_l) {
+		if (m_prog_l && !m_silent) {
 			m_prog_l(offset, length, write, init);
 		}
 	}
@@ -155,7 +158,7 @@ class rwx //: public rwx_writer
 
 	virtual void image_detected(uint32_t offset, const ps_header& hdr)
 	{
-		if (m_img_l) {
+		if (m_img_l && !m_silent) {
 			m_img_l(offset, hdr);
 		}
 	}
@@ -190,6 +193,7 @@ class rwx //: public rwx_writer
 	{ s_sigint = 1; }
 
 	bool m_inited = false;
+	bool m_silent = false;
 
 	static unsigned s_count;
 	static sigh_type s_sighandler_orig;
