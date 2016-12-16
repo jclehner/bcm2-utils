@@ -209,15 +209,8 @@ struct bcm2_profile {
 	uint16_t blsig;
 	// baudrate of the bootloader console
 	uint32_t baudrate;
-	uint32_t buffer;
-	uint32_t buflen;
 	// address mask for uncached mips segment
 	uint32_t kseg1mask;
-	uint32_t loadaddr;
-	uint32_t printf;
-	uint32_t scanf;
-	uint32_t sscanf;
-	uint32_t getline;
 	// a location in memory with a constant value (ideally a
 	// bootloader string), which can be used to automatically
 	// identify the connected device
