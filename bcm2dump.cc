@@ -117,19 +117,6 @@ int do_dump(int argc, char** argv, int opts, const string& profile)
 		throw user_error("output file "s + argv[4] + " exists; specify -F to overwrite or -R to resume dump");
 	}
 
-	ios::openmode mode = ios::out | ios::binary;
-	if (opts & opt_resume) {
-		// without ios::in, the file will be overwritten!
-		mode |= ios::in;
-	} else if (opts & opt_force) {
-		mode |= ios::trunc;
-	}
-
-	ofstream of(argv[4], mode);
-	if (!of.good()) {
-		throw user_error("failed to open "s + argv[4] + " for writing");
-	}
-
 	auto intf = interface::create(argv[1], profile);
 	rwx::sp rwx;
 
@@ -156,6 +143,19 @@ int do_dump(int argc, char** argv, int opts, const string& profile)
 		rwx->set_image_listener([] (uint32_t offset, const ps_header& hdr) {
 			printf("  %s (0x%04x, %d b)\n", hdr.filename().c_str(), hdr.signature(), hdr.length());
 		});
+	}
+
+	ios::openmode mode = ios::out | ios::binary;
+	if (opts & opt_resume) {
+		// without ios::in, the file will be overwritten!
+		mode |= ios::in;
+	} else if (opts & opt_force) {
+		mode |= ios::trunc;
+	}
+
+	ofstream of(argv[4], mode);
+	if (!of.good()) {
+		throw user_error("failed to open "s + argv[4] + " for writing");
 	}
 
 	if (argv[2] != "special"s) {
