@@ -101,7 +101,7 @@ void handle_exception(const exception& e, bool io_log = true)
 	}
 }
 
-void handle_interrupt()
+void handle_sigint()
 {
 	logger::w() << endl << "interrupted" << endl;
 }
@@ -295,12 +295,12 @@ int main(int argc, char** argv)
 			logger::e() << "command not implemented: " << cmd << endl;
 		}
 	} catch (const rwx::interrupted& e) {
-		handle_interrupt();
+		handle_sigint();
 	} catch (const errno_error& e) {
 		if (!e.interrupted()) {
 			handle_exception(e);
 		} else {
-			handle_interrupt();
+			handle_sigint();
 		}
 	} catch (const user_error& e) {
 		handle_exception(e, false);
