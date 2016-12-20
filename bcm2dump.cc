@@ -35,19 +35,24 @@ void usage(bool help = false)
 	os << "  -v               Increase verbosity" << endl;
 	os << endl;
 	os << "Commands: " << endl;
-	os << "  dump  <interface> <addrspace> {<partition>[+<offset>],<offset>}[,<size>] <outfile>" << endl;
+	os << "  dump  <interface> <addrspace> {<partition>[+<offset>],<offset>}[,<size>] <out>" << endl;
 	if (help) {
 		os << "\n    Dump data from given address space, starting at either an explicit offset or\n"
 				"    alternately a partition name. If a partition name is used, the <size>\n"
-				"    argument may be omitted. Data is stored in <outfile>.\n\n";
+				"    argument may be omitted. Data is stored in file <out>.\n\n";
 	}
-	os << "  write <interface> <addrspace> {<partition>[+<offset>],<offset>}[,<size>] <infile>" << endl;
+	os << "  scan  <interface> <addrspace> <step> [<start> <size>]" << endl;
+	if (help) {
+		os << "\n    Scan given address space for image headers, in steps of <step> bytes. For unknown\n"
+				"    profiles or address spaces, <start> and <size> must be specified.\n\n";
+	}
+	os << "  write <interface> <addrspace> {<partition>[+<offset>],<offset>}[,<size>] <in>" << endl;
 	if (help) {
 		os << "\n    Write data to the specified address space, starting at either an explicit\n"
 				"    offset or alternately a partition name. The <size> argument may be used to\n"
-				"    use only parts of <infile>.\n\n";
+				"    use only parts of file <in>.\n\n";
 	}
-	os << "  exec  <interface> {<partition>,<offset>}[,<entry>] <infile>" << endl;
+	os << "  exec  <interface> {<partition>,<offset>}[,<entry>] <in>" << endl;
 	if (help) {
 		os << "\n    Write data to ram, starting at either an explicit offset or alternately a\n"
 				"    partition name. After the data has been written, execute the code and print\n"
@@ -73,7 +78,8 @@ void usage(bool help = false)
 	os << "  COM1,115200              Serial console, 115200 baud" << endl;
 #endif
 	os << "  192.168.0.1,2323         Raw TCP connection to 192.168.0.1, port 2323" << endl;
-	os << "  192.168.0.1,foo,bar      Telnet, server 192.168.0.1, user 'foo', password 'bar'" << endl;
+	os << "  192.168.0.1,foo,bar      Telnet, server 192.168.0.1, user 'foo'," << endl;
+	os << "                           password 'bar'" << endl;
 	os << "  192.168.0.1,foo,bar,233  Same as above, port 233" << endl;
 	os << endl;
 	os << "bcm2dump " << VERSION << " Copyright (C) 2016 Joseph C. Lehner" << endl;
@@ -106,6 +112,48 @@ void handle_sigint()
 	logger::w() << endl << "interrupted" << endl;
 }
 
+void image_listener(uint32_t offset, const ps_header& hdr)
+{
+	printf("  %s (0x%04x, %d b)\n", hdr.filename().c_str(), hdr.signature(), hdr.length());
+}
+
+class progress_listener
+{
+	public:
+	progress_listener(const string& prefix, char** argv, uint32_t offset = 0, uint32_t length = 0)
+	: m_prefix(prefix), m_argv(argv), m_offset(offset), m_length(length) {}
+
+	void operator()(uint32_t offset, uint32_t length, bool write, bool init)
+	{
+		if (init && !m_skip_init) {
+			if (m_length) {
+				offset = m_offset;
+				length = m_length;
+				m_skip_init = true;
+			}
+
+			progress_init(&m_pg, offset, length);
+			if (m_argv[2] != "special"s) {
+				printf("%s %s:0x%08x-0x%08x (%d b)\n", m_prefix.c_str(), m_argv[2], m_pg.min, m_pg.max, m_pg.max + 1 - m_pg.min);
+			} else {
+				printf("%s %s\n", m_prefix.c_str(), m_argv[3]);
+			}
+		}
+
+		printf("\r ");
+		progress_set(&m_pg, offset);
+		progress_print(&m_pg, stdout);
+	}
+
+	private:
+	string m_prefix;
+	char** m_argv;
+	uint32_t m_offset, m_length;
+	bool m_skip_init = false;
+	progress m_pg;
+};
+
+
 int do_dump(int argc, char** argv, int opts, const string& profile)
 {
 	if (argc != 5) {
@@ -126,23 +174,9 @@ int do_dump(int argc, char** argv, int opts, const string& profile)
 		rwx = rwx::create_special(intf, argv[3]);
 	}
 
-	progress pg;
-
 	if (logger::loglevel() <= logger::info) {
-		rwx->set_progress_listener([&pg, &argv] (uint32_t offset, uint32_t length, bool write, bool init) {
-			if (init) {
-				progress_init(&pg, offset, length);
-				printf("dumping %s:0x%08x-0x%08x (%d b)\n", argv[2], pg.min, pg.max, pg.max + 1 - pg.min);
-			}
-
-			printf("\r ");
-			progress_set(&pg, offset);
-			progress_print(&pg, stdout);
-		});
-
-		rwx->set_image_listener([] (uint32_t offset, const ps_header& hdr) {
-			printf("  %s (0x%04x, %d b)\n", hdr.filename().c_str(), hdr.signature(), hdr.length());
-		});
+		rwx->set_progress_listener(progress_listener("dumping", argv));
+		rwx->set_image_listener(&image_listener);
 	}
 
 	ios::openmode mode = ios::out | ios::binary;
@@ -229,6 +263,56 @@ int do_info(int argc, char** argv, const string& profile)
 	return 0;
 }
 
+int do_scan(int argc, char** argv, int opts, const string& profile)
+{
+	if (argc != 4 && argc != 6) {
+		usage(false);
+		return 1;
+	}
+
+	auto intf = interface::create(argv[1]);
+	auto rwx = rwx::create(intf, argv[2], opts & opt_safe);
+
+	if (!intf->profile() && argc != 6) {
+		throw user_error("unknown profile, must specify <start> and <size>");
+	}
+
+	uint32_t start = rwx->space().min();
+	uint32_t length = rwx->space().size();
+	uint32_t step = lexical_cast<uint32_t>(argv[3]);
+
+	if (argc == 6) {
+		start = lexical_cast<uint32_t>(argv[4]);
+		length = lexical_cast<uint32_t>(argv[5]);
+	}
+
+	if (logger::loglevel() <= logger::info) {
+		uint32_t scan_length = ((length / step) - 1) * step + 92;
+		rwx->set_progress_listener(progress_listener("scanning", argv, start, scan_length));
+	}
+
+	map<uint32_t, ps_header> imgs;
+
+	for (uint32_t offset = start; offset < (start + length); offset += step) {
+		ps_header hdr(rwx->read(offset, 92));
+		if (hdr.hcs_valid()) {
+			//image_listener(offset, hdr);
+			imgs[offset] = hdr;
+		}
+	}
+
+	if (!imgs.empty()) {
+		printf("\n\ndetected %zu image(s) in range %s:0x%08x-0x%08x:\n", imgs.size(), argv[2], start, start + length);
+	}
+
+	for (auto img : imgs) {
+		printf("  0x%08x-0x%08x  %s\n", img.first, img.first + img.second.length() + 92,
+				img.second.filename().c_str());
+	}
+
+	return 0;
+}
+
 }
 
 int main(int argc, char** argv)
@@ -291,8 +375,10 @@ int main(int argc, char** argv)
 			return do_dump(argc, argv, opts, profile);
 		} else if (cmd == "write") {
 			return do_write(argc, argv, opts, profile);
+		} else if (cmd == "scan") {
+			return do_scan(argc, argv, opts, profile);
 		} else {
-			logger::e() << "command not implemented: " << cmd << endl;
+			usage(false);
 		}
 	} catch (const rwx::interrupted& e) {
 		handle_sigint();

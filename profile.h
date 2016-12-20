@@ -381,6 +381,9 @@ class addrspace
 	uint32_t min() const
 	{ return m_p->min; }
 
+	uint32_t end() const
+	{ return m_p->min + m_size; }
+
 	uint32_t size() const
 	{ return m_size; }
 

@@ -612,7 +612,7 @@ class bfc_flash : public parsing_rwx
 void bfc_flash::init(uint32_t offset, uint32_t length, bool write)
 {
 	if (m_partition.name().empty()) {
-		throw runtime_error("no partition name argument");
+		throw user_error("partition name required");
 	}
 
 	for (unsigned pass = 0; pass < 2; ++pass) {
@@ -1250,7 +1250,7 @@ void rwx::dump(uint32_t offset, uint32_t length, std::ostream& os, bool resume)
 		}
 
 		do_init(0, 0, false);
-		update_progress(0, 0, true);
+		update_progress(0, 0, false, true);
 		read_special(offset, length, os);
 		return;
 	} else {
