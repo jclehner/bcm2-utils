@@ -264,9 +264,20 @@ struct bcm2_profile bcm2_profiles[] = {
 									.patch = {{ 0x803f6ca4, 0x10000018 }},
 							}
 						},
+				}
+			},
+			{
+				.version = "STD6.02.11",
+				.intf = BCM2_INTF_BFC,
+				.magic = { 0x85f00014, "TC7200U-D6.02.11" },
+				.spaces = {
 						{
-							"nvram",
-						}
+							"flash",
+							.open = { 0x803e5fd4, BCM2_ARGS_OE },
+							.read = { 0x803e5a80, BCM2_READ_FUNC_BOL,
+									.patch = {{ 0x803e5c2c, 0x10000018 }},
+							}
+						},
 				}
 			},
 			{
@@ -281,9 +292,6 @@ struct bcm2_profile bcm2_profiles[] = {
 									.patch = {{ 0x8039e9bc, 0x10000018 }},
 							}
 						},
-						{
-							"nvram",
-						}
 				}
 			},
 		},
