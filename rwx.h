@@ -156,6 +156,11 @@ class rwx //: public rwx_writer
 		update_progress(offset, length, write, true);
 	}
 
+	virtual void end_progress(bool write)
+	{
+		update_progress(UINT32_MAX, UINT32_MAX, write, false);
+	}
+
 	virtual void image_detected(uint32_t offset, const ps_header& hdr)
 	{
 		if (m_img_l && !m_silent) {

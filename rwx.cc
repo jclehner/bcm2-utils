@@ -1252,6 +1252,7 @@ void rwx::dump(uint32_t offset, uint32_t length, std::ostream& os, bool resume)
 		do_init(0, 0, false);
 		update_progress(0, 0, false, true);
 		read_special(offset, length, os);
+		end_progress(false);
 		return;
 	} else {
 		m_space.check_range(offset, length);

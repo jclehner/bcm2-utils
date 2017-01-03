@@ -130,6 +130,9 @@ class progress_listener
 				offset = m_offset;
 				length = m_length;
 				m_skip_init = true;
+			} else {
+				m_offset = offset;
+				m_init_length = length;
 			}
 
 			progress_init(&m_pg, offset, length);
@@ -141,14 +144,30 @@ class progress_listener
 		}
 
 		printf("\r ");
-		progress_set(&m_pg, offset);
+
+		if (offset != UINT32_MAX) {
+			progress_set(&m_pg, offset);
+		}
+
 		progress_print(&m_pg, stdout);
+
+		if (is_end(offset, length)) {
+			printf("\n");
+		}
+
+		//printf("o=0x%08x, l=%u, mo=0x%08x, ml=%u %s\n", offset, length, m_offset, m_length, init ? "init" : "");
 	}
 
 	private:
+	bool is_end(uint32_t offset, uint32_t length)
+	{
+		return ((m_length || m_init_length) && (offset == (m_offset + (m_length ? m_length : m_init_length))))
+			|| (offset == UINT32_MAX && length == UINT32_MAX);
+	}
+
 	string m_prefix;
 	char** m_argv;
-	uint32_t m_offset, m_length;
+	uint32_t m_offset, m_length, m_init_length;
 	bool m_skip_init = false;
 	progress m_pg;
 };
