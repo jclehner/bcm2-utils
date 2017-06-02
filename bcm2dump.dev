@@ -9,8 +9,8 @@ Libs=
 PrivateResource=
 ResourceIncludes=
 MakeIncludes=
-Compiler=-std=c99_@@_
-CppCompiler=-std=c++14_@@_
+Compiler=-DVERSION="\"v0.9.0-rc1\"" -std=c99 _@@_
+CppCompiler=-DVERSION="\"v0.9.0-rc1\"" -std=c++14_@@_
 Linker=-lws2_32_@@_
 IsCpp=1
 Icon=
