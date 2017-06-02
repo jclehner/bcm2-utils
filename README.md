@@ -17,7 +17,7 @@ Partially supported:
 * Thomson TCW770 (`bcm2cfg` only)
 * Netgear CG3000 (`bcm2cfg` only, untested)
 
-Binaries for Linux, OS X and Windows coming soon.
+Binaries for macOS and Windows are available [here](https://github.com/jclehner/bcm2-utils/releases).
 
 It should be easy to add support for other devices. Some pointers can
 be found [below](#writing-a-device-profile).
