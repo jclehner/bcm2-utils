@@ -926,6 +926,7 @@ class nv_group : public nv_compound, public cloneable
 	static constexpr int fmt_perm = 1;
 	static constexpr int fmt_dyn = 2;
 	static constexpr int fmt_gws = 3;
+	static constexpr int fmt_gwsdyn = 4;
 
 	nv_group(uint32_t magic, const std::string& name = "")
 	: nv_group(nv_magic(magic), name) {}

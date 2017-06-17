@@ -41,6 +41,9 @@ string group_header_to_string(int format, const string& checksum, bool is_chksum
 	case nv_group::fmt_gws:
 		ostr << "gwsettings";
 		break;
+	case nv_group::fmt_gwsdyn:
+		ostr << "gwsdyn";
+		break;
 	case nv_group::fmt_dyn:
 		ostr << "dyn";
 		break;
@@ -94,18 +97,26 @@ class permdyn : public settings
 
 	virtual istream& read(istream& is) override
 	{
-		// actually, there's 16 more bytes at the beginning, but these have already been read
-		// by gwsettings::read_file, and determined to be all \xff
-		string magic(0xba, '\0');
-		if (!is.read(&magic[0], magic.size()) || !m_size.read(is) || !m_checksum.read(is)) {
-			throw runtime_error("failed to read header");
-		}
+		if (m_format != nv_group::fmt_gwsdyn) {
+			// actually, there's 16 more bytes at the beginning, but these have already been read
+			// by gwsettings::read_file, and determined to be all \xff
+			string magic(0xba, '\0');
+			if (!is.read(&magic[0], magic.size()) || !m_size.read(is) || !m_checksum.read(is)) {
+				throw runtime_error("failed to read header");
+			}
 
-		if (magic.find_first_not_of('\xff') != string::npos) {
-			m_magic_valid = false;
-			is.clear(ios::failbit);
-			return is;
-			//throw runtime_error("found non-0xff byte in magic");
+			if (magic.find_first_not_of('\xff') != string::npos) {
+				m_magic_valid = false;
+				is.clear(ios::failbit);
+				return is;
+				//throw runtime_error("found non-0xff byte in magic");
+			}
+		} else {
+			if (!m_size.read(is) || !m_checksum.read(is)) {
+				throw runtime_error("failed to read header");
+			}
+
+			logger::w() << "m_size=" << m_size.num() << ", m_checksum=" << m_checksum.num() << endl;
 		}
 
 		m_magic_valid = true;
@@ -123,7 +134,7 @@ class permdyn : public settings
 			logger::v() << type() << ": checksum mismatch: " << to_hex(checksum) << " / " << to_hex(m_checksum.num()) << endl;
 		}
 
-		m_footer = buf.substr(m_size.num());
+		m_footer = m_size.num() < buf.size() ? buf.substr(m_size.num()) : "";
 
 		if (!m_format) {
 			if (m_footer.size() >= 8) {
@@ -157,7 +168,7 @@ class permdyn : public settings
 		settings::write(ostr);
 		string buf = ostr.str();
 
-		if (!(os << string(0xca, '\xff'))) {
+		if (m_format != nv_group::fmt_gwsdyn && !(os << string(0xca, '\xff'))) {
 			throw runtime_error("failed to write magic");
 		}
 
@@ -359,7 +370,6 @@ class gwsettings : public encryptable_settings
 		m_magic = magic;
 		m_magic_valid = (magic.end() == std::find_if(magic.begin(), magic.end(),
 				[](char c) -> bool { return c != '-' && !isalnum(c); }));
-		logger::v() << "magic=" << magic << endl;
 		return m_magic_valid;
 	}
 
@@ -469,17 +479,26 @@ istream& settings::read(istream& is)
 
 sp<settings> settings::read(istream& is, int format, const csp<bcm2dump::profile>& p, const string& key, const string& pw)
 {
-	string start(16, '\0');
-	if (!is.read(&start[0], start.size())) {
-		throw runtime_error("failed to read file");
-	}
-
 	sp<settings> ret;
-	if (start == string(16, '\xff') && format != nv_group::fmt_gws) {
-		ret = sp<permdyn>(new permdyn(format, p));
+	string start(16, '\0');
+
+	if (format != nv_group::fmt_gwsdyn) {
+		if (!is.read(&start[0], start.size())) {
+			throw runtime_error("failed to read file");
+		}
+
+		if (format == nv_group::fmt_unknown) {
+			if (start == string(16, '\xff')) {
+				format = nv_group::fmt_dyn;
+			} else {
+				format = nv_group::fmt_gws;
+			}
+		}
 	}
 
-	if (!ret) {
+	if (format != nv_group::fmt_gws) {
+		ret = sp<permdyn>(new permdyn(format, p));
+	} else {
 		// if this is in fact a gwsettings type file, then start already contains the checksum
 		ret = sp<gwsettings>(new gwsettings(start, p, key, pw));
 	}

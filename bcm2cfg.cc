@@ -331,6 +331,8 @@ int do_main(int argc, char** argv)
 				format = nv_group::fmt_dyn;
 			} else if (optarg == "perm"s) {
 				format = nv_group::fmt_perm;
+			} else if (optarg == "gwsdyn"s) {
+				format = nv_group::fmt_gwsdyn;
 			} else if (optarg == "auto"s) {
 				format = nv_group::fmt_unknown;
 			} else {
