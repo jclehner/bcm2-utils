@@ -101,14 +101,14 @@ zeroes:
 
 ### GatewaySettings.bin (dynnv)
 
-On some devices, `GatewaySettings.bin` is copied verbatim from `dynnv`, omitting the
-202-byte all `\xff` header.
-
 | Offset | Type         | Name       | 
 |-------:|--------------|------------|
 |  `0`   | `u32`        | `size`     |
 |  `4`   | `u32`        | `checksum` |
 |  `8`   |`byte[size-8]`| `data`     |
+
+The header for this file format is the same as for `permnv` and `dynnv`, minus
+the 202-byte all `\xff` header. 
 
 ###### Encryption
 
@@ -121,11 +121,13 @@ A primitive (and obvious) XOR cipher with 16 keys is sometimes used. The keys ar
 ...
 f0 00 f2 00 f4 00 f6 00 f8 00 fa 00 fc 00 fe 00
 ```
-
 For the first 16-byte block, the first key is used, the second key for the second block,
-and so forth. For the 17th block, the first key is used again. If the last block is less
-than 16 bytes, it is copied verbatim. A 36 byte all-zero file would thus be encrypted
-as
+and so forth. For the 17th block, the first key is used again. After decryption, 
+bytes `n` and `n+1` (`n` being an even number, including zero) are swapped in each
+16-byte block.
+
+If the last block is less than 16 bytes, it is copied verbatim. A 36 byte all-zero file
+would thus be encrypted as
 
 ```
 00 00 02 00 04 00 06 00 08 00 0a 00 0c 00 0e 00
