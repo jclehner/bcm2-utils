@@ -50,7 +50,7 @@ For a buffer containing the data `\xaa\xaa\xaa\xaa\xbb\xbb\xbb\xbb\xcc\xcc\xdd`,
 checksum is thus `~(0xaaaaaaaa + 0xbbbbbbbb + 0xccccdd00)`, for `\xaa\xaa\xaa\xaa\xbb`,
 it would be `~(0xaaaaaaaa + 0x0000bb00)` (assuming `uint32_t` rollover on overflow).
 
-### GatewaySettings.bin
+### GatewaySettings.bin (safe)
 
 | Offset  | Type        | Name       | Comment              |
 |--------:|-------------|------------|----------------------|
@@ -96,6 +96,41 @@ zeroes:
 000041a0  80 d3 e4 8a 71 51 f2 64  81 e4 31 4a 64 a9 5d 74  |....qQ.d..1Jd.]t|
 000041b0  b3 65 87 cd ad 42 6c d1  af 3c 63 a9 20 b1 b9 6c  |.e...Bl..<c. ..l|
 000041c0  00 00 00 00 00 00 00 00  00                       |.........|
+```
+
+
+### GatewaySettings.bin (dynnv)
+
+On some devices, `GatewaySettings.bin` is copied verbatim from `dynnv`, omitting the
+202-byte all `\xff` header.
+
+| Offset | Type         | Name       | 
+|-------:|--------------|------------|
+|  `0`   | `u32`        | `size`     |
+|  `4`   | `u32`        | `checksum` |
+|  `8`   |`byte[size-8]`| `data`     |
+
+###### Encryption
+
+A primitive (and obvious) XOR cipher with 16 keys is sometimes used. The keys are:
+
+```
+00 00 02 00 04 00 06 00 08 00 0a 00 0c 00 0e 00
+10 00 12 00 14 00 16 00 18 00 1a 00 1c 00 1e 00
+20 00 22 00 24 00 26 00 28 00 2a 00 2c 00 2e 00
+...
+f0 00 f2 00 f4 00 f6 00 f8 00 fa 00 fc 00 fe 00
+```
+
+For the first 16-byte block, the first key is used, the second key for the second block,
+and so forth. For the 17th block, the first key is used again. If the last block is less
+than 16 bytes, it is copied verbatim. A 36 byte all-zero file would thus be encrypted
+as
+
+```
+00 00 02 00 04 00 06 00 08 00 0a 00 0c 00 0e 00
+10 00 12 00 14 00 16 00 18 00 1a 00 1c 00 1e 00
+00 00 00 00
 ```
 
 Configuration data
