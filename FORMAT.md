@@ -55,17 +55,25 @@ it would be `~(0xaaaaaaaa + 0x0000bb00)` (assuming `uint32_t` rollover on overfl
 | Offset  | Type        | Name       | Comment              |
 |--------:|-------------|------------|----------------------|
 |    `0`  | `byte[16]`  | `checksum` ||
-|   `16`  | `string[74]`| `magic`    | `6u9E9eWF0bt9Y8Rw690Le4669JYe4d-056T9p4ijm4EA6u9ee659jn9E-54e4j6rPj069K-670` |
+|   `16`  | `string[74]`| `magic`    | Vendor specific (?)  |
 |   `90`  | `byte[2]`   | ?          | Assumed to be a version (always `0.0`) |
 |   `92`  | `u32`       | `size`     ||
 |   `96`  | `byte[size]`| `data`     ||
 |`96+size`| `byte[16]`  | `padding`  | Found in some encrypted files (all `\x00`) |
+
+Currently known magic values:
+
+| Vendor              | Magic                                                                        |
+|---------------------|------------------------------------------------------------------------------|
+| Technicolor/Thomson | `6u9E9eWF0bt9Y8Rw690Le4669JYe4d-056T9p4ijm4EA6u9ee659jn9E-54e4j6rPj069K-670` |
+| Netgear             | `6u9e9ewf0jt9y85w690je4669jye4d-056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056` |
 
 The checksum is an MD5 hash, calculated from the file contents immediately after the checksum (i.e.
 *everything* but the first 16 bytes). To calculate the checksum, a 16-byte device-specific key is added
 to the data; for some devices, this is easily guessed (Thomson TWG850-4: `TMM_TWG850-4\x00\x00\x00\x00`,
 Techicolor TC7200: `TMM_TC7200\x00\x00\x00\x00\x00\x00`), for others, it must be extracted from a firmware dump
 (e.g. Netgear CG3000: `\x32\x50\x73\x6c\x63\x3b\x75\x28\x65\x67\x6d\x64\x30\x2d\x27\x78`).
+
 
 ###### Encryption
 On some devices, all data *after* the checksum is encrypted using AES-256 in ECB mode. This means that the

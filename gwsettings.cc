@@ -233,7 +233,7 @@ class gwsettings : public encryptable_settings
 	{ return m_size.num(); }
 
 	virtual size_t data_bytes() const override
-	{ return bytes() - (s_magic.size() + 6); }
+	{ return bytes() - (m_magic.size() + 6); }
 
 	virtual string type() const override
 	{ return "gwsettings"; }
@@ -256,9 +256,9 @@ class gwsettings : public encryptable_settings
 	virtual istream& read(istream& is) override
 	{
 		string buf = read_stream(is);
-		string magic = buf.substr(0, s_magic.size());
+		m_magic = buf.substr(0, 74);
 		validate_checksum_and_detect_profile(buf);
-		m_magic_valid = (magic == s_magic);
+		validate_magic(m_magic);
 		m_encrypted = !m_magic_valid;
 
 		if (!m_magic_valid && !decrypt_and_detect_profile(buf)) {
@@ -268,7 +268,7 @@ class gwsettings : public encryptable_settings
 			m_key = m_pw = "";
 		}
 
-		istringstream istr(buf.substr(s_magic.size()));
+		istringstream istr(buf.substr(m_magic.size()));
 		if (!m_version.read(istr) || !m_size.read(istr)) {
 			throw runtime_error("error while reading header");
 		}
@@ -302,10 +302,10 @@ class gwsettings : public encryptable_settings
 		string buf = ostr.str();
 
 		ostr.str("");
-		ostr.write(s_magic.data(), s_magic.size());
+		ostr.write(m_magic.data(), m_magic.size());
 		m_version.write(ostr);
 		// 2 bytes for version, 4 for size
-		nv_u32::write(ostr, s_magic.size() + 6 + buf.size());
+		nv_u32::write(ostr, m_magic.size() + 6 + buf.size());
 
 		buf = ostr.str() + buf;
 		if (!m_key.empty()) {
@@ -354,6 +354,15 @@ class gwsettings : public encryptable_settings
 		return m_checksum_valid;
 	}
 
+	bool validate_magic(const string& magic)
+	{
+		m_magic = magic;
+		m_magic_valid = (magic.end() == std::find_if(magic.begin(), magic.end(),
+				[](char c) -> bool { return c != '-' && !isalnum(c); }));
+		logger::v() << "magic=" << magic << endl;
+		return m_magic_valid;
+	}
+
 	static string calc_checksum(const string& buf, const csp<bcm2dump::profile>& p)
 	{
 		return hash_md5(buf + (p ? p->md5_key() : ""));
@@ -395,9 +404,8 @@ class gwsettings : public encryptable_settings
 	bool decrypt(string& buf, const string& key)
 	{
 		string decrypted = crypt(buf, key, true);
-		if (decrypted.substr(0, 74) == s_magic) {
+		if (validate_magic(decrypted.substr(0, 74))) {
 			buf = decrypted;
-			m_magic_valid = true;
 			return true;
 		}
 
@@ -420,14 +428,15 @@ class gwsettings : public encryptable_settings
 	bool m_encrypted = false;
 	nv_version m_version;
 	nv_u32 m_size;
+	string m_magic;
 	string m_key;
 	string m_pw;
 	bool m_padded = false;
-
-	static const string s_magic;
 };
 
-const string gwsettings::s_magic = "6u9E9eWF0bt9Y8Rw690Le4669JYe4d-056T9p4ijm4EA6u9ee659jn9E-54e4j6rPj069K-670";
+// Currently known magic values:
+// 6u9E9eWF0bt9Y8Rw690Le4669JYe4d-056T9p4ijm4EA6u9ee659jn9E-54e4j6rPj069K-670 (Technicolor, Thomson)
+// 6u9e9ewf0jt9y85w690je4669jye4d-056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056 (Netgear)
 }
 
 istream& settings::read(istream& is)
