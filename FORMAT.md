@@ -50,7 +50,7 @@ For a buffer containing the data `\xaa\xaa\xaa\xaa\xbb\xbb\xbb\xbb\xcc\xcc\xdd`,
 checksum is thus `~(0xaaaaaaaa + 0xbbbbbbbb + 0xccccdd00)`, for `\xaa\xaa\xaa\xaa\xbb`,
 it would be `~(0xaaaaaaaa + 0x0000bb00)` (assuming `uint32_t` rollover on overflow).
 
-### GatewaySettings.bin (safe)
+### GatewaySettings.bin (standard)
 
 | Offset  | Type        | Name       | Comment              |
 |--------:|-------------|------------|----------------------|
@@ -75,7 +75,7 @@ Techicolor TC7200: `TMM_TC7200\x00\x00\x00\x00\x00\x00`), for others, it must be
 (e.g. Netgear CG3000: `\x32\x50\x73\x6c\x63\x3b\x75\x28\x65\x67\x6d\x64\x30\x2d\x27\x78`).
 
 
-###### Encryption
+###### Encryption (Thomson, Technicolor)
 On some devices, all data *after* the checksum is encrypted using AES-256 in ECB mode. This means that the
 checksum can be validated even if the encryption key is not known.
 
@@ -98,6 +98,22 @@ zeroes:
 000041c0  00 00 00 00 00 00 00 00  00                       |.........|
 ```
 
+###### Encryption (Netgear, Asus (?))
+Some Netgear and possibly Asus devices encrypt the *whole* file using 3DES in ECB mode. In contrast to
+the other encryption method described above, the checksum of these files can only be validated *after*
+decryption.
+
+If the final block is less than 16 (or 8?) bytes, the data is padded to 15 (or 7?) bytes using zeroes.
+The last byte contains the number of zero bytes used for padding. For example, the block
+```
+000041b0  69 6e 00 05 61 64 6d 69  6e                       |in..admin|
+```
+would be padded to
+```
+000041b0  69 6e 00 05 61 64 6d 69  6e 00 00 00 00 00 00 06  |in..admin.......|
+```
+
+
 
 ### GatewaySettings.bin (dynnv)
 
@@ -112,7 +128,7 @@ the 202-byte all `\xff` header.
 
 ###### Encryption
 
-A primitive (and obvious) XOR cipher with 16 keys is sometimes used. The keys are:
+A primitive (and obvious) subtraction cipher with 16 keys is sometimes used. The keys are:
 
 ```
 00 00 02 00 04 00 06 00 08 00 0a 00 0c 00 0e 00
