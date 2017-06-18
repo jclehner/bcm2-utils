@@ -124,6 +124,35 @@ string hash_md5(const string& buf)
 #endif
 }
 
+string crypt_3des_ecb(const string& ibuf, const string& key, bool encrypt)
+{
+	if (key.size() != (16 * 3)) {
+		throw invalid_argument(__func__ ": invalid key size");
+	}
+
+#if defined(BCM2UTILS_USE_OPENSSL)
+	DES_key_schedule ks1, ks2, ks3;
+
+	DES_set_key_unchecked(&key[0], &ks1);
+	DES_set_key_unchecked(&key[8], &ks2);
+	DES_set_key_unchecked(&key[16], &ks3);
+
+	string obuf(ibuf.size(), '\0');
+	auto remaining = ibuf.size();
+	auto iblock = data(ibuf);
+	auto oblock = reinterpret_cast<unsigned char*>(&obuf[0]);
+
+	while (remaining >= 8) {
+		DES_ecb3_encrypt(&iblock, &oblock, &ks1, &ks2, &ks3, encrypt ? DES_ENCRYPT : DES_DECRYPT);
+		remaining -= 8;
+		iblock += 8;
+		oblock += 8;
+	}
+#else
+	throw runtime_error("encryption not supported on this platform");
+#endif
+}
+
 string crypt_aes_256_ecb(const string& ibuf, const string& key, bool encrypt)
 {
 #if defined(BCM2UTILS_USE_OPENSSL)
@@ -250,4 +279,97 @@ string crypt_aes_256_ecb(const string& ibuf, const string& key, bool encrypt)
 	throw runtime_error("encryption not supported on this platform");
 #endif
 }
+
+#if defined(BCM2UTILS_USE_COMMON_CRYPTO)
+string crypt_ecb_generic(CCAlgorithm algo, int blocksize, int keysize, const string& ibuf, const string& key, bool encrypt)
+{
+	if (key.size() != keysize) {
+		throw invalid_argument("invalid key size for algorithm");
+	}
+
+	size_t moved;
+	size_t len = align_left(ibuf.size(), blocksize);
+	string obuf(len, '\0');
+
+	CCCryptorStatus ret = CCCrypt(
+			encrypt ? kCCEncrypt : kCCDecrypt,
+			algo,
+			kCCOptionECBMode,
+			key.data(), keysize,
+			nullptr,
+			ibuf.data(), len,
+			&obuf[0], len,
+			&moved);
+
+	if (ret != kCCSuccess) {
+		throw runtime_error("CCCrypt: error " + to_string(ret));
+	} else if (moved != len) {
+		throw runtime_error("CCCrypt: expected length " + to_string(len) + ", got " + to_string(moved));
+	}
+
+	if (len < ibuf.size()) {
+		obuf += ibuf.substr(len);
+	}
+
+	return obuf;
 }
+#elif defined(BCM2UTILS_USE_WINCRYPT)
+template<int Keysize> string crypt_ecb_generic(int algo, int blocksize, const string& ibuf, const string& key, bool encrypt)
+{
+	crypt_context ctx;
+
+	// THIS API IS LUDICROUS!!!
+
+	struct {
+		BLOBHEADER hdr;
+		const DWORD key_size = KeySize;
+		BYTE key[KeySize];
+	} blob;
+
+	blob.hdr = {
+		.bType = PLAINTEXTKEYBLOB,
+		.bVersion = CUR_BLOB_VERSION,
+		.reserved = 0,
+		.aiKeyAlg = algo
+	};
+
+	memcpy(aes.key, key.data(), blob.key_size);
+
+	HCRYPTKEY hkey = 0;
+
+	if (!CryptImportKey(ctx.handle, reinterpret_cast<BYTE*>(&blob), sizeof(blob), 0, 0, &hkey)) {
+		throw winapi_error("CryptImportKey");
+	}
+
+	auto c = bcm2dump::cleaner([hkey] () {
+			if (hkey) {
+				CryptDestroyKey(hkey);
+			}
+	});
+
+	DWORD mode = CRYPT_MODE_ECB;
+	if (!CryptSetKeyParam(hkey, KP_MODE, reinterpret_cast<BYTE*>(&mode), 0)) {
+		throw winapi_error("CryptSetKeyParam");
+	}
+
+	DWORD len = align_left(ibuf.size(), blocksize);
+	string obuf = ibuf;
+
+	// since we want to avoid wincrypt's padding, pass FALSE to both
+	// crypt functions, even though it's technically the final (and only) block
+
+	BOOL ok;
+	if (encrypt) {
+		ok = CryptEncrypt(hkey, 0, FALSE, 0, reinterpret_cast<unsigned char*>(&obuf[0]), &len, len);
+	} else {
+		ok = CryptDecrypt(hkey, 0, FALSE, 0, reinterpret_cast<unsigned char*>(&obuf[0]), &len);
+	}
+
+	if (!ok) {
+		throw winapi_error(encrypt ? "CryptEncrypt" : "CryptDecrypt");
+	}
+
+	// no need to deal with the remaining data, since we copied ibuf to obuf
+	return obuf;
+}
+#endif
