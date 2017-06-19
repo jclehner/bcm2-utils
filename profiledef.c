@@ -45,8 +45,8 @@ struct bcm2_profile bcm2_profiles[] = {
 		.cfg_md5key = "3250736c633b752865676d64302d2778",
 		.cfg_defkeys = {
 			// 3 keys for 3DES
-			"8890697cec4823e2" "ea3ad4c87f13978e" "46ac783a2d843e11"
-		}
+			//"8890697cec4823e2" "ea3ad4c87f13978e" "46ac783a2d843e11"
+		},
 		.spaces = {
 				{ .name = "ram" },
 		},
