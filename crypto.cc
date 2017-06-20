@@ -254,7 +254,7 @@ string hash_md5(const string& buf)
 
 string crypt_3des_ecb(const string& ibuf, const string& key, bool encrypt)
 {
-	if (key.size() != (16 * 3)) {
+	if (key.size() != 24) {
 		throw invalid_argument("invalid key size for algorithm");
 	}
 
