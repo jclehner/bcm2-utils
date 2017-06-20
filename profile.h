@@ -478,7 +478,6 @@ class profile
 	//virtual std::string encrypt(const std::string& buf, const std::string& key) = 0;
 	//virtual std::string decrypt(const std::string& buf, const std::string& key) = 0;
 
-	virtual size_t key_length() const = 0;
 	virtual std::vector<std::string> default_keys() const = 0;
 	virtual std::string derive_key(const std::string& pw) const = 0;
 

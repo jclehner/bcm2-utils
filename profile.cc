@@ -174,9 +174,6 @@ class profile_wrapper : public profile
 	virtual vector<string> default_keys() const override
 	{ return m_keys; }
 
-	virtual size_t key_length() const override
-	{ return 32; }
-
 	virtual string derive_key(const string& pw) const override
 	{
 		if (!m_p->cfg_keyfun) {
@@ -262,14 +259,7 @@ class profile_wrapper : public profile
 		const char* key = nullptr;
 
 		for (size_t i = 0; (key = m_p->cfg_defkeys[i]) && key[i]; ++i) {
-			size_t length = strlen(key);
-			if (length == key_length()) {
-				m_keys.push_back(key);
-			} else if ((length / 2) == key_length()) {
-				m_keys.push_back(from_hex(key));
-			} else {
-				throw invalid_argument(name() + ": key does not match key length: " + key);
-			}
+			m_keys.push_back(from_hex(key));
 		}
 	}
 
