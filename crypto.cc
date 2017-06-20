@@ -56,17 +56,20 @@ inline const unsigned char* data(const string& buf)
 }
 
 #ifdef BCM2UTILS_USE_WINCRYPT
-
-class crypt_context
+class wincrypt_context
 {
 	public:
-	crypt_context()
+	wincrypt_context()
 	: handle(0)
 	{
 		BOOL ok = CryptAcquireContext(
 				&handle,
 				nullptr,
+#ifndef BCM2CFG_WINXP
 				MS_ENH_RSA_AES_PROV,
+#else
+				MS_ENH_RSA_AES_PROV_XP,
+#endif
 				PROV_RSA_AES,
 				CRYPT_VERIFYCONTEXT);
 
@@ -75,7 +78,7 @@ class crypt_context
 		}
 	}
 
-	~crypt_context()
+	~wincrypt_context()
 	{
 		if (handle) {
 			CryptReleaseContext(handle, 0);
@@ -83,6 +86,75 @@ class crypt_context
 	}
 
 	HCRYPTPROV handle;
+};
+
+class wincrypt_hash
+{
+	public:
+	wincrypt_hash(ALG_ID algo)
+	: m_hash(0)
+	{
+		if (!CryptCreateHash(m_ctx.handle, algo, 0, 0, &m_hash)) {
+			throw winapi_error("CryptCreateHash");
+		}
+	}
+
+	~wincrypt_hash()
+	{
+		if (m_hash) {
+			CryptDestroyHash(m_hash);
+		}
+	}
+
+	HCRYPTHASH get() const
+	{ return m_hash; }
+
+	private:
+	wincrypt_context m_ctx;
+	HCRYPTHASH m_hash;
+};
+
+template<size_t KeySize> class wincrypt_key
+{
+	public:
+	wincrypt_key(ALG_ID algo, const string& key)
+	: m_key(0)
+	{
+		// THIS API IS LUDICROUS!!!
+
+		struct {
+			BLOBHEADER hdr;
+			const DWORD key_size = KeySize;
+			BYTE key[KeySize];
+		} blob;
+
+		blob.hdr = {
+			.bType = PLAINTEXTKEYBLOB,
+			.bVersion = CUR_BLOB_VERSION,
+			.reserved = 0,
+			.aiKeyAlg = algo
+		};
+
+		memcpy(blob.key, key.data(), KeySize);
+
+		if (!CryptImportKey(m_ctx.handle, reinterpret_cast<BYTE*>(&blob), sizeof(blob), 0, 0, &m_key)) {
+			throw winapi_error("CryptImportKey");
+		}
+	}
+
+	~wincrypt_key()
+	{
+		if (m_key) {
+			CryptDestroyKey(m_key);
+		}
+	}
+
+	HCRYPTKEY get() const
+	{ return m_key; }
+
+	private:
+	wincrypt_context m_ctx;
+	HCRYPTKEY m_key;
 };
 
 #endif
@@ -120,42 +192,13 @@ string crypt_generic_ecb(CCAlgorithm algo, size_t keysize, size_t blocksize, con
 
 	return obuf;
 }
-#elif defined(BCM2UTILS_USE_WINCRYPT) && false
-template<size_t Keysize> string crypt_generic_ecb(ALG_ID algo, size_t blocksize, const string& ibuf, const string& key, bool encrypt)
+#elif defined(BCM2UTILS_USE_WINCRYPT)
+template<size_t KeySize> string crypt_generic_ecb(ALG_ID algo, size_t blocksize, const string& ibuf, const string& key, bool encrypt)
 {
-	crypt_context ctx;
-
-	// THIS API IS LUDICROUS!!!
-
-	struct {
-		BLOBHEADER hdr;
-		const DWORD key_size = KeySize;
-		BYTE key[KeySize];
-	} blob;
-
-	blob.hdr = {
-		.bType = PLAINTEXTKEYBLOB,
-		.bVersion = CUR_BLOB_VERSION,
-		.reserved = 0,
-		.aiKeyAlg = algo
-	};
-
-	memcpy(blob.key, key.data(), KeySize);
-
-	HCRYPTKEY hkey = 0;
-
-	if (!CryptImportKey(ctx.handle, reinterpret_cast<BYTE*>(&blob), sizeof(blob), 0, 0, &hkey)) {
-		throw winapi_error("CryptImportKey");
-	}
-
-	auto c = bcm2dump::cleaner([hkey] () {
-			if (hkey) {
-				CryptDestroyKey(hkey);
-			}
-	});
+	wincrypt_key<KeySize> ckey(algo, key);
 
 	DWORD mode = CRYPT_MODE_ECB;
-	if (!CryptSetKeyParam(hkey, KP_MODE, reinterpret_cast<BYTE*>(&mode), 0)) {
+	if (!CryptSetKeyParam(ckey.get(), KP_MODE, reinterpret_cast<BYTE*>(&mode), 0)) {
 		throw winapi_error("CryptSetKeyParam");
 	}
 
@@ -163,13 +206,13 @@ template<size_t Keysize> string crypt_generic_ecb(ALG_ID algo, size_t blocksize,
 	string obuf = ibuf;
 
 	// since we want to avoid wincrypt's padding, pass FALSE to both
-	// crypt functions, even though it's technically the final (and only) block
+	// crypt functions, even though it's technically the final (and only) chunk
 
 	BOOL ok;
 	if (encrypt) {
-		ok = CryptEncrypt(hkey, 0, FALSE, 0, reinterpret_cast<unsigned char*>(&obuf[0]), &len, len);
+		ok = CryptEncrypt(ckey.get(), 0, FALSE, 0, reinterpret_cast<unsigned char*>(&obuf[0]), &len, len);
 	} else {
-		ok = CryptDecrypt(hkey, 0, FALSE, 0, reinterpret_cast<unsigned char*>(&obuf[0]), &len);
+		ok = CryptDecrypt(ckey.get(), 0, FALSE, 0, reinterpret_cast<unsigned char*>(&obuf[0]), &len);
 	}
 
 	if (!ok) {
@@ -194,23 +237,14 @@ string hash_md5(const string& buf)
 
 	return md5;
 #else
-	crypt_context ctx;
-	HCRYPTHASH hash = 0;
+	wincrypt_hash hash(CALG_MD5);
 
-	if (!CryptCreateHash(ctx.handle, CALG_MD5, 0, 0, &hash)) {
-		throw winapi_error("CryptCreateHash");
-	}
-
-	auto c = bcm2dump::cleaner([hash] () {
-		CryptDestroyHash(hash);
-	});
-
-	if (!CryptHashData(hash, data(buf), buf.size(), 0)) {
+	if (!CryptHashData(hash.get(), data(buf), buf.size(), 0)) {
 		throw winapi_error("CryptHashData");
 	}
 
 	DWORD size = md5.size();
-	if (!CryptGetHashParam(hash, HP_HASHVAL, reinterpret_cast<unsigned char*>(&md5[0]), &size, 0)) {
+	if (!CryptGetHashParam(hash.get(), HP_HASHVAL, reinterpret_cast<unsigned char*>(&md5[0]), &size, 0)) {
 		throw winapi_error("CryptGetHashParam");
 	}
 
@@ -294,65 +328,7 @@ string crypt_aes_256_ecb(const string& ibuf, const string& key, bool encrypt)
 #elif defined(BCM2UTILS_USE_COMMON_CRYPTO)
 	return crypt_generic_ecb(kCCAlgorithmAES128, kCCKeySizeAES256, 16, ibuf, key, encrypt);
 #elif defined(BCM2UTILS_USE_WINCRYPT)
-#if 1
-	crypt_context ctx;
-
-	// THIS API IS LUDICROUS!!!
-
-	struct {
-		BLOBHEADER hdr;
-		const DWORD key_size = sizeof(key);
-		BYTE key[32];
-	} aes;
-
-	aes.hdr = {
-		.bType = PLAINTEXTKEYBLOB,
-		.bVersion = CUR_BLOB_VERSION,
-		.reserved = 0,
-		.aiKeyAlg = CALG_AES_256
-	};
-
-	memcpy(aes.key, key.data(), aes.key_size);
-
-	HCRYPTKEY hkey = 0;
-
-	if (!CryptImportKey(ctx.handle, reinterpret_cast<BYTE*>(&aes), sizeof(aes), 0, 0, &hkey)) {
-		throw winapi_error("CryptImportKey");
-	}
-
-	auto c = bcm2dump::cleaner([hkey] () {
-			if (hkey) {
-				CryptDestroyKey(hkey);
-			}
-	});
-
-	DWORD mode = CRYPT_MODE_ECB;
-	if (!CryptSetKeyParam(hkey, KP_MODE, reinterpret_cast<BYTE*>(&mode), 0)) {
-		throw winapi_error("CryptSetKeyParam");
-	}
-
-	DWORD len = align_left(ibuf.size(), 16);
-	string obuf = ibuf;
-
-	// since we want to avoid wincrypt's padding, pass FALSE to both
-	// crypt functions, even though it's technically the final (and only) block
-
-	BOOL ok;
-	if (encrypt) {
-		ok = CryptEncrypt(hkey, 0, FALSE, 0, reinterpret_cast<unsigned char*>(&obuf[0]), &len, len);
-	} else {
-		ok = CryptDecrypt(hkey, 0, FALSE, 0, reinterpret_cast<unsigned char*>(&obuf[0]), &len);
-	}
-
-	if (!ok) {
-		throw winapi_error(encrypt ? "CryptEncrypt" : "CryptDecrypt");
-	}
-
-	// no need to deal with the remaining data, since we copied ibuf to obuf
-	return obuf;
-#else
 	return crypt_generic_ecb<32>(CALG_AES_256, 16, ibuf, key, encrypt);
-#endif
 #else
 	throw runtime_error("encryption not supported on this platform");
 #endif

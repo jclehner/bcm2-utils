@@ -50,6 +50,11 @@
 #include <netdb.h>
 #endif
 
+#ifdef BCM2CFG_WINXP
+#define inet_ntop(af, src, dst, size) (*dst = '\0')
+#define inet_pton(af, src, dst) 0
+#endif
+
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 #endif
