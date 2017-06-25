@@ -231,15 +231,10 @@ template<size_t KeySize> string crypt_generic_ecb(ALG_ID algo, size_t blocksize,
 #elif defined(BCM2UTILS_USE_OPENSSL)
 template<size_t BlockSize, class F> string crypt_generic_ecb(const string& ibuf, const F& crypter)
 {
-	string obuf;
-	size_t i = 0;
+	string obuf = ibuf;
 
-	for (; i < ibuf.size() && (i + (BlockSize - 1)) < ibuf.size(); i += BlockSize) {
-		obuf += crypter(data(ibuf) + i);
-	}
-
-	if (i < ibuf.size()) {
-		obuf += ibuf.substr(i);
+	for (size_t i = 0; (i + BlockSize - 1) < ibuf.size(); i += BlockSize) {
+		crypter(data(ibuf) + i, reinterpret_cast<uint8_t*>(&obuf[i]));
 	}
 
 	return obuf;
@@ -287,11 +282,12 @@ string crypt_3des_ecb(const string& ibuf, const string& key, bool encrypt)
 		DES_set_key_unchecked(cblock(key, i * 8), &ks[i]);
 	}
 
-	return crypt_generic_ecb<8>(ibuf, [&ks, &encrypt](const unsigned char *iblock) {
-			DES_cblock oblock;
-			DES_ecb3_encrypt(reinterpret_cast<const_DES_cblock*>(&iblock), &oblock, 
-					&ks[0], &ks[1], &ks[2], encrypt ? DES_ENCRYPT : DES_DECRYPT);
-			return string(reinterpret_cast<char*>(oblock), 8);
+	return crypt_generic_ecb<8>(ibuf, [&ks, &encrypt](const uint8_t *iblock, uint8_t *oblock) {
+			DES_ecb3_encrypt(
+					reinterpret_cast<const_DES_cblock*>(&iblock),
+					reinterpret_cast<DES_cblock*>(&oblock),
+					&ks[0], &ks[1], &ks[2],
+					encrypt ? DES_ENCRYPT : DES_DECRYPT);
 	});
 #elif defined(BCM2UTILS_USE_COMMON_CRYPTO)
 	return crypt_generic_ecb(kCCAlgorithm3DES, kCCKeySize3DES, 8, ibuf, key, encrypt);
@@ -315,33 +311,16 @@ string crypt_aes_256_ecb(const string& ibuf, const string& key, bool encrypt)
 	}
 
 	if (err) {
-		throw runtime_error("AES_set_XXcrypt_key: error " + to_string(err));
+		throw runtime_error("failed to set AES key: error " + to_string(err));
 	}
 
-	string obuf(ibuf.size(), '\0');
-
-	auto remaining = ibuf.size();
-	// this is legal in C++11... ugly, but legal!
-	auto iblock = data(ibuf);
-	auto oblock = reinterpret_cast<unsigned char*>(&obuf[0]);
-
-	while (remaining >= 16) {
-		if (!encrypt) {
-			AES_decrypt(iblock, oblock, &aes);
-		} else {
-			AES_encrypt(iblock, oblock, &aes);
-		}
-
-		remaining -= 16;
-		iblock += 16;
-		oblock += 16;
-	}
-
-	if (remaining) {
-		memcpy(oblock, iblock, remaining);
-	}
-
-	return obuf;
+	return crypt_generic_ecb<16>(ibuf, [&aes, &encrypt](const uint8_t *iblock, uint8_t *oblock) {
+			if (encrypt) {
+				AES_encrypt(iblock, oblock, &aes);
+			} else {
+				AES_decrypt(iblock, oblock, &aes);
+			}
+	});
 #elif defined(BCM2UTILS_USE_COMMON_CRYPTO)
 	return crypt_generic_ecb(kCCAlgorithmAES128, kCCKeySizeAES256, 16, ibuf, key, encrypt);
 #elif defined(BCM2UTILS_USE_WINCRYPT)
