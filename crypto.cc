@@ -42,6 +42,7 @@
 #else
 #include <openssl/aes.h>
 #include <openssl/md5.h>
+#include <openssl/des.h>
 #define BCM2UTILS_USE_OPENSSL
 #endif
 
@@ -53,6 +54,11 @@ namespace {
 inline const unsigned char* data(const string& buf)
 {
 	return reinterpret_cast<const unsigned char*>(buf.data());
+}
+
+inline const_DES_cblock* cblock(const string& buf, size_t offset = 0)
+{
+	return const_cast<const_DES_cblock*>(reinterpret_cast<const const_DES_cblock*>(&buf[offset]));
 }
 
 #ifdef BCM2UTILS_USE_WINCRYPT
@@ -222,6 +228,22 @@ template<size_t KeySize> string crypt_generic_ecb(ALG_ID algo, size_t blocksize,
 	// no need to deal with the remaining data, since we copied ibuf to obuf
 	return obuf;
 }
+#elif defined(BCM2UTILS_USE_OPENSSL)
+template<size_t BlockSize, class F> string crypt_generic_ecb(const string& ibuf, const F& crypter)
+{
+	string obuf;
+	size_t i = 0;
+
+	for (; i < ibuf.size() && (i + (BlockSize - 1)) < ibuf.size(); i += BlockSize) {
+		obuf += crypter(data(ibuf) + i);
+	}
+
+	if (i < ibuf.size()) {
+		obuf += ibuf.substr(i);
+	}
+
+	return obuf;
+}
 #endif
 }
 
@@ -259,23 +281,18 @@ string crypt_3des_ecb(const string& ibuf, const string& key, bool encrypt)
 	}
 
 #if defined(BCM2UTILS_USE_OPENSSL)
-	DES_key_schedule ks1, ks2, ks3;
+	DES_key_schedule ks[3];
 
-	DES_set_key_unchecked(&key[0], &ks1);
-	DES_set_key_unchecked(&key[8], &ks2);
-	DES_set_key_unchecked(&key[16], &ks3);
-
-	string obuf(ibuf.size(), '\0');
-	auto remaining = ibuf.size();
-	auto iblock = data(ibuf);
-	auto oblock = reinterpret_cast<unsigned char*>(&obuf[0]);
-
-	while (remaining >= 8) {
-		DES_ecb3_encrypt(&iblock, &oblock, &ks1, &ks2, &ks3, encrypt ? DES_ENCRYPT : DES_DECRYPT);
-		remaining -= 8;
-		iblock += 8;
-		oblock += 8;
+	for (int i = 0; i < 3; ++i) {
+		DES_set_key_unchecked(cblock(key, i * 8), &ks[i]);
 	}
+
+	return crypt_generic_ecb<8>(ibuf, [&ks, &encrypt](const unsigned char *iblock) {
+			DES_cblock oblock;
+			DES_ecb3_encrypt(reinterpret_cast<const_DES_cblock*>(&iblock), &oblock, 
+					&ks[0], &ks[1], &ks[2], encrypt ? DES_ENCRYPT : DES_DECRYPT);
+			return string(reinterpret_cast<char*>(oblock), 8);
+	});
 #elif defined(BCM2UTILS_USE_COMMON_CRYPTO)
 	return crypt_generic_ecb(kCCAlgorithm3DES, kCCKeySize3DES, 8, ibuf, key, encrypt);
 #elif defined(BCM2UTILS_USE_WINCRYPT)
