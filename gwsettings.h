@@ -46,15 +46,19 @@ class settings : public nv_compound
 	virtual std::string header_to_string() const = 0;
 	virtual bool is_valid() const = 0;
 
+	virtual void raw(bool raw)
+	{ m_is_raw = raw; }
+
 	static sp<settings> read(std::istream& is, int type, const csp<bcm2dump::profile>& profile,
-			const std::string& key, const std::string& password);
+			const std::string& key, const std::string& password, bool raw);
+
+	virtual std::ostream& write(std::ostream& is) const override;
 
 	protected:
 	settings(const std::string& name, int format, const csp<bcm2dump::profile>& p)
 	: nv_compound(true, name), m_profile(p), m_format(format) {}
 
 	virtual std::istream& read(std::istream& is) override;
-	//virtual std::ostream& write(std::ostream& is) const override;
 
 	virtual list definition() const override final
 	{ throw std::runtime_error(__PRETTY_FUNCTION__); }
@@ -65,6 +69,8 @@ class settings : public nv_compound
 	int m_format;
 
 	private:
+	std::string m_raw_data;
+	bool m_is_raw = false;
 	bool m_permissive = false;
 	list m_groups;
 };

@@ -451,6 +451,11 @@ class gwsettings : public encryptable_settings
 
 istream& settings::read(istream& is)
 {
+	if (m_is_raw) {
+		m_raw_data = read_stream(is);
+		return is;
+	}
+
 	sp<nv_group> group;
 	size_t remaining = data_bytes();
 	unsigned mult = 1;
@@ -476,8 +481,17 @@ istream& settings::read(istream& is)
 	return is;
 }
 
+ostream& settings::write(ostream& os) const
+{
+	if (!m_is_raw) {
+		return nv_compound::write(os);
+	} else {
+		return os.write(m_raw_data.data(), m_raw_data.size());
+	}
+}
 
-sp<settings> settings::read(istream& is, int format, const csp<bcm2dump::profile>& p, const string& key, const string& pw)
+sp<settings> settings::read(istream& is, int format, const csp<bcm2dump::profile>& p, const string& key,
+		const string& pw, bool raw)
 {
 	sp<settings> ret;
 	string start(16, '\0');
@@ -504,6 +518,7 @@ sp<settings> settings::read(istream& is, int format, const csp<bcm2dump::profile
 	}
 
 	if (ret) {
+		ret->raw(raw);
 		ret->read(is);
 	}
 
