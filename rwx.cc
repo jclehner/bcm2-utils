@@ -616,7 +616,7 @@ void bfc_flash::init(uint32_t offset, uint32_t length, bool write)
 	}
 
 	for (unsigned pass = 0; pass < 2; ++pass) {
-#if 1
+#if 0
 		m_intf->runcmd("/write_memory -s 4 0xa03f6ca4 0x10000018");
 #endif
 
@@ -1517,7 +1517,7 @@ rwx::sp rwx::create(const interface::sp& intf, const string& type, bool safe)
 			} else {
 				return create_code_rwx(intf, space);
 			}
-		} else {
+		} else if (!safe) {
 			return create_code_rwx(intf, space);
 		}
 	} else if (intf->name() == "bfc") {
@@ -1530,7 +1530,7 @@ rwx::sp rwx::create(const interface::sp& intf, const string& type, bool safe)
 		}
 	}
 
-	throw invalid_argument("no such rwx: " + intf->name() + "," + type + ((safe ? "" : ",un") + string("safe")));
+	throw invalid_argument("no such rwx: " + intf->name() + "," + type + ((safe ? "," : ",un") + string("safe")));
 }
 
 rwx::sp rwx::create_special(const interface::sp& intf, const string& type)
