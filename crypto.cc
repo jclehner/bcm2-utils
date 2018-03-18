@@ -56,10 +56,12 @@ inline const unsigned char* data(const string& buf)
 	return reinterpret_cast<const unsigned char*>(buf.data());
 }
 
+#ifdef BCM2UTILS_USE_OPENSSL
 inline const_DES_cblock* cblock(const string& buf, size_t offset = 0)
 {
 	return const_cast<const_DES_cblock*>(reinterpret_cast<const const_DES_cblock*>(&buf[offset]));
 }
+#endif
 
 #ifdef BCM2UTILS_USE_WINCRYPT
 class wincrypt_context
