@@ -42,7 +42,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	// to show up as "cg3000"
 	{
 		.name = "gen2pslc",
-		.pretty = "Generic Profile (MD5 key 2Pslc...)",
+		.pretty = "Generic Profile (MD5 2Pslc...)",
 		.cfg_md5key = "3250736c633b752865676d64302d2778",
 		.spaces = {
 				{ .name = "ram" },
