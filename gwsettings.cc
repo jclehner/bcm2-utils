@@ -354,6 +354,8 @@ class gwsettings : public encryptable_settings
 	{
 		string buf = read_stream(is);
 
+		m_checksum_valid = false;
+
 		validate_checksum_and_detect_profile(buf);
 		validate_magic(buf);
 		m_encrypted = !m_magic_valid;
@@ -451,7 +453,7 @@ class gwsettings : public encryptable_settings
 
 	bool validate_checksum(const string& buf, const csp<bcm2dump::profile>& p)
 	{
-		m_checksum_valid = (m_checksum == calc_checksum(buf, p));
+		m_checksum_valid = (m_checksum == gws_checksum(buf, p));
 		return m_checksum_valid;
 	}
 
@@ -468,13 +470,12 @@ class gwsettings : public encryptable_settings
 		return m_magic_valid;
 	}
 
-	static string calc_checksum(const string& buf, const csp<bcm2dump::profile>& p)
-	{
-		return hash_md5(buf + (p ? p->md5_key() : ""));
-	}
-
 	bool decrypt_with_profile(string& buf, const csp<bcm2dump::profile>& p)
 	{
+		if (!p->cfg_encryption()) {
+			return false;
+		}
+
 		vector<string> keys;
 
 		if (!m_key.empty()) {
@@ -499,10 +500,14 @@ class gwsettings : public encryptable_settings
 			}
 
 			if (validate_magic(tmpbuf)) {
-				m_checksum = tmpsum;
 				m_key = key;
 				buf = tmpbuf;
-				validate_checksum(buf, p);
+
+				if (!m_checksum_valid) {
+					m_checksum = tmpsum;
+					validate_checksum(buf, p);
+				}
+
 				return true;
 			}
 		}
@@ -513,7 +518,11 @@ class gwsettings : public encryptable_settings
 	bool decrypt_and_detect_profile(string& buf)
 	{
 		if (profile()) {
-			return decrypt_with_profile(buf, profile());
+			bool ok = decrypt_with_profile(buf, profile());
+
+			if (!m_is_auto_profile || ok) {
+				return ok;
+			}
 		}
 
 		for (auto p : profile::list()) {
