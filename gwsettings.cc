@@ -45,14 +45,14 @@ string gws_checksum(string buf, const csp<profile>& p)
 	return hash_md5(buf + (p ? p->md5_key() : ""));
 }
 
-string gws_crypt(const string& buf, const string& key, int type, bool decrypt)
+string gws_crypt(const string& buf, const string& key, int type, bool encrypt)
 {
 	if (type == BCM2_CFG_ENC_AES256_ECB) {
-		return crypt_aes_256_ecb(buf, key, decrypt);
+		return crypt_aes_256_ecb(buf, key, encrypt);
 	} else if (type == BCM2_CFG_ENC_3DES_ECB) {
-		return crypt_3des_ecb(buf, key, decrypt);
+		return crypt_3des_ecb(buf, key, encrypt);
 	} else if (type == BCM2_CFG_ENC_SUB_16x16) {
-		return crypt_sub_16x16(buf, decrypt);
+		return crypt_sub_16x16(buf, encrypt);
 	} else if (type == BCM2_CFG_ENC_XOR_0x80) {
 		return xor_string(buf, 0x80);
 	} else {
@@ -75,7 +75,7 @@ string gws_decrypt(string buf, string& checksum, string& key, const csp<profile>
 		}
 		buf = crypt_motorola(buf.substr(0, buf.size() - 1), key);
 	} else {
-		buf = gws_crypt(buf, key, enc, true);
+		buf = gws_crypt(buf, key, enc, false);
 	}
 
 	if (flags & BCM2_CFG_FMT_GWS_FULL_ENC) {
@@ -108,7 +108,7 @@ string gws_encrypt(string buf, const string& key, const csp<profile>& p, bool pa
 			}
 		}
 
-		buf = gws_crypt(buf, key, enc, false);
+		buf = gws_crypt(buf, key, enc, true);
 	}
 
 	if (!(flags & BCM2_CFG_FMT_GWS_FULL_ENC)) {
@@ -435,6 +435,7 @@ class gwsettings : public encryptable_settings
 
 	void validate_checksum_and_detect_profile(const string& buf)
 	{
+
 		if (profile()) {
 			validate_checksum(buf, profile());
 		} else {
