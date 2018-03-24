@@ -36,6 +36,21 @@
 extern "C" {
 #endif
 
+enum bcm2_cfg_flags
+{
+	BCM2_CFG_ENC_MASK = 0x07,
+	BCM2_CFG_ENC_NONE = 0,
+	BCM2_CFG_ENC_AES256_ECB = 1,
+	BCM2_CFG_ENC_3DES_ECB = 2,
+	BCM2_CFG_ENC_MOTOROLA = 3,
+	BCM2_CFG_ENC_XOR_16x16 = 4,
+
+	BCM2_CFG_FMT_MASK = 0x38,
+	BCM2_CFG_FMT_GWS_DEFAULT = 0 << 3,
+	BCM2_CFG_FMT_GWS_DYNNV = 1 << 3,
+	BCM2_CFG_FMT_GWS_FULL_ENC = 2 << 3,
+};
+
 enum bcm2_interface
 {
 	BCM2_INTF_NONE = 0,
