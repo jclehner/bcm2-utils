@@ -104,7 +104,7 @@ string gws_write(string buf, const string& key, const csp<profile>& p, bool pad)
 
 	if (enc == BCM2_CFG_ENC_MOTOROLA) {
 		return crypt_motorola(buf, key) + key;
-	} else {
+	} else if (enc != BCM2_CFG_ENC_NONE) {
 		if (pad) {
 			if (enc == BCM2_CFG_ENC_AES256_ECB) {
 				buf += string(16, '\0');
@@ -419,6 +419,8 @@ class gwsettings : public encryptable_settings
 
 		if (!m_key.empty()) {
 			buf = gws_write(buf, m_key, m_profile, m_padded);
+		} else {
+			buf = gws_checksum(buf, m_profile) + buf;
 		}
 
 		if (!(os.write(buf.data(), buf.size()))) {
@@ -522,6 +524,8 @@ class gwsettings : public encryptable_settings
 
 		for (auto p : profile::list()) {
 			if (decrypt_with_profile(buf, p)) {
+				m_is_auto_profile = true;
+				m_profile = p;
 				return true;
 			}
 		}
