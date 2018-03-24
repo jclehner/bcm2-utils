@@ -31,13 +31,6 @@ string read_stream(istream& is)
 	return string(std::istreambuf_iterator<char>(is), {});
 }
 
-void require_keysize(const string& key, size_t size)
-{
-	if (key.size() != size) {
-		throw user_error("unexpected encryption key length (" + to_string(size) + ")");
-	}
-}
-
 string xor_string(string buf, char b)
 {
 	for (size_t i = 0; i < buf.size(); ++i) {
