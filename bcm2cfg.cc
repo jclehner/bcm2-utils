@@ -212,7 +212,22 @@ int do_set(int argc, char** argv, const sp<settings>& settings)
 	return 0;
 }
 
-int do_crypt_or_fix(int argc, char** argv, const sp<settings>& settings,
+int do_fix(int argc, char** argv, const sp<settings>& settings, bool padded)
+{
+	if (argc != 2 && argc != 3) {
+		return usage(false);
+	}
+
+	// never remove padding
+	if (!settings.padded()) {
+		settings.padded(padded);
+	}
+
+	write_file(argc == 3 ? argv[2] : argv[1], settings);
+	return 0;
+}
+
+int do_crypt(int argc, char** argv, const sp<settings>& settings,
 		const string& key, const string& password, bool padded)
 {
 	if (argc != 2 && argc != 3) {
@@ -373,14 +388,16 @@ int do_main(int argc, char** argv)
 		throw user_error("invalid or encrypted file");
 	}
 
-	if (cmd == "encrypt" || cmd == "decrypt" || cmd == "fix") {
-		return do_crypt_or_fix(argc, argv, settings, key, password, pad);
+	if (cmd == "encrypt" || cmd == "decrypt") {
+		return do_crypt(argc, argv, settings, key, password, pad);
 	} else if (cmd == "get" || cmd == "list" || cmd == "dump" || cmd == "type") {
 		return do_list_get_dump_type(argc, argv, settings);
 	} else if (cmd == "set") {
 		return do_set(argc, argv, settings);
 	} else if (cmd == "verify") {
 		return do_verify(argc, argv, settings);
+	} else if (cmd == "fix") {
+		return do_fix(argc, argv, settings, pad);
 	}
 
 	return usage(false);
