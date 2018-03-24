@@ -91,9 +91,10 @@ int usage(bool help = false)
 	if (help) {
 		os << "\n    Dump raw data of variable <name>. If omitted, dump file contents.\n\n";
 	}
-	os << "  type    <infile> <name>" << endl;
+	os << "  type    <infile> [<name>]" << endl;
 	if (help) {
-		os << "\n    Display type information of variable <name>.\n\n";
+		os << "\n    Display type information of variable <name> or, if omitted, the\n"
+				"    whole file.\n\n";
 	}
 	os << "  info    <infile>" << endl;
 	if (help) {
@@ -190,8 +191,18 @@ int do_list_get_dump_type(int argc, char** argv, const sp<settings>& settings)
 		}
 
 		cout << ostr.str() << flush;
-	} else if (argv[0] == "type"s && argc == 3) {
-		logger::i() << val->type() << endl;
+	} else if (argv[0] == "type"s) {
+		if (argc == 3) {
+			logger::i() << val->type() << endl;
+		} else {
+			logger::i() << argv[1] << ": ";
+			if (settings->profile()) {
+				logger::i() << settings->profile()->name() << endl;
+			} else  {
+				logger::i() << "unknown" << endl;
+			}
+		}
+
 		return 0;
 	} else {
 		return usage(false);
@@ -218,9 +229,13 @@ int do_fix(int argc, char** argv, const sp<settings>& settings, bool padded)
 		return usage(false);
 	}
 
-	// never remove padding
-	if (!settings.padded()) {
-		settings.padded(padded);
+	sp<encryptable_settings> s = dynamic_pointer_cast<encryptable_settings>(settings);
+
+	if (s) {
+		// never remove padding
+		if (!s->padded()) {
+			s->padded(padded);
+		}
 	}
 
 	write_file(argc == 3 ? argv[2] : argv[1], settings);
