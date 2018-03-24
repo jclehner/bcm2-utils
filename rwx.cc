@@ -364,7 +364,7 @@ bool bfc_ram::is_ignorable_line(const string& line)
 		if (line.substr(8, 2) == ": " && line.substr(48, 2) == " |") {
 			m_hint_decimal = false;
 			return false;
-		} else if (contains(line, ": ") && contains(line, " | ")) {
+		} else if (contains(line, ": ") && (contains(line, " | ") || ends_with(line, " |"))) {
 			// if another message is printed by the firmware, the dump
 			// output sometimes switches to an all-decimal format.
 			m_hint_decimal = true;
