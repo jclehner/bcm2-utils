@@ -333,6 +333,7 @@ void version::parse_codecfg()
 	PARSE_ADDR(scanf);
 	PARSE_ADDR(getline);
 	PARSE_ADDR(buffer);
+	PARSE_ADDR(loadaddr);
 #undef PARSE_ADDR
 
 	if ((m_codecfg["buflen"] = m_p->buflen ? m_p->buflen : m_def->buflen)) {
