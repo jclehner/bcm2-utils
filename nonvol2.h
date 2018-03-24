@@ -27,6 +27,8 @@
 #include <string>
 #include <map>
 #include "util.h"
+#undef minor
+#undef major
 
 using bcm2dump::sp;
 using bcm2dump::csp;
