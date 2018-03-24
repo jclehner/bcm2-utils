@@ -281,7 +281,7 @@ int do_crypt(int argc, char** argv, const sp<settings>& settings,
 				logger::i() << "encrypted file using default key for " << p->pretty() << endl;
 			}
 		} else {
-			s->key(from_hex(key));
+			s->key(key);
 		}
 	} else if (argv[0] != "fix"s) {
 		return usage(false);
