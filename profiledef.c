@@ -38,6 +38,16 @@ static bool keyfun_tc7200(const char *password, unsigned char *key)
 }
 
 struct bcm2_profile bcm2_profiles[] = {
+	// because we don't want all unencrypted files with this md5 key
+	// to show up as "cg3000"
+	{
+		.name = "gen2pslc",
+		.pretty = "Generic Profile (MD5 key 2Pslc...)",
+		.cfg_md5key = "3250736c633b752865676d64302d2778",
+		.spaces = {
+				{ .name = "ram" },
+		},
+	},
 	{
 		.name = "cg3000",
 		.pretty = "Netgear CG3000",
