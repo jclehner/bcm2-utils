@@ -959,6 +959,7 @@ class code_rwx : public parsing_rwx
 	{
 		const profile::sp& profile = m_intf->profile();
 		auto cfg = m_intf->version().codecfg();
+		auto funcs = m_intf->version().functions(m_space.name());
 
 		if (cfg["buflen"] && length > cfg["buflen"]) {
 			throw user_error("requested length exceeds buffer size ("
@@ -979,7 +980,7 @@ class code_rwx : public parsing_rwx
 		// TODO: check whether we have a custom code file
 		if (true) {
 			if (!write) {
-				m_read_func = m_space.get_read_func(m_intf->id());
+				m_read_func = funcs["read"];
 
 				m_code = string(reinterpret_cast<const char*>(dumpcode), sizeof(dumpcode));
 				m_entry = 0x4c;
@@ -1008,8 +1009,8 @@ class code_rwx : public parsing_rwx
 					}
 				}
 			} else {
-				m_write_func = m_space.get_write_func(m_intf->id());
-				m_erase_func = m_space.get_erase_func(m_intf->id());
+				m_write_func = funcs["write"];
+				m_erase_func = funcs["erase"];
 
 				m_code = string(reinterpret_cast<const char*>(writecode), sizeof(writecode));
 				m_entry = WRITECODE_ENTRY;

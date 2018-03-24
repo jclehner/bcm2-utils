@@ -315,8 +315,12 @@ class gwsettings : public encryptable_settings
 		ostr.str("");
 		ostr.write(m_magic.data(), m_magic.size());
 		m_version.write(ostr);
+#if 1
 		// 2 bytes for version, 4 for size
 		nv_u32::write(ostr, m_magic.size() + 6 + buf.size());
+#else
+		m_size.write(ostr);
+#endif
 
 		buf = ostr.str() + buf;
 		if (!m_key.empty()) {
