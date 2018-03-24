@@ -67,7 +67,7 @@ string gws_crypt(const string& buf, const string& key, int type, bool decrypt)
 	}
 }
 
-string gws_read(string buf, string& checksum, string& key, const csp<profile>& p)
+string gws_decrypt(string buf, string& checksum, string& key, const csp<profile>& p)
 {
 	int flags = p->cfg_flags();
 	int enc = p->cfg_encryption();
@@ -93,7 +93,7 @@ string gws_read(string buf, string& checksum, string& key, const csp<profile>& p
 	return buf;
 }
 
-string gws_write(string buf, const string& key, const csp<profile>& p, bool pad)
+string gws_encrypt(string buf, const string& key, const csp<profile>& p, bool pad)
 {
 	int flags = p->cfg_flags();
 	int enc = p->cfg_encryption();
@@ -418,7 +418,7 @@ class gwsettings : public encryptable_settings
 		buf = ostr.str() + buf;
 
 		if (!m_key.empty()) {
-			buf = gws_write(buf, m_key, m_profile, m_padded);
+			buf = gws_encrypt(buf, m_key, m_profile, m_padded);
 		} else {
 			buf = gws_checksum(buf, m_profile) + buf;
 		}
@@ -498,7 +498,7 @@ class gwsettings : public encryptable_settings
 			string tmpbuf;
 
 			try {
-				tmpbuf = gws_read(buf, tmpsum, key, p);
+				tmpbuf = gws_decrypt(buf, tmpsum, key, p);
 			} catch (const invalid_argument& e) {
 				logger::t() << e.what() << endl;
 				continue;
