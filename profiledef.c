@@ -42,6 +42,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		.name = "cg3000",
 		.pretty = "Netgear CG3000",
 		.pssig = 0xa0f7,
+		.cfg_flags = BCM2_CFG_ENC_3DES_ECB | BCM2_CFG_FMT_GWS_FULL_ENC,
 		.cfg_md5key = "3250736c633b752865676d64302d2778",
 		.cfg_defkeys = {
 			// 3 keys for 3DES
@@ -49,6 +50,16 @@ struct bcm2_profile bcm2_profiles[] = {
 		},
 		.spaces = {
 				{ .name = "ram" },
+		},
+	},
+	{
+		.name = "sbg6580",
+		.pretty = "Motorola Surfboard SBG6580",
+		.pssig = 0xc055,
+		.cfg_flags = BCM2_CFG_ENC_MOTOROLA | BCM2_CFG_FMT_GWS_FULL_ENC,
+		.cfg_md5key = "3250736c633b752865676d64302d2778",
+		.spaces = {
+			{ .name = "ram" },
 		},
 	},
 	{
@@ -114,6 +125,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		.baudrate = 115200,
 		.pssig = 0xa81b,
 		.blsig = 0x3380,
+		.cfg_flags = BCM2_CFG_ENC_AES256_ECB,
 		.cfg_md5key = "544d4d5f545747383730000000000000",
 		.cfg_defkeys = {
 			"0001020304050607080910111213141516171819202122232425262728293031",
@@ -152,6 +164,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		.pssig = 0xa825,
 		.blsig = 0x3386,
 		.kseg1mask = 0x20000000,
+		.cfg_flags = BCM2_CFG_ENC_AES256_ECB,
 		.cfg_md5key = "544d4d5f544337323030000000000000",
 		.cfg_keyfun = &keyfun_tc7200,
 		.cfg_defkeys = {

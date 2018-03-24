@@ -43,7 +43,8 @@ enum bcm2_cfg_flags
 	BCM2_CFG_ENC_AES256_ECB = 1,
 	BCM2_CFG_ENC_3DES_ECB = 2,
 	BCM2_CFG_ENC_MOTOROLA = 3,
-	BCM2_CFG_ENC_XOR_16x16 = 4,
+	BCM2_CFG_ENC_SUB_16x16 = 4,
+	BCM2_CFG_ENC_XOR_0x80 = 5,
 
 	BCM2_CFG_FMT_MASK = 0x38,
 	BCM2_CFG_FMT_GWS_DEFAULT = 0 << 3,
@@ -230,6 +231,8 @@ struct bcm2_profile {
 	// bootloader string), which can be used to automatically
 	// identify the connected device
 	struct bcm2_magic magic[BCM2_INTF_NUM];
+	// settings regarding the config dump format
+	uint32_t cfg_flags;
 	// a key that is appended to the configuration file data
 	// before calculating its checksum. specify as a hex string 
 	char cfg_md5key[65];
@@ -489,6 +492,9 @@ class profile
 
 	virtual const codecfg_type& codecfg(bcm2_interface intf) const = 0;
 	virtual std::string md5_key() const = 0;
+
+	virtual uint32_t cfg_encryption() const = 0;
+	virtual uint32_t cfg_flags() const = 0;
 
 	//virtual std::string encrypt(const std::string& buf, const std::string& key) = 0;
 	//virtual std::string decrypt(const std::string& buf, const std::string& key) = 0;

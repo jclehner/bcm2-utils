@@ -171,6 +171,12 @@ class profile_wrapper : public profile
 	virtual string md5_key() const override
 	{ return from_hex(m_p->cfg_md5key); }
 
+	virtual uint32_t cfg_encryption() const override
+	{ return cfg_flags() & BCM2_CFG_ENC_MASK; }
+
+	virtual uint32_t cfg_flags() const override
+	{ return m_p->cfg_flags; }
+
 	virtual vector<string> default_keys() const override
 	{ return m_keys; }
 

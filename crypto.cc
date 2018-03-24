@@ -56,6 +56,13 @@ inline const unsigned char* data(const string& buf)
 	return reinterpret_cast<const unsigned char*>(buf.data());
 }
 
+void check_keysize(const string& key, size_t size, const string& name)
+{
+	if (key.size() != size) {
+		throw invalid_argument("invalid key size for algorithm " + name);
+	}
+}
+
 #ifdef BCM2UTILS_USE_OPENSSL
 inline const_DES_cblock* cblock(const string& buf, size_t offset = 0)
 {
@@ -273,9 +280,7 @@ string hash_md5(const string& buf)
 
 string crypt_3des_ecb(const string& ibuf, const string& key, bool encrypt)
 {
-	if (key.size() != 24) {
-		throw invalid_argument("invalid key size for algorithm");
-	}
+	check_keysize(key, 24, "3des-ecb");
 
 #if defined(BCM2UTILS_USE_OPENSSL)
 	DES_key_schedule ks[3];
@@ -302,6 +307,8 @@ string crypt_3des_ecb(const string& ibuf, const string& key, bool encrypt)
 
 string crypt_aes_256_ecb(const string& ibuf, const string& key, bool encrypt)
 {
+	check_keysize(key, 32, "aes-256-ecb");
+
 #if defined(BCM2UTILS_USE_OPENSSL)
 	AES_KEY aes;
 	int err;
@@ -330,5 +337,73 @@ string crypt_aes_256_ecb(const string& ibuf, const string& key, bool encrypt)
 #else
 	throw runtime_error("encryption not supported on this platform");
 #endif
+}
+
+namespace {
+uint32_t srand_motorola;
+
+int32_t rand_motorola()
+{
+	uint32_t result, next = srand_motorola;
+
+	next *= 0x41c64e6d;
+	next += 0x3039;
+	result = next & 0xffe00000;
+
+	next *= 0x41c64e6d;
+	next += 0x3039;
+	result += (next & 0xfffc0000) >> 11;
+
+	next *= 0x41c64e6d;
+	next += 0x3039;
+	result = (result + (next >> 25)) & 0x7fffffff;
+
+	srand_motorola = next;
+	return result;
+}
+}
+
+// this is some snakeoily shit right here!
+string crypt_motorola(string buf, const string& key)
+{
+	check_keysize(key, 1, "motorola");
+
+	// 0x3e000000 0x00000000 raw
+	const double a = 4.656612873077393e-10;
+	// 0x406fe000 0x00000000 raw
+	const double b = 255.0;
+
+	srand_motorola = key[0] & 0xff;
+
+	for (size_t i = 0; i < buf.size(); ++i) {
+		int x = (rand_motorola() * a * b) + 1;
+		buf[i] ^= x;
+	}
+
+	return buf;
+}
+
+// ditto!
+string crypt_sub_16x16(string buf, bool encrypt)
+{
+	char key[16][16];
+
+	for (int i = 0; i < 16; ++i) {
+		for (int k = 0; k < 16; k += 2) {
+			key[i][k] = (i * 16) + k;
+		}
+	}
+
+	for (size_t i = 0; i < (buf.size() / 16) * 16; ++i) {
+		int k = key[i / 16][i % 16];
+
+		if (encrypt) {
+			buf[i] = (buf[i] - k) & 0xff;
+		} else {
+			buf[i] = (buf[i] + k) & 0xff;
+		}
+	}
+
+	return buf;
 }
 }

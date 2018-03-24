@@ -31,71 +31,99 @@ string read_stream(istream& is)
 	return string(std::istreambuf_iterator<char>(is), {});
 }
 
-void gws_read(string& buf, string& chksum, const sp<profile>& p, const string& key)
+void require_keysize(const string& key, size_t size)
 {
-	if (p->cfgfmt() & BCM2_CFG_FMT_GWS_FULL_ENC) {
-		buf = chksum + buf;
+	if (key.size() != size) {
+		throw user_error("unexpected encryption key length (" + to_string(size) + ")");
+	}
+}
+
+string xor_string(string buf, char b)
+{
+	for (size_t i = 0; i < buf.size(); ++i) {
+		buf[i] ^= b;
 	}
 
-	if (p->cfgfmt() == BCM2_CFG_ENC_AES256_ECB) {
-		buf = crypt_aes_256_ecb(buf, key, true);
-	} else if (p->cfgfmt() == BCM2_CFG_ENC_3DES_ECB) {
-		buf = crypt_3des_ecb(buf, key, true);
-		chksum = buf.substr(0, 16);
+	return buf;
+}
+
+string gws_checksum(string buf, const csp<profile>& p)
+{
+	return hash_md5(buf + (p ? p->md5_key() : ""));
+}
+
+string gws_crypt(const string& buf, const string& key, int type, bool decrypt)
+{
+	if (type == BCM2_CFG_ENC_AES256_ECB) {
+		return crypt_aes_256_ecb(buf, key, decrypt);
+	} else if (type == BCM2_CFG_ENC_3DES_ECB) {
+		return crypt_3des_ecb(buf, key, decrypt);
+	} else if (type == BCM2_CFG_ENC_SUB_16x16) {
+		return crypt_sub_16x16(buf, decrypt);
+	} else if (type == BCM2_CFG_ENC_XOR_0x80) {
+		return xor_string(buf, 0x80);
+	} else {
+		throw runtime_error("invalid encryption type " + to_string(type));
+	}
+}
+
+string gws_read(string buf, string& checksum, string& key, const csp<profile>& p)
+{
+	int flags = p->cfg_flags();
+	int enc = p->cfg_encryption();
+
+	if (flags & BCM2_CFG_FMT_GWS_FULL_ENC) {
+		buf = checksum + buf;
+	}
+
+	if (enc == BCM2_CFG_ENC_MOTOROLA) {
+		if (key.empty()) {
+			key = buf.back();
+		}
+		buf = crypt_motorola(buf.substr(0, buf.size() - 1), key);
+	} else {
+		buf = gws_crypt(buf, key, enc, true);
+	}
+
+	if (flags & BCM2_CFG_FMT_GWS_FULL_ENC) {
+		checksum = buf.substr(0, 16);
 		buf = buf.substr(16);
-	} else if (p->cfgfmt() == BCM2_CFG_ENC_XOR_16x16) {
-
 	}
 
-
-
-
-
-
+	return buf;
 }
 
-void gws_read_motorola(string& buf, string& chksum, const string& key)
+string gws_write(string buf, const string& key, const csp<profile>& p, bool pad)
 {
+	int flags = p->cfg_flags();
+	int enc = p->cfg_encryption();
 
+	if (flags & BCM2_CFG_FMT_GWS_FULL_ENC) {
+		buf = gws_checksum(buf, p) + buf;
+	}
 
-
-
-}
-
-
-
-class gws_rw
-{
-	public:
-
-	string read(string buf, string& chksum)
-	{
-		if (m_fmt & BCM2_CFG_FMT_GWS_FULL_ENC) {
-			buf = chksum + buf;
+	if (enc == BCM2_CFG_ENC_MOTOROLA) {
+		return crypt_motorola(buf, key) + key;
+	} else {
+		if (pad) {
+			if (enc == BCM2_CFG_ENC_AES256_ECB) {
+				buf += string(16, '\0');
+			} else if (enc == BCM2_CFG_ENC_3DES_ECB) {
+				int n = 15 - (buf.size() % 16);
+				buf += string(n, '\0');
+				buf += char(n & 0xff);
+			}
 		}
 
-		switch (m_enc) {
-			case BCM2_CFG_ENC_AES256_ECB:
-				buf = crypt_aes_256_ecb(buf, key, 
-
+		buf = gws_crypt(buf, key, enc, false);
 	}
 
+	if (!(flags & BCM2_CFG_FMT_GWS_FULL_ENC)) {
+		buf = gws_checksum(buf, p) + buf;
+	}
 
-
-
-
-	void write(string& buf, string& chksum);
-
-	private:
-	int m_enc, m_fmt;
-
-
-
-};
-
-
-
-
+	return buf;
+}
 
 string group_header_to_string(int format, const string& checksum, bool is_chksum_valid, size_t size, bool is_size_valid,
 		const string& key, bool is_encrypted, const string& profile, bool is_auto_profile)
@@ -333,46 +361,8 @@ class gwsettings : public encryptable_settings
 	{
 		string buf = read_stream(is);
 
-		// first, try file formats where the checksum is encrypted too
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-		int enc = BCM2_CFG_ENC_AES256_ECB;
-		int fmt = BCM2_CFG_FMT_GWS_FULL_ENC;
-
-		if (fmt == BCM2_CFG_FMT_GWS_FULL_ENC) {
-			buf = m_checksum + buf;
-
-
-
-
-		}
-
-
-
-		m_magic = buf.substr(0, 74);
 		validate_checksum_and_detect_profile(buf);
-		validate_magic(m_magic);
+		validate_magic(buf);
 		m_encrypted = !m_magic_valid;
 
 		if (!m_magic_valid && !decrypt_and_detect_profile(buf)) {
@@ -426,12 +416,9 @@ class gwsettings : public encryptable_settings
 #endif
 
 		buf = ostr.str() + buf;
-		if (!m_key.empty()) {
-			buf = crypt(buf, m_key, false, m_padded);
-		}
 
-		if (!(os << calc_checksum(buf, m_profile))) {
-			throw runtime_error("error while writing checksum");
+		if (!m_key.empty()) {
+			buf = gws_write(buf, m_key, m_profile, m_padded);
 		}
 
 		if (!(os.write(buf.data(), buf.size()))) {
@@ -450,33 +437,6 @@ class gwsettings : public encryptable_settings
 
 	private:
 	string m_checksum;
-
-	void decrypt_and_detect_profile_first(const string& buf)
-	{
-		const string checksum_orig = m_checksum;
-
-		for (auto p : profile::list()) {
-			if (!(p->cfgfmt() & BCM2_CFG_FMT_GWS_FULL_ENC)) {
-				continue;
-			}
-
-			if (p->cfgenc() == BCM2_CFG_ENC_MOTOROLA) {
-				vector<int> keys;
-
-				if (!m_key.empty()) {
-					keys.push_back(m_key);
-				} else {
-					keys.push_back(buf.back());
-					keys.push_back(-1);
-				}
-
-				for (int k : keys) {
-					string nbuf = crypt_motorola(checksum_orig + buf, k);
-					m_checksum = 
-				}
-			}
-		}
-	}
 
 	void validate_checksum_and_detect_profile(const string& buf)
 	{
@@ -499,7 +459,12 @@ class gwsettings : public encryptable_settings
 		return m_checksum_valid;
 	}
 
-	bool validate_magic(const string& magic)
+	bool validate_magic(const string& buf)
+	{
+		return do_validate_magic(buf.substr(0, 74)) || do_validate_magic(buf.substr(0, 54));
+	}
+
+	bool do_validate_magic(const string& magic)
 	{
 		m_magic = magic;
 		m_magic_valid = (magic.end() == std::find_if(magic.begin(), magic.end(),
@@ -512,32 +477,36 @@ class gwsettings : public encryptable_settings
 		return hash_md5(buf + (p ? p->md5_key() : ""));
 	}
 
-	bool decrypt_and_detect_profile(string& buf)
-	{
-		if (!m_key.empty()) {
-			return decrypt(buf, m_key);
-		} else if (profile()) {
-			if (!m_pw.empty()) {
-				m_key = profile()->derive_key(m_pw);
-				return decrypt(buf, m_key);
-			}
-			return decrypt_with_profile(buf, profile());
-		} else {
-			for (auto p : profile::list()) {
-				if (decrypt_with_profile(buf, p)) {
-					return true;
-				}
-			}
-		}
-
-		return false;
-	}
-
 	bool decrypt_with_profile(string& buf, const csp<bcm2dump::profile>& p)
 	{
-		for (auto k : p->default_keys()) {
-			if (decrypt(buf, k)) {
-				m_key = k;
+		vector<string> keys;
+
+		if (!m_key.empty()) {
+			keys.push_back(m_key);
+		} else if (!m_pw.empty()) {
+			keys.push_back(p->derive_key(m_pw));
+		} else {
+			keys = p->default_keys();
+			// in case the encryption mode does not require a key
+			keys.push_back("");
+		}
+
+		for (auto key : keys) {
+			string tmpsum = m_checksum;
+			string tmpbuf;
+
+			try {
+				tmpbuf = gws_read(buf, tmpsum, key, p);
+			} catch (const invalid_argument& e) {
+				logger::t() << e.what() << endl;
+				continue;
+			}
+
+			if (validate_magic(tmpbuf)) {
+				m_checksum = tmpsum;
+				m_key = key;
+				buf = tmpbuf;
+				validate_checksum(buf, p);
 				return true;
 			}
 		}
@@ -545,36 +514,19 @@ class gwsettings : public encryptable_settings
 		return false;
 	}
 
-	bool decrypt(string& buf, const string& key)
+	bool decrypt_and_detect_profile(string& buf)
 	{
-		string decrypted = crypt(buf, key, true);
-		if (validate_magic(decrypted.substr(0, 74))) {
-			buf = decrypted;
-			return true;
+		if (profile()) {
+			return decrypt_with_profile(buf, profile());
+		}
+
+		for (auto p : profile::list()) {
+			if (decrypt_with_profile(buf, p)) {
+				return true;
+			}
 		}
 
 		return false;
-	}
-
-	std::string crypt(string ibuf, const string& key, bool decrypt, bool pad = false)
-	{
-		int t = BCM2_CFG_ENC_AES256_ECB;
-		int type = (t & BCM2_CFG_ENC_MASK);
-
-		if (type == BCM2_CFG_ENC_AES256_ECB) {
-			if (pad) {
-				ibuf += string(16, '\0');
-			}
-
-			string buf = crypt_aes_256_ecb(ibuf, key, !decrypt);
-			calc_checksum(buf);
-			return buf;
-		} else if (type == BCM2_CFG_ENC_3DES_ECB) {
-
-			string buf = crypt_3des_ecb(ibuf, key, !decrypt);
-
-			if (pad) +
-		}
 	}
 
 	bool m_is_auto_profile = false;
@@ -592,78 +544,8 @@ class gwsettings : public encryptable_settings
 
 // Currently known magic values:
 // 6u9E9eWF0bt9Y8Rw690Le4669JYe4d-056T9p4ijm4EA6u9ee659jn9E-54e4j6rPj069K-670 (Technicolor, Thomson)
-// 6u9e9ewf0jt9y85w690je4669jye4d-056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056 (Netgear)
-
-class gwsettings2
-{
-	public:
-	gwsettings2(const string& checksum, const csp<bcm2dump::profile>& p,
-			const string& key, const string& pw)
-
-	virtual string crypt(string buf, string key, bool encrypt, bool pad)
-	{
-		throw user_error("this file format does not support encryption");
-	}
-
-	virtual void read(string buf)
-	{
-
-	}
-
-	virtual string write()
-	{
-
-	}
-
-	protected:
-	string m_checksum;
-};
-
-class gwsettings_technicolor
-{
-	public:
-	using gwsettings2::gwsettings2;
-
-	virtual string write()
-	{
-		ostringstream ostr;
-		ostr << *this;
-		string buf = ostr.str();
-
-		if (m_encrypted) {
-			buf = crypt(buf, m_key, true, m_padded);
-		}
-
-		return calc_checksum(buf) + buf;
-	}
-
-	virtual void read(string buf)
-	{
-		
-	}
-
-	virtual string crypt(string buf, string key, bool encrypt, bool pad) override
-	{
-		if (pad) {
-			buf += string(16, '\0');
-		}
-
-		string ret = crypt_aes_256_ecb(buf, key, encrypt);
-
-
-
-		return chksum + 
-
-
-	}
-
-
-
-};
-
-
-
-
+// 6u9e9ewf0jt9y85w690je4669jye4d-056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056 (Netgear, Motorola)
+// FAST3686DNA056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056 (Sagemcom F@ST 3686 AC from DNA Oyj (ISP))
 }
 
 istream& settings::read(istream& is)

@@ -27,5 +27,8 @@ std::string hash_md5(const std::string& buf);
 std::string crypt_aes_256_ecb(const std::string& buf, const std::string& key, bool encrypt);
 std::string crypt_3des_ecb(const std::string& buf, const std::string& key, bool encrypt);
 
+std::string crypt_motorola(std::string buf, const std::string& key);
+std::string crypt_sub_16x16(std::string buf, bool encrypt);
+
 }
 #endif
