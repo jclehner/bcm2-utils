@@ -202,22 +202,15 @@ inline unsigned elapsed_millis(std::clock_t start, std::clock_t now = std::clock
 
 std::string transform(const std::string& str, std::function<int(int)> f);
 
-namespace detail {
-template<typename T> struct bswapper
-{
-	static T ntoh(T n);
-	static T hton(T n);
-};
+template<class T> T ntoh(const T& n);
+template<class T> T hton(const T& n);
 
 #define BCM2UTILS_DEF_BSWAPPER(type, f_ntoh, f_hton) \
-	template<> struct bswapper<type> \
-	{\
-		static type ntoh(const type& n) \
+		template<> inline type ntoh(const type& n) \
 		{ return f_ntoh(n); } \
 		\
-		static type hton(const type& n) \
-		{ return f_hton(n); } \
-	}
+		template<> inline type hton(const type& n) \
+		{ return f_hton(n); }
 
 BCM2UTILS_DEF_BSWAPPER(uint8_t,,);
 BCM2UTILS_DEF_BSWAPPER(int8_t,,);
@@ -225,13 +218,8 @@ BCM2UTILS_DEF_BSWAPPER(uint16_t, ntohs, htons);
 BCM2UTILS_DEF_BSWAPPER(int16_t, ntohs, htons);
 BCM2UTILS_DEF_BSWAPPER(uint32_t, ntohl ,htonl);
 BCM2UTILS_DEF_BSWAPPER(int32_t, ntohl, htonl);
-}
 
-template<typename T> T ntoh(const T& t)
-{ return detail::bswapper<T>::ntoh(t); }
-
-template<typename T> T hton(const T& t)
-{ return detail::bswapper<T>::hton(t); }
+#undef BCM2UTILS_DEF_BSWAPPER
 
 template<typename T> using sp = std::shared_ptr<T>;
 template<typename T> using csp = std::shared_ptr<const T>;
