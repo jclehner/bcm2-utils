@@ -33,3 +33,14 @@
 
 *.bin
 *.swp
+.project
+.settings/
+temp/
+afl_in/
+afl_out/
+html/
+Doxyfile
+bcm2cfg
+bcm2dump
+bcm2console
+t_nonvol
