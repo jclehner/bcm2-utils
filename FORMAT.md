@@ -66,7 +66,8 @@ Currently known magic values:
 | Vendor              | Magic                                                                        |
 |---------------------|------------------------------------------------------------------------------|
 | Technicolor/Thomson | `6u9E9eWF0bt9Y8Rw690Le4669JYe4d-056T9p4ijm4EA6u9ee659jn9E-54e4j6rPj069K-670` |
-| Netgear             | `6u9e9ewf0jt9y85w690je4669jye4d-056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056` |
+| Netgear, Motorola   | `6u9e9ewf0jt9y85w690je4669jye4d-056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056` |
+| Sagem 3686 AC       | `FAST3686DNA056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056`                     |
 
 The checksum is an MD5 hash, calculated from the file contents immediately after the checksum (i.e.
 *everything* but the first 16 bytes). To calculate the checksum, a 16-byte device-specific key is added
@@ -98,6 +99,47 @@ zeroes:
 000041c0  00 00 00 00 00 00 00 00  00                       |.........|
 ```
 
+###### Encryption (Motorola, Arris (?))
+
+Some of these devices use an XOR pad. The pad is generated using the result of a custom `rand()` implementation,
+multiplied by two constants. The seed used is the current time `& 0xff`. As a result, there are 256 possible
+encrypted files for the same data, depending on when it has been created. On these devices, the "encryption" is
+applied *after* generating the checksum. The seed itself is then appended to the encrypted data. An implementation
+is shown below:
+
+```
+uint32_t srand;
+
+int32_t rand()
+{
+	uint32_t result, next = srand;
+
+	next *= 0x41c64e6d;
+	next += 0x3039;
+	result = next & 0xffe00000;
+
+	next *= 0x41c64e6d;
+	next += 0x3039;
+	result += (next & 0xfffc0000) >> 11;
+
+	next *= 0x41c64e6d;
+	next += 0x3039;
+	result = (result + (next >> 25)) & 0x7fffffff;
+
+	srand = next;
+	return result;
+}
+
+void encrypt(char* buf, size_t size, uint8_t seed)
+{
+	srand = seed;
+
+	for (size_t i = 0; i < size; ++i) {
+		buf[i] ^= 1 + ((rand() * 4.656612873077393e-10) * 255.0);
+	}
+}
+```
+
 ###### Encryption (Netgear, Asus (?))
 Some Netgear and possibly Asus devices encrypt the *whole* file using 3DES in ECB mode. In contrast to
 the other encryption method described above, the checksum of these files can only be validated *after*
@@ -117,14 +159,14 @@ would be padded to
 
 ### GatewaySettings.bin (dynnv)
 
-| Offset | Type         | Name       | 
+| Offset | Type         | Name       |
 |-------:|--------------|------------|
 |  `0`   | `u32`        | `size`     |
 |  `4`   | `u32`        | `checksum` |
 |  `8`   |`byte[size-8]`| `data`     |
 
 The header for this file format is the same as for `permnv` and `dynnv`, minus
-the 202-byte all `\xff` header. 
+the 202-byte all `\xff` header.
 
 ###### Encryption
 
@@ -138,7 +180,7 @@ A primitive (and obvious) subtraction cipher with 16 keys is sometimes used. The
 f0 00 f2 00 f4 00 f6 00 f8 00 fa 00 fc 00 fe 00
 ```
 For the first 16-byte block, the first key is used, the second key for the second block,
-and so forth. For the 17th block, the first key is used again. After decryption, 
+and so forth. For the 17th block, the first key is used again. After decryption,
 bytes `n` and `n+1` (`n` being an even number, including zero) are swapped in each
 16-byte block.
 
@@ -204,7 +246,7 @@ The following table shows various string samples (`\x??` means *any* byte, `(N)`
 
 ###### Lists
 
-| Type       | Description                                                                    |                           
+| Type       | Description                                                                    |
 | -----------|--------------------------------------------------------------------------------|
 | `array`    | Fixed-size array (element number is fixed, but not actual size in bytes)       |
 | `pNlist`   | `u8`- or `u16`-prefixed list; prefix contains number of elements in list       |
@@ -217,9 +259,9 @@ same group (but not as a prefix).
 
 Sample encodings for string arrays/lists:
 
-| Type                   | `{ "foo", "ba", "r" }`            | `{ "", "" }`                       |          
+| Type                   | `{ "foo", "ba", "r" }`            | `{ "", "" }`                       |
 |------------------------|-----------------------------------|------------------------------------|
-| `array<fzstring<4>>`   | `foo\x00ba\x00\x00r\x00\x00\x00`  | `\x00\x00\x00\x00\x00\x00\x00\x00` |                           
+| `array<fzstring<4>>`   | `foo\x00ba\x00\x00r\x00\x00\x00`  | `\x00\x00\x00\x00\x00\x00\x00\x00` |
 | `array<zstring>`       | `foo\x00ba\x00r\x00`              | `\x00\x00`                         |
 | `array<p8string>`      | `\x03foo\x02ba\x01r`              | `\x00\x00`                         |
 | `p8list<zstring>`      | `\x03foo\x00ba\x00r\x00`          | `\x02\x00\x00`                     |
@@ -228,12 +270,12 @@ Sample encodings for string arrays/lists:
 
 Sample encodings for integer arrays/lists:
 
-| Type                   | `{ 0xaaaa, 0, 0xbbbb  }`                   | `{ 0xaa }`, width 2, dummy `0` | `{}`      |        
+| Type                   | `{ 0xaaaa, 0, 0xbbbb  }`                   | `{ 0xaa }`, width 2, dummy `0` | `{}`      |
 |------------------------|--------------------------------------------|--------------------------------|-----------|
 | `array<u16>`           | `\xaa\xaa\x00\x00\xbb\xbb`                 |`\x00\xaa\x00\x00`              | N/A       |
 | `array<u32>`           | `\x00\x00\xaa\xaa\x00\x00\x00\x00\xbb\xbb` |`\x00\x00\x00\xaa\x00\x00\x00\x00`| N/A     |
-| `p8list<u16>`          | `\x03\xaa\xaa\x00\x00\xbb\xbb`             | N/A                            | `\x00`    | 
-| `p16list<u16>`         | `\x00\x03\xaa\xaa\x00\x00\xbb\xbb`         | N/A                            | `\x00\x00`| 
+| `p8list<u16>`          | `\x03\xaa\xaa\x00\x00\xbb\xbb`             | N/A                            | `\x00`    |
+| `p16list<u16>`         | `\x00\x03\xaa\xaa\x00\x00\xbb\xbb`         | N/A                            | `\x00\x00`|
 
 
 
