@@ -410,6 +410,7 @@ class nv_group_8021 : public nv_group
 				NV_VAR2(nv_enum<nv_u8>, "n_protection", "off_auto", offauto), // 0 = off, 1 = auto
 				NV_VAR(nv_bool, "wps_enabled"),
 				NV_VAR(nv_bool, "wps_configured"),
+				// these appear to be p8string on some devices
 				NV_VAR(nv_p8zstring, "wps_device_pin"),
 				NV_VAR(nv_p8zstring, "wps_model"),
 				NV_VAR(nv_p8zstring, "wps_manufacturer"),
