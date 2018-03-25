@@ -112,7 +112,7 @@ class nv_group_mlog : public nv_group
 			NV_VAR(nv_p16string, "http_pass", 32),
 			NV_VAR(nv_p16string, "http_admin_user", 32),
 			NV_VAR(nv_p16string, "http_admin_pass", 32),
-			NV_VAR(nv_bool, "telnet_enabled"),
+			NV_VAR(nv_u8, "telnet_enabled", true),
 			NV_VAR(nv_zstring, "remote_acc_user", 16),
 			NV_VAR(nv_zstring, "remote_acc_pass", 16),
 			NV_VAR(nv_ipstacks, "telnet_ipstacks"),
