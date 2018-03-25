@@ -332,6 +332,8 @@ int do_main(int argc, char** argv)
 	bool pad = false, raw = false;
 	int format = nv_group::fmt_unknown;
 
+	opterr = 0;
+
 	while ((opt = getopt(argc, argv, "hP:p:k:f:zvq")) != -1) {
 		switch (opt) {
 		case 'v':
