@@ -64,10 +64,21 @@ void check_keysize(const string& key, size_t size, const string& name)
 }
 
 #ifdef BCM2UTILS_USE_OPENSSL
-inline const_DES_cblock* cblock(const string& buf, size_t offset = 0)
+inline const_DES_cblock* to_ccblock(const uint8_t* buf)
 {
-	return const_cast<const_DES_cblock*>(reinterpret_cast<const const_DES_cblock*>(&buf[offset]));
+	return (const_DES_cblock*)buf;
 }
+
+inline DES_cblock* to_cblock(uint8_t* buf)
+{
+	return (DES_cblock*)buf;
+}
+
+inline const_DES_cblock* to_ccblock(const string& buf, size_t offset)
+{
+	return (const_DES_cblock*)&buf[offset];
+}
+
 #endif
 
 #ifdef BCM2UTILS_USE_WINCRYPT
@@ -286,14 +297,11 @@ string crypt_3des_ecb(const string& ibuf, const string& key, bool encrypt)
 	DES_key_schedule ks[3];
 
 	for (int i = 0; i < 3; ++i) {
-		DES_set_key_unchecked(cblock(key, i * 8), &ks[i]);
+		DES_set_key_unchecked(to_ccblock(key, i * 8), &ks[i]);
 	}
 
 	return crypt_generic_ecb<8>(ibuf, [&ks, &encrypt](const uint8_t *iblock, uint8_t *oblock) {
-			DES_ecb3_encrypt(
-					reinterpret_cast<const_DES_cblock*>(&iblock),
-					reinterpret_cast<DES_cblock*>(&oblock),
-					&ks[0], &ks[1], &ks[2],
+			DES_ecb3_encrypt(to_ccblock(iblock), to_cblock(oblock), &ks[0], &ks[1], &ks[2],
 					encrypt ? DES_ENCRYPT : DES_DECRYPT);
 	});
 #elif defined(BCM2UTILS_USE_COMMON_CRYPTO)

@@ -278,7 +278,6 @@ int do_crypt(int argc, char** argv, const sp<settings>& settings,
 					throw user_error("detected profile " + p->name() + " has no default keys; use '-k <key>' or '-p <password>'");
 				}
 				s->key(keys.front());
-				logger::i() << "encrypted file using default key for " << p->pretty() << endl;
 			}
 		} else {
 			s->key(key);

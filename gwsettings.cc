@@ -102,9 +102,11 @@ string gws_encrypt(string buf, const string& key, const csp<profile>& p, bool pa
 			if (enc == BCM2_CFG_ENC_AES256_ECB) {
 				buf += string(16, '\0');
 			} else if (enc == BCM2_CFG_ENC_3DES_ECB) {
-				int n = 15 - (buf.size() % 16);
-				buf += string(n, '\0');
-				buf += char(n & 0xff);
+				unsigned n = 8 - (buf.size() % 8);
+				if (n < 8) {
+					buf += string(n - 1, '\0');
+					buf += char(n & 0xff);
+				}
 			}
 		}
 
