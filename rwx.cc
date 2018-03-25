@@ -572,8 +572,8 @@ class bfc_flash2 : public bfc_ram
 	}
 
 	bool m_read = true;
-	uint32_t m_dump_offset;
-	uint32_t m_dump_length;
+	uint32_t m_dump_offset = 0;
+	uint32_t m_dump_length = 0;
 	version::funcmap m_funcs;
 	version::u32map m_cfg;
 };
@@ -1002,10 +1002,10 @@ class code_rwx : public parsing_rwx
 
 					unsigned i = 0;
 					for (auto patch : m_read_func.patches()) {
-						uint32_t offset = 0x2c + (8 * i++);
+						uint32_t off = 0x2c + (8 * i++);
 						uint32_t addr = patch->addr;
-						patch32(m_code, offset, addr ? (kseg1 | addr) : 0);
-						patch32(m_code, offset + 4, addr ? patch->word : 0);
+						patch32(m_code, off, addr ? (kseg1 | addr) : 0);
+						patch32(m_code, off + 4, addr ? patch->word : 0);
 					}
 				}
 			} else {
@@ -1166,7 +1166,7 @@ bool bfc_cmcfg::is_ignorable_line(const string& line)
 	return ret;
 }
 
-string bfc_cmcfg::parse_chunk_line(const string& line, uint32_t offset)
+string bfc_cmcfg::parse_chunk_line(const string& line, uint32_t)
 {
 	string linebuf;
 	for (unsigned i = 0; i < 16; ++i) {

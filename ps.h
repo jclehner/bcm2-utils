@@ -54,7 +54,10 @@ class ps_header
 	static uint16_t constexpr c_comp_lza = 5;
 	static uint16_t constexpr c_dual_files = 0x100;
 
-	ps_header() : m_valid(false) {}
+	ps_header() : m_valid(false)
+	{
+		memset(&m_raw, 0, sizeof(m_raw));
+	}
 	ps_header(const std::string& buf)
 	{ parse(buf); }
 	ps_header(const ps_header& other)

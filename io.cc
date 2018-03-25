@@ -200,16 +200,13 @@ class fdio : public io
 	fdio() : m_fd(-1) {}
 
 	virtual ~fdio()
-	{ close(); }
+	{ ::close(m_fd); }
 
 	virtual bool pending(unsigned timeout) override;
 	virtual void write(const string& str) override;
 	virtual string read(size_t length, bool partial = true) override;
 
 	protected:
-	virtual void close()
-	{ ::close(m_fd); }
-
 	virtual int getc() override;
 	virtual ssize_t read1(char &c);
 
@@ -223,7 +220,7 @@ class hio : public io
 	hio() : m_h(INVALID_HANDLE_VALUE) {}
 
 	virtual ~hio()
-	{ close(); }
+	{ CloseHandle(m_h); }
 
 	//virtual bool pending(unsigned timeout) override;
 	virtual void write(const string& str) override;
@@ -231,9 +228,6 @@ class hio : public io
 
 	protected:
 	virtual int getc() override;
-
-	virtual void close()
-	{ CloseHandle(m_h); }
 
 	HANDLE m_h;
 };
@@ -275,13 +269,11 @@ class telnet : public tcp
 {
 	public:
 	telnet(const string& addr, uint16_t port) : tcp(addr, port) {}
-	virtual ~telnet() { close(); }
 	virtual void write(const string& str) override;
 	virtual void writeln(const string& str) override;
 
 	protected:
 	virtual int getc() override;
-	virtual void close() override;
 
 	private:
 	void handle_op_opt(int op, int opt);
@@ -652,6 +644,7 @@ int telnet::getc()
 // and echo, and try to fend off everything else
 //
 
+#if 0
 void telnet::handle_op_opt(int op, int opt)
 {
 	if (op == op_will) {
@@ -674,11 +667,7 @@ void telnet::send_op_opt(int op, int opt)
 	logger::d() << endl << "telnet: sending " << op << "," << opt << endl;
 	tcp::write(string("\xff") + char(op) + char(opt));
 }
-
-void telnet::close()
-{
-	tcp::close();
-}
+#endif
 #endif
 }
 

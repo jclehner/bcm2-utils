@@ -296,14 +296,18 @@ int do_scan(int argc, char** argv, int opts, const string& profile)
 		throw user_error("unknown profile, must specify <start> and <size>");
 	}
 
-	uint32_t start = rwx->space().min();
-	uint32_t length = rwx->space().size();
-	uint32_t step = lexical_cast<uint32_t>(argv[3]);
+	uint32_t start;
+	uint32_t length;
 
 	if (argc == 6) {
 		start = lexical_cast<uint32_t>(argv[4]);
 		length = lexical_cast<uint32_t>(argv[5]);
+	} else {
+		start = rwx->space().min();
+		length = rwx->space().size();
 	}
+
+	uint32_t step = lexical_cast<uint32_t>(argv[3]);
 
 	if (logger::loglevel() <= logger::info) {
 		uint32_t scan_length = ((length / step) - 1) * step + 92;
