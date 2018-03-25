@@ -2,7 +2,7 @@ CC ?= gcc
 CXX ?= g++
 LIBS ?=
 VERSION = $(shell git describe --always)
-CFLAGS += -Wall -g -DVERSION=\"$(VERSION)\"
+CFLAGS += -Wall -Wno-sign-compare -g -DVERSION=\"$(VERSION)\"
 CXXFLAGS += $(CFLAGS) -std=c++14 -Wnon-virtual-dtor
 PREFIX ?= /usr/local
 UNAME ?= $(shell uname)
