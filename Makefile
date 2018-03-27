@@ -15,12 +15,14 @@ ifeq ($(UNAME), Darwin)
 	CFLAGS +=
 endif
 
-bcm2dump_OBJ = io.o rwx.o interface.o ps.o bcm2dump.o \
-	util.o progress.o mipsasm.o profile.o profiledef.o
-bcm2cfg_OBJ = util.o nonvol2.o bcm2cfg.o nonvoldef.o \
-	gwsettings.o profile.o profiledef.o crypto.o
+profile_OBJ = profile.o profiledef.o
 
-t_nonvol_OBJ = util.o nonvol2.o t_nonvol.o
+bcm2dump_OBJ = io.o rwx.o interface.o ps.o bcm2dump.o \
+	util.o progress.o mipsasm.o $(profile_OBJ)
+bcm2cfg_OBJ = util.o nonvol2.o bcm2cfg.o nonvoldef.o \
+	gwsettings.o $(profile_OBJ) crypto.o
+
+t_nonvol_OBJ = util.o nonvol2.o t_nonvol.o $(profile_OBJ)
 
 .PHONY: all clean bcm2cfg.exe
 
