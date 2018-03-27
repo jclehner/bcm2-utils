@@ -134,10 +134,16 @@ string from_hex(const string& hexstr)
 				+ to_string(hexstr.size()));
 	}
 
-	string ret;
-	ret.reserve(hexstr.size() / 2);
+	size_t i = 0;
 
-	for (size_t i = 0; i < hexstr.size(); i += 2) {
+	if (starts_with(hexstr, "0x")) {
+		i += 2;
+	}
+
+	string ret;
+	ret.reserve((hexstr.size() - i) / 2);
+
+	for (; i < hexstr.size(); i += 2) {
 		string chr = hexstr.substr(i, 2);
 		try {
 			ret += lexical_cast<int>(hexstr.substr(i, 2), 16);
