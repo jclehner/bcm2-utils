@@ -111,6 +111,8 @@ string gws_encrypt(string buf, const string& key, const csp<profile>& p, bool pa
 		}
 
 		buf = gws_crypt(buf, key, enc, true);
+	} else {
+		throw user_error("profile " + p->name() + " does not support encryption");
 	}
 
 	if (!(flags & BCM2_CFG_FMT_GWS_FULL_ENC)) {
