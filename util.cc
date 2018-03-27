@@ -186,6 +186,31 @@ std::string transform(const std::string& str, std::function<int(int)> f)
 	return ret;
 }
 
+string get_profile_names(unsigned width, unsigned indent)
+{
+	string names, indstr;
+	size_t w = 0;
+
+	if (indent) {
+		indstr = string(indent, ' ');
+		names += indstr;
+	}
+
+	for (auto p : profile::list()) {
+		string n = p->name();
+
+		if ((w + indent + n.size() + 2) > width) {
+			names += "\n" + indstr;
+			w = 0;
+		}
+
+		names += n + ", ";
+		w += n.size() + 2;
+	}
+
+	return names.substr(0, names.size() - 2);
+}
+
 ofstream logger::s_bucket;
 int logger::s_loglevel = logger::info;
 bool logger::s_no_stdout = false;

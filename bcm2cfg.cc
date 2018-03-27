@@ -105,6 +105,9 @@ int usage(bool help = false)
 		os << "\n    Print this information and exit.\n\n";
 	}
 	os << endl;
+	os << "Profiles:" << endl;
+	os << get_profile_names(60, 2) << endl;
+	os << endl;
 	os <<
 			"bcm2cfg " VERSION " Copyright (C) 2016 Joseph C. Lehner\n"
 			"Licensed under the GNU GPLv3; source code is available at\n"

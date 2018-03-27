@@ -82,6 +82,9 @@ void usage(bool help = false)
 	os << "                           password 'bar'" << endl;
 	os << "  192.168.0.1,foo,bar,233  Same as above, port 233" << endl;
 	os << endl;
+	os << "Profiles:" << endl;
+	os << get_profile_names(60, 2) << endl;
+	os << endl;
 	os << "bcm2dump " << VERSION << " Copyright (C) 2016 Joseph C. Lehner" << endl;
 	os << "Licensed under the GNU GPLv3; source code is available at" << endl;
 	os << "https://github.com/jclehner/bcm2utils" << endl;
