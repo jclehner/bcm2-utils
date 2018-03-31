@@ -376,15 +376,11 @@ string crypt_motorola(string buf, const string& key)
 {
 	check_keysize(key, 1, "motorola");
 
-	// 0x3e000000 0x00000000 raw
-	const double a = 4.656612873077393e-10;
-	// 0x406fe000 0x00000000 raw
-	const double b = 255.0;
-
 	srand_motorola = key[0] & 0xff;
 
 	for (size_t i = 0; i < buf.size(); ++i) {
-		int x = (rand_motorola() * a * b) + 1;
+		float r = rand_motorola();
+		int x = ((r / 0x7fffffff) * 255) + 1;
 		buf[i] ^= x;
 	}
 
