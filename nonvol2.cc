@@ -377,36 +377,62 @@ istream& nv_compound::read(istream& is)
 			continue;
 		}
 
-		try {
-			if ((m_width && (m_bytes + v.val->bytes() > m_width)) || (!v.val->read(is) && !is.eof())) {
-				if (!m_partial) {
-					throw runtime_error("pos " + ::to_string(m_bytes) + ": failed to read " + desc(v));
-				} else {
-					logger::t() << "pos " << m_bytes << ": stopped parsing at " << desc(v) << ", stream=" << !!is
-							<< " width=" << m_width << " bytes=" << m_bytes << " val=" << v.val->bytes() << " bytes" << endl;
-					m_set = true;
-				}
-				break;
-			} else {
+		bool end = false;
 
-				// check again, because a successful read may have changed the
-				// byte count (e.g. an nv_pstring)
-				if ((m_width && m_bytes + v.val->bytes() > m_width)) {
-					logger::t() << v.val->bytes() << endl;
-					throw runtime_error("pos " + ::to_string(m_bytes) + ": variable ends outside of group: " + desc(v) +
-							" b=" + ::to_string(m_bytes) + "+" + ::to_string(v.val->bytes()) + ", w=" + ::to_string(m_width));
-				}
-				logger::t() << "pos " << m_bytes  << ": " + desc(v) << " = " << v.val->to_pretty() << " (" << v.val->bytes() << " b)"<< endl;
-				m_bytes += v.val->bytes();
-				m_set = true;
+		logger::t() << "pos " << is.tellg() << ": " << desc(v) << " " << v.val->bytes() << endl;
 
-				if (is.eof()) {
-					break;
-				}
-			}
-		} catch (const exception& e) {
-			throw runtime_error("error at pos " + std::to_string(m_bytes) + " while reading " + desc(v) + ":\n" + e.what());
+		if ((m_width && (m_bytes + v.val->bytes()) > m_width)) {
+			end = true;
+			logger::t() << "  variable size exceeds compound size" << endl;
 		}
+
+		auto pos = is.tellg();
+
+		if (!end) {
+			try {
+				v.val->read(is);
+			} catch (const exception& e) {
+				logger::t() << "  caught exception: " << e.what() << endl;
+				end = true;
+			}
+		}
+
+		if (!is) {
+			if (!is.eof()) {
+				throw runtime_error(type() + ": read error");
+			}
+
+			logger::t() << "  encountered eof while reading" << endl;
+			end = true;
+		}
+
+		// check again, because a successful read may have changed the
+		// byte count (by a pX_string for instance)
+
+		if (!end && (m_width && (m_bytes + v.val->bytes()) > m_width)) {
+			end = true;
+			logger::t() << "  new variable size exceeds compound size" << endl;
+		}
+
+		if (end) {
+			if (!m_partial) {
+				throw runtime_error(type() + ": unexpected end of data");
+			}
+
+			// seek to the end of this compound, so we can try to continue parsing
+
+			if (!is.eof()) {
+				is.clear();
+				is.seekg(pos);
+				is.seekg(m_width - m_bytes, ios::cur);
+				is.clear(ios::failbit);
+			}
+
+			break;
+		}
+
+		m_bytes += v.val->bytes();
+		m_set = true;
 	}
 
 	return is;
@@ -746,17 +772,21 @@ istream& nv_group::read(istream& is)
 				throw runtime_error("failed to read remaining " + std::to_string(extra->bytes()) + " bytes");
 			}
 
-			logger::t() << "  read " << m_bytes << " b , group size is " << m_size.num() << "; extra data size is " << extra->bytes() << "b" << endl;
+			logger::t() << "  extra data size is " << extra->bytes() << "b" << endl;
 			m_parts.push_back(named("_extra", extra));
 			logger::t() << extra->to_pretty() << endl;
 			m_bytes += extra->bytes();
 		}
 	} else {
-		if (is.eof()) {
-			throw runtime_error(type() + ": expected " + ::to_string(m_size.num() - m_bytes) + "b, got end-of-file");
+		if (is.bad()) {
+			throw runtime_error(type() + ": read error");
 		}
 
-		throw runtime_error(type() + ": unspecified error while reading data");
+		m_size.num(m_bytes);
+		logger::t() << "  truncating group size to " << m_bytes << endl;
+
+		// nv_compound::read() may have set failbit
+		is.clear(is.rdstate() & ~ios::failbit);
 	}
 
 #if 0
@@ -810,37 +840,6 @@ map<nv_magic, csp<nv_group>>& nv_group::registry()
 {
 	static map<nv_magic, csp<nv_group>> ret;
 	return ret;
-}
-
-namespace {
-class nv_group_junk : public nv_group
-{
-	public:
-	nv_group_junk() : nv_group("JUNK", "junk") {}
-
-	nv_group_junk* clone() const
-	{ return new nv_group_junk(*this); }
-
-	string type() const override
-	{ return "junk"; }
-
-	istream& read(istream& is) override
-	{
-		m_data = string(std::istreambuf_iterator<char>(is), {});
-		is.clear(is.rdstate() | (m_data.empty() ? ios::failbit : ios::eofbit));
-
-		return is;
-	}
-
-	ostream& write(ostream& os) const override
-	{ return os.write(m_data.data(), m_data.size()); }
-
-	size_t bytes() const override
-	{ return m_data.size(); }
-
-	private:
-	string m_data;
-};
 }
 
 istream& nv_group::read(istream& is, sp<nv_group>& group, int format, size_t maxsize)
