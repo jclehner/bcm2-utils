@@ -24,27 +24,6 @@
 using namespace std;
 
 namespace bcm2dump {
-namespace {
-
-void ntoh_header(ps_header::raw& raw)
-{
-#define BCM2_NTOH(x) raw.x = ntoh(raw.x)
-	BCM2_NTOH(signature);
-	BCM2_NTOH(control);
-	BCM2_NTOH(ver_maj);
-	BCM2_NTOH(ver_min);
-	BCM2_NTOH(timestamp);
-	BCM2_NTOH(length);
-	BCM2_NTOH(loadaddr);
-	BCM2_NTOH(length1);
-	BCM2_NTOH(length2);
-	BCM2_NTOH(hcs);
-	BCM2_NTOH(reserved);
-	BCM2_NTOH(crc);
-#undef BCM2_NTOH
-}
-}
-
 ps_header& ps_header::parse(const string& buf)
 {
 	if (buf.size() < sizeof(m_raw)) {
@@ -53,10 +32,8 @@ ps_header& ps_header::parse(const string& buf)
 
 	memcpy(&m_raw, buf.data(), sizeof(m_raw));
 	uint16_t hcs = crc16_ccitt(&m_raw, sizeof(m_raw) - 8) ^ 0xffff;
-	ntoh_header(m_raw);
 
-	m_valid = (m_raw.hcs == hcs);
-	//m_valid = (calc_hcs(m_raw) == m_raw.hcs);
+	m_valid = (hcs == ntoh(m_raw.hcs));
 	return *this;
 }
 
@@ -64,5 +41,4 @@ string ps_header::filename() const
 {
 	return string(m_raw.filename, strnlen(m_raw.filename, sizeof(m_raw.filename)));
 }
-
 }

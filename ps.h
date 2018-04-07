@@ -19,6 +19,7 @@
 
 #ifndef BCM2DUMP_PS_H
 #define BCM2DUMP_PS_H
+#include <cstring>
 #include <string>
 
 namespace bcm2dump {
@@ -74,16 +75,22 @@ class ps_header
 	std::string filename() const;
 
 	uint16_t signature() const
-	{ return m_raw.signature; }
+	{ return ntoh(m_raw.signature); }
 
 	uint32_t length() const
-	{ return m_raw.length; }
+	{ return ntoh(m_raw.length); }
+
+	uint16_t control() const
+	{ return ntoh(m_raw.control); }
 
 	uint16_t compression() const
-	{ return m_raw.control & 0x7; }
+	{ return control() & 0x7; }
 
 	bool is_dual() const
-	{ return m_raw.control & c_dual_files; }
+	{ return control() & c_dual_files; }
+
+	const raw* data() const
+	{ return &m_raw; }
 
 	private:
 	bool m_valid = false;
