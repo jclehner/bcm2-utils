@@ -21,12 +21,12 @@ bcm2dump_OBJ = io.o rwx.o interface.o ps.o bcm2dump.o \
 	util.o progress.o mipsasm.o $(profile_OBJ)
 bcm2cfg_OBJ = util.o nonvol2.o bcm2cfg.o nonvoldef.o \
 	gwsettings.o $(profile_OBJ) crypto.o
-
+psextract_OBJ = util.o ps.o psextract.o
 t_nonvol_OBJ = util.o nonvol2.o t_nonvol.o $(profile_OBJ)
 
 .PHONY: all clean bcm2cfg.exe
 
-all: bcm2dump bcm2cfg t_nonvol
+all: bcm2dump bcm2cfg t_nonvol ps2extract
 
 release: clean bcm2cfg bcm2dump
 	strip bcm2cfg
@@ -42,6 +42,9 @@ bcm2cfg.exe:
 bcm2dump: $(bcm2dump_OBJ)
 	$(CXX) $(CXXFLAGS) $(bcm2dump_OBJ) -o $@ 
 
+psextract: $(psextract_OBJ)
+	$(CXX) $(CXXFLAGS) $(psextract_OBJ) -o $@
+
 t_nonvol: $(t_nonvol_OBJ)
 	$(CXX) $(CXXFLAGS) $(t_nonvol_OBJ) -o $@
 
@@ -55,7 +58,7 @@ check: t_nonvol
 	./t_nonvol
 
 clean:
-	rm -f bcm2cfg bcm2cfg.exe bcm2dump t_nonvol *.o
+	rm -f bcm2cfg bcm2cfg.exe bcm2dump t_nonvol psextract *.o
 
 install: all
 	install -m 755 bcm2cfg $(PREFIX)/bin

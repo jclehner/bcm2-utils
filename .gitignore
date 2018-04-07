@@ -43,4 +43,8 @@ Doxyfile
 bcm2cfg
 bcm2dump
 bcm2console
+psextract
 t_nonvol
+Makefile.win
+bcm2cfg.layout
+bcm2dump.layout
