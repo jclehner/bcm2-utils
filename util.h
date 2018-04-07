@@ -202,8 +202,6 @@ inline unsigned elapsed_millis(std::clock_t start, std::clock_t now = std::clock
 
 std::string transform(const std::string& str, std::function<int(int)> f);
 
-std::string get_profile_names(unsigned width, unsigned indent);
-
 template<class T> T ntoh(const T& n);
 template<class T> T hton(const T& n);
 

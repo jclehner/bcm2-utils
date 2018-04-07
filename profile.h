@@ -511,6 +511,8 @@ class profile
 	private:
 	static std::vector<profile::sp> s_profiles;
 };
+
+std::string get_profile_names(unsigned width, unsigned indent);
 }
 
 #endif
