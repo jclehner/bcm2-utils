@@ -24,8 +24,6 @@ using namespace std;
 using namespace bcm2dump;
 using namespace bcm2cfg;
 
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0])
-
 namespace {
 
 class failed_test : public runtime_error
