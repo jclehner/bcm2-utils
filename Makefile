@@ -26,7 +26,7 @@ t_nonvol_OBJ = util.o nonvol2.o t_nonvol.o $(profile_OBJ)
 
 .PHONY: all clean bcm2cfg.exe
 
-all: bcm2dump bcm2cfg t_nonvol ps2extract
+all: bcm2dump bcm2cfg t_nonvol psextract
 
 release: clean bcm2cfg bcm2dump
 	strip bcm2cfg
