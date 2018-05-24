@@ -24,6 +24,19 @@ using namespace bcm2dump;
 using namespace std;
 
 namespace {
+struct monolithic_header
+{
+	// 0x4d4f4e4f (MONO)
+	uint32_t magic; // 0x4d4f4e4f (MONO)
+	// ProgramStore signature
+	uint16_t pssig;
+	uint16_t unk1;
+	// length including header
+	uint32_t length;
+	uint16_t unk2;
+	uint16_t unk3;
+} __attribute__((packed));
+
 void do_extract(istream& in, const ps_header& ps, size_t length = 0)
 {
 	if (!length) {
@@ -59,6 +72,8 @@ void extract_single(istream& in)
 	if (ps.parse(hbuf).hcs_valid()) {
 		logger::i() << ps.filename() << ", " << ps.length() << " b" << endl;
 		do_extract(in, ps);
+	} else {
+		logger::e() << "checksum error at offset " << hex << in.tellg() << endl;
 	}
 }
 
