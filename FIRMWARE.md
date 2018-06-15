@@ -55,3 +55,23 @@ Some firmware files are so-called monolithic images, which contain multiple imag
 Individual images are padded with `0` bytes, to a 64k block size. It's possible that the amount of
 padding is specified within the header. `unk1[1]` is `16` in all images I've seen so far, which
 *could* mean 16 `4k` blocks (but this is purely speculative).
+
+###### ProgramStore image
+
+ProgramStore images may contain data for various purposes. So far,
+the following contents have been observed:
+
+* CM firmware images. In these cases, the `addr` field is non-zero. This is
+  raw machine code, not a specific executable file format!
+* `tar.gz` files, containing Linux device tree information
+* Linux `zImage`
+* UBI - UBIFS images (Linux filesystem)
+* UBI - SQUASHFS images (Linux filesystem)
+* UBI - SQUASHFS images (CM firmware images)
+
+Extracting UBI stuff is tricky. Some options are:
+
+* (nandsim)[http://www.linux-mtd.infradead.org/faq/nand.html] (most reliable)
+* ubi_reader[https://github.com/jrspruitt/ubi_reader/blob/master/README.md]
+
+(detailed instructions coming soon).
