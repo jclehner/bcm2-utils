@@ -8,7 +8,7 @@ Some devices contain two processors with shared RAM, where Linux runs on the oth
 NAS or media server features. An interface exists for passing commands between the two systems.
 
 
-# File format
+## File format
 
 Firmware files are usually encapsulated in Broadcom's [ProgramStore](https://github.com/Broadcom/aeolus/tree/master/ProgramStore) format,
 which uses a 92-byte header. Since
@@ -42,7 +42,7 @@ See the corresponding [source file](https://github.com/Broadcom/aeolus/blob/mast
 
 Firmware files are may be preceeded by a code-signing certificate. In these files,
 the actual data is preceeded by [ASN.1](https://en.wikipedia.org/wiki/Abstract_Syntax_Notation_One) encoded data,
-and thus usually start with `0x30 0x82` (`SEQUENCE`, 2 byte length field follows). For example, if a file starts
+and usually starts with `0x30 0x82` (`SEQUENCE`, 2 byte length field follows). For example, if a file starts
 with `0x30 0x82 0x06 0x0d`, skip to offset `4 + 0x60d`. Usually, there is a two-byte padding of `0x00 0x00` before
 the actual image.
 
