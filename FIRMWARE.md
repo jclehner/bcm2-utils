@@ -1,5 +1,14 @@
-Firmware file format
-====================
+Firmware
+========
+
+Contrary to popular belief, the cable modem firmware is NOT based on Linux, but eCOS. This means that the
+firmware is essentially just one big application, running in RAM, without a file system.
+
+Some devices contain two processors with shared RAM, where Linux runs on the other processor, providing
+NAS or media server features. An interface exists for passing commands between the two systems.
+
+
+# File format
 
 Firmware files are usually encapsulated in Broadcom's [ProgramStore](https://github.com/Broadcom/aeolus/tree/master/ProgramStore) format,
 which uses a 92-byte header. Since
@@ -63,9 +72,9 @@ the following contents have been observed:
   raw machine code, not a specific executable file format!
 * `tar.gz` files, containing Linux device tree information
 * Linux `zImage`
-* UBI - UBIFS images (Linux filesystem)
-* UBI - SQUASHFS images (Linux filesystem)
-* UBI - SQUASHFS images (CM firmware images)
+* UBI - UBIFS image (Linux filesystem)
+* UBI - SQUASHFS image (Linux filesystem)
+* UBI - SQUASHFS image (CM firmware images)
 
 Extracting UBI stuff is tricky. Some options are:
 
