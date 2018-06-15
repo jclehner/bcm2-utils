@@ -26,15 +26,13 @@ images. The header format is detailed below:
 | 86     | u16      |      | Reserved |
 | 88     | u32a     | chk  | Image checksum (CRC32 of data following this header) |
 
-```
-See the corresponding (source file)[https://github.com/Broadcom/aeolus/blob/master/ProgramStore/ProgramStore.h].
+See the corresponding [source file](https://github.com/Broadcom/aeolus/blob/master/ProgramStore/ProgramStore.h).
 
-```
 
 ###### Signed firmware files
 
 Firmware files are may be preceeded by a code-signing certificate. In these files,
-the actual data is preceeded by (ASN.1)[https://en.wikipedia.org/wiki/Abstract_Syntax_Notation_One] encoded data,
+the actual data is preceeded by [ASN.1](https://en.wikipedia.org/wiki/Abstract_Syntax_Notation_One) encoded data,
 and thus usually start with `0x30 0x82` (`SEQUENCE`, 2 byte length field follows). For example, if a file starts
 with `0x30 0x82 0x06 0x0d`, skip to offset `4 + 0x60d`. Usually, there is a two-byte padding of `0x00 0x00` before
 the actual image.
@@ -71,7 +69,7 @@ the following contents have been observed:
 
 Extracting UBI stuff is tricky. Some options are:
 
-* (nandsim)[http://www.linux-mtd.infradead.org/faq/nand.html] (most reliable)
-* ubi_reader[https://github.com/jrspruitt/ubi_reader/blob/master/README.md]
+* [nandsim](http://www.linux-mtd.infradead.org/faq/nand.html) (most reliable)
+* [ubi_reader](ttps://github.com/jrspruitt/ubi_reader/blob/master/README.md)
 
 (detailed instructions coming soon).
