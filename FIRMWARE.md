@@ -1,11 +1,11 @@
 Firmware file format
 ====================
 
-Firmware files are usually encapsulated in Broadcom's ProgramStore format,
+Firmware files are usually encapsulated in Broadcom's [ProgramStore](https://github.com/Broadcom/aeolus/tree/master/ProgramStore) format,
 which uses a 92-byte header (all numbers are in network byte order). Since
 the header signature is device dependent, these headers are not that easy
 to spot. Things to look out for are the `addr` (which often
-is `0x80004000` for CM firmware images), or `name` fields (reckognizable
+is `0x80004000` for CM firmware images), or `name` fields (recognizable
 by the NUL padding). Some images use `ecram_sto.bin` for the CM firmware
 images. The header format is detailed below:
 
