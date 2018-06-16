@@ -24,18 +24,54 @@ using namespace bcm2dump;
 using namespace std;
 
 namespace {
-struct monolithic_header
+
+class mono_header
 {
-	// 0x4d4f4e4f (MONO)
-	uint32_t magic; // 0x4d4f4e4f (MONO)
-	// ProgramStore signature
-	uint16_t pssig;
-	uint16_t unk1;
-	// length including header
-	uint32_t length;
-	uint16_t unk2;
-	uint16_t unk3;
-} __attribute__((packed));
+	public:
+	struct raw
+	{
+		// 0x4d4f4e4f (MONO)
+		uint32_t magic;
+		// signature (similar to ProgramStore)
+		uint16_t signature;
+		uint16_t unk1;
+		// length including header
+		uint32_t length;
+		uint16_t unk2;
+		uint16_t unk3;
+	} __attribute__((packed));
+
+	mono_header& parse(const string& buf)
+	{
+		if (buf.size() < sizeof(raw)) {
+			throw invalid_argument("buffer too small to contain valid header");
+		}
+
+		memcpy(&m_raw, buf.data(), sizeof(m_raw));
+		return *this;
+	}
+
+	bool valid() const
+	{ return ntoh(m_raw.magic) == 0x4d4f4e4f; }
+
+	uint16_t signature() const
+	{ return ntoh(m_raw.signature); }
+
+	uint32_t length() const
+	{ return ntoh(m_raw.length); }
+
+	uint16_t unk1() const
+	{ return ntoh(m_raw.unk1); }
+
+	uint16_t unk2() const
+	{ return ntoh(m_raw.unk2); }
+
+	uint16_t unk3() const
+	{ return ntoh(m_raw.unk3); }
+
+	private:
+	raw m_raw;
+};
 
 void do_extract(istream& in, const ps_header& ps, size_t length = 0)
 {
@@ -59,21 +95,77 @@ void do_extract(istream& in, const ps_header& ps, size_t length = 0)
 	}
 }
 
-void extract_single(istream& in)
+string read_hbuf(istream& in)
 {
-	string hbuf(92, '\0');
-
-	if (in.readsome(&hbuf[0], hbuf.size()) < hbuf.size()) {
+	string hbuf(sizeof(ps_header::raw), '\0');
+	if (!in.read(&hbuf[0], hbuf.size())) {
 		throw runtime_error("read error (header)");
 	}
 
+	return hbuf;
+}
+
+void extract_ps(istream& in, const ps_header& ps)
+{
+	logger::i("0x%07lx  ", streamoff(in.tellg()) - sizeof(ps_header::raw));
+	logger::i() << "image: " << ps.filename() << ", " << ps.length() << " b";
+	logger::v(", %04x", ps.signature());
+	logger::i() << endl;
+
+	do_extract(in, ps);
+}
+
+bool extract_ps(istream& in)
+{
 	ps_header ps;
 
+	if (!ps.parse(read_hbuf(in)).hcs_valid()) {
+		return false;
+	}
+
+	extract_ps(in, ps);
+	return true;
+}
+
+void extract_image(istream& in)
+{
+	ps_header ps;
+	mono_header mono;
+
+	streamoff beg = in.tellg();
+	string hbuf = read_hbuf(in);
+
 	if (ps.parse(hbuf).hcs_valid()) {
-		logger::i() << ps.filename() << ", " << ps.length() << " b" << endl;
-		do_extract(in, ps);
+		extract_ps(in, ps);
 	} else {
-		logger::e() << "checksum error at offset " << hex << in.tellg() << endl;
+		logger::i("0x%07lx  ", beg & 0xffffffff);
+
+		if (mono.parse(hbuf).valid()) {
+			logger::i() << "monolithic, " << mono.length() << " b";
+			logger::v(", %04x, ", mono.signature());
+			logger::v("(%04x %04x %04x)", mono.unk1(), mono.unk2(), mono.unk3());
+			logger::i() << endl;
+
+			streamoff end = beg + mono.length();
+			in.seekg(beg + sizeof(mono_header::raw));
+
+			while (!in.eof() && in.tellg() < end && extract_ps(in)) {
+				streamoff pos = in.tellg() - beg;
+				in.seekg(beg + align_right(pos, 0xffff + 1));
+			}
+		} else if (hbuf[0] == 0x30 && (hbuf[1] & 0xff) == 0x82) {
+			// add 7, because sizeof(type + len) is 4, and
+			// sizeof(end-of-data) is 2. add 1 for next data.
+
+			auto len = ntoh(extract<uint16_t>(hbuf, 2)) + 7;
+			logger::i() << "asn.1 data, " << len << " b " << endl;
+
+			in.seekg(beg + len);
+
+			return extract_image(in);
+		} else {
+			logger::e() << "unknown image format" << endl;
+		}
 	}
 }
 
@@ -81,8 +173,8 @@ int do_main(int argc, char* argv[])
 {
 	logger::loglevel(logger::debug);
 
-	if (argc < 3) {
-		logger::e() << "Usage: psextract [infile] [offsets...]" << endl;
+	if (argc < 2) {
+		logger::e() << "Usage: psextract <infile> [<offset1> ...]" << endl;
 		return 1;
 	}
 
@@ -92,12 +184,16 @@ int do_main(int argc, char* argv[])
 		throw user_error("failed to open input file");
 	}
 
-	for (int i = 2; i < argc; ++i) {
-		if (!in.seekg(lexical_cast<unsigned>(argv[i], 0))) {
-			throw user_error("bad offset "s + argv[i]);
-		}
+	if (argc == 2) {
+		extract_image(in);
+	} else {
+		for (int i = 2; i < argc; ++i) {
+			if (!in.seekg(lexical_cast<unsigned>(argv[i], 0))) {
+				throw user_error("bad offset "s + argv[i]);
+			}
 
-		extract_single(in);
+			extract_image(in);
+		}
 	}
 
 	return 0;
