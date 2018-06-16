@@ -10,6 +10,8 @@ NAS or media server features. An interface exists for passing commands between t
 
 ## File format
 
+Non-ProgramStore files can be extracted using the `psextract`utility (still work in progress).
+
 Firmware files are usually encapsulated in Broadcom's [ProgramStore](https://github.com/Broadcom/aeolus/tree/master/ProgramStore) format,
 which uses a 92-byte header. Since
 the header signature is device dependent, these headers are not that easy
