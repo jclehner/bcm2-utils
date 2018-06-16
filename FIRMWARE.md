@@ -23,16 +23,16 @@ images. The header format is detailed below (numbers are big endian):
 | Offset | Type     | Name | Comment                                     |
 |-------:|----------|------|---------------------------------------------|
 | 0      | u16      | sig  | Unique signature, (device dependent)        |
-| 2		 | u16	    | ctrl | Control flags (compression, image type, etc.|
-| 4		 | u16      | maj  | Major version |
-| 6		 | u16	    | min  | Minor version |
-| 8		 | u32	    | time | Build timestamp |
-| 12	 | u32	    | len  | Image size (including this header) |
+| 2		   | u16	    | ctrl | Control flags (compression, split image, etc.)|
+| 4		   | u16      | maj  | Major version |
+| 6		   | u16	    | min  | Minor version |
+| 8		   | u32	    | time | Build timestamp |
+| 12	   | u32	    | len  | Image size (including this header) |
 | 16     | u32      | addr | Image load address |
-| 20	 | byte[48] | name | Image name |
+| 20	   | byte[48] | name | Image name |
 | 68     | byte[8]  |      | Reserved |
 | 76     | u32      | len1 | Image 1 size (for split images) |
-| 80     | u32		| len2 | Image 2 size (for split images) |
+| 80     | u32		  | len2 | Image 2 size (for split images) |
 | 84     | u16      | hcs  | Header checksum (CRC 16 CCITT)  |
 | 86     | u16      |      | Reserved |
 | 88     | u32a     | chk  | Image checksum (CRC32 of data following this header) |
@@ -55,11 +55,11 @@ Some firmware files are so-called monolithic images, which contain multiple imag
 
 | Offset | Type     | Name  | Comment                                     |
 |-------:|----------|-------|---------------------------------------------|
-| 0      | u32		| magic-| `0x4d4f4e4f` (`MONO`)                       |
-| 4		 | u16		| sig   | Device-dependent signature (not neccessarily equal to ProgramStore signature) |
+| 0      | u32		  | magic-| `0x4d4f4e4f` (`MONO`)                       |
+| 4		   | u16		  | sig   | Device-dependent signature (similar to ProgramStore signature) |
 | 6      | byte[2]  | unk1  | Unknown                                     |
 | 8      | u32      | len   | Image size (including this header)          |
-| 12	 | byte[4]  | unk2  | Unknown                                     |
+| 12	   | byte[4]  | unk2  | Unknown                                     |
 
 Individual images are padded with `0` bytes, to a 64k block size. It's possible that the amount of
 padding is specified within the header. `unk1[1]` is `16` in all images I've seen so far, which
