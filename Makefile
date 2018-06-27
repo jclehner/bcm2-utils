@@ -48,6 +48,9 @@ psextract: $(psextract_OBJ)
 t_nonvol: $(t_nonvol_OBJ)
 	$(CXX) $(CXXFLAGS) $(t_nonvol_OBJ) -o $@
 
+rwx.o: rwx.cc rwx.h rwcode.c
+	$(CXX) -c $(CXXFLAGS) $< -o $@
+
 %.o: %.c %.h
 	$(CC) -c $(CFLAGS) $< -o $@
 

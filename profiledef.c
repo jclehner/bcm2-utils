@@ -284,7 +284,7 @@ struct bcm2_profile bcm2_profiles[] = {
 			},
 			{
 				.intf = BCM2_INTF_BFC,
-				.loadaddr = 0x80004000,
+				.loadaddr = 0x80000000,
 				.buffer = 0x85f00000,
 				.buflen = 0x19c0000
 			},

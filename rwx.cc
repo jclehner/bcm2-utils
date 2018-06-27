@@ -975,7 +975,7 @@ class code_rwx : public parsing_rwx
 		m_rw_length = length;
 
 		uint32_t kseg1 = profile->kseg1();
-		m_loadaddr = kseg1 | (cfg["loadaddr"] + (write ? 0 : 0x10000));
+		m_loadaddr = kseg1 | (cfg["loadaddr"] + (write ? 0 : 0 /*0x10000*/));
 
 		// TODO: check whether we have a custom code file
 		if (true) {
@@ -1091,6 +1091,8 @@ class code_rwx : public parsing_rwx
 					}
 				}
 			}
+
+			logger::i("\n");
 		}
 	}
 

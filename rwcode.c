@@ -442,7 +442,7 @@ _DEF_LABEL(L_LOOP_PATCH),
 		// loop until we've reached the end
 		BGTZ(V0, L_LOOP_PATCH),
 		// delay slot: set pointer to next patch blob
-		ADDIU(T5, T5, 8),
+		ADDIU(V1, V1, 8),
 _DEF_LABEL(L_PATCH_DONE),
 		JR(RA),
 		NOP,
