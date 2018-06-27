@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include "asmdef.h"
 
 #define BCM2_PATCH_NUM 4
 #define BCM2_INTF_NUM 2
@@ -67,44 +68,6 @@ enum bcm2_mem
 	BCM2_MEM_RW = 2
 };
 
-enum bcm2_read_func_mode
-{
-	// pointer to buffer, offset length
-	BCM2_READ_FUNC_PBOL = 0,
-	// buffer, offset, length
-	BCM2_READ_FUNC_BOL = 1 << 0,
-	// offset, buffer, length
-	BCM2_READ_FUNC_OBL = 1 << 1,
-};
-
-enum bcm2_erase_func_mode
-{
-	// offset, length
-	BCM2_ERASE_FUNC_OL = 1 << 8,
-	// offset, partition size
-	BCM2_ERASE_FUNC_OS = 1 << 9,
-};
-
-enum bcm2_func_args
-{
-	// offset, end
-	BCM2_ARGS_OE = 1 << 16,
-	// offset, length
-	BCM2_ARGS_OL = 1 << 17,
-};
-
-enum bcm2_func_ret
-{
-	// ignore return value
-	BCM2_RET_VOID = 0,
-	// returns zero on success
-	BCM2_RET_OK_0 = 1 << 0,
-	// returns zero on error
-	BCM2_RET_ERR_0 = 1 << 1,
-	// returns length on success
-	BCM2_RET_OK_LEN = 1 << 2
-};
-
 struct bcm2_partition {
 	// partition name
 	char name[32];
@@ -134,7 +97,7 @@ struct bcm2_func {
 	// before using this function.
 	struct bcm2_patch patch[BCM2_PATCH_NUM];
 	// return value type
-	enum bcm2_func_ret retv;
+	int retv;
 	// interface(s) this function is valid for
 	int intf;
 };
