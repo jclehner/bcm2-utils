@@ -295,8 +295,6 @@ uint32_t dumpcode[] = {
 		LUI(T4, 0xffff),
 		// store ra & 0xffff0000
 		AND(S7, RA, T4),
-		// buffer
-		LW(S0, 0x14, S7),
 		// offset
 		LW(S1, 0x18, S7),
 		// length
@@ -312,7 +310,8 @@ uint32_t dumpcode[] = {
 
 		// patch code (affects only t4-t7)
 		BAL(F_PATCH),
-		NOP,
+		// delay slot: buffer
+		LW(S0, 0x14, S7),
 
 		// if S4 is null, we're dumping RAM
 		BNEZ(S4, L_READ_FLASH),
@@ -343,10 +342,9 @@ _DEF_LABEL(L_LOOP_BZERO),
 		ANDI(T4, V0, BCM2_READ_FUNC_BOL),
 		// set t5 if dump dunfction is (offset, buffer, length)
 		ANDI(T5, V0, BCM2_READ_FUNC_OBL),
-		// set a0 = &buffer, a1 = offset, a2 = length
+		// set a0 = &buffer, a1 = offset
 		ADDIU(A0, S7, 0x14),
 		MOVE(A1, S1),
-		MOVE(A2, S2),
 		// if t4: set a0 = buffer
 		MOVN(A0, S0, T4),
 		// if t5: set a0 = offset and a1 = buffer
@@ -354,8 +352,8 @@ _DEF_LABEL(L_LOOP_BZERO),
 		MOVN(A1, S0, T5),
 		// read from flash
 		JALR(S4),
-		// leave this here!
-		NOP,
+		// a2 = length
+		MOVE(A2, S2),
 
 _DEF_LABEL(L_START_DUMP),
 		// save s2 (remaining length)
@@ -406,7 +404,7 @@ _DEF_LABEL(L_LOOP_WORDS),
 _DEF_LABEL(L_OUT),
 		// restore code
 		//BAL(F_PATCH),
-		NOP,
+		//NOP,
 		// restore registers
 		LW(RA, 0x00, SP),
 		LW(S7, 0x04, SP),
