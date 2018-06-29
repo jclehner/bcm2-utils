@@ -3,7 +3,6 @@
 
 .set noreorder
 .set mips4
-.org 0
 
 .text
 
@@ -33,6 +32,7 @@ main:
 	sw $s2, 0x10($sp)
 	sw $s1, 0x14($sp)
 	sw $s0, 0x18($sp)
+	addiu $s0, $zero, cfg_buffer
 	// branch to next instruction
 	bal .next
 	// delay slot: address mask
@@ -41,9 +41,9 @@ main:
 	// store ra & 0xffff0000
 	and $s7, $ra, $t4
 	// buffer
-	lw $s0, cfg_buffer($s7)
+	lw $s0, %lo(cfg_buffer)($s7)
 	// offset
-	lw $s1, 0x18($s7)
+	lw $s1, cfg_offset($s7)
 	// length
 	lw $s2, 0x1c($s7)
 	// bail out if length is zero
