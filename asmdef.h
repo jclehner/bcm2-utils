@@ -1,6 +1,8 @@
 #ifndef BCM2DUMP_ASMDEF_H
 #define BCM2DUMP_ASMDEF_H
 
+#define BCM2_RWCODE_MAGIC 0xbeefc0de
+
 // pointer to buffer, offset length
 #define	BCM2_READ_FUNC_PBOL		0
 // buffer, offset, length

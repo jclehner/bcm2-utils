@@ -295,23 +295,21 @@ uint32_t dumpcode[] = {
 		LUI(T4, 0xffff),
 		// store ra & 0xffff0000
 		AND(S7, RA, T4),
-		// offset
-		LW(S1, 0x18, S7),
 		// length
 		LW(S2, 0x1c, S7),
 		// bail out if length is zero
 		BEQZ(S2, L_OUT),
-		// delay slot: dump offset
+		// delay slot: offset
+		LW(S1, 0x18, S7),
+		// dump offset
 		LW(S3, 0x10, S7),
 		// branch to start_dump if we have a dump offset
 		BNEZ(S3, L_START_DUMP),
-		// delay slot: flash read function
-		LW(S4, 0x28, S7),
-
-		// patch code (affects only t4-t7)
-		BAL(F_PATCH),
 		// delay slot: buffer
 		LW(S0, 0x14, S7),
+
+		// flash read function
+		LW(S4, 0x28, S7),
 
 		// if S4 is null, we're dumping RAM
 		BNEZ(S4, L_READ_FLASH),
@@ -327,7 +325,7 @@ _DEF_LABEL(L_READ_FLASH),
 		// set t4 to buffer
 		MOVE(T4, S0),
 		// set t5 to length
-		MOVE(T5, T6),
+		MOVE(T5, S2),
 
 _DEF_LABEL(L_LOOP_BZERO),
 		// zero word at t4
@@ -338,13 +336,16 @@ _DEF_LABEL(L_LOOP_BZERO),
 		// delay slot: increment buffer
 		ADDIU(T4, T4, 4),
 
+		// patch code (clobbers t4-t8 only)
+		BAL(F_PATCH),
+
+		// set a0 = &buffer, a1 = offset
+		ADDIU(A0, S7, 0x14),
+		MOVE(A1, S1),
 		// set t4 if dump function is (buffer, offset, length)
 		ANDI(T4, V0, BCM2_READ_FUNC_BOL),
 		// set t5 if dump dunfction is (offset, buffer, length)
 		ANDI(T5, V0, BCM2_READ_FUNC_OBL),
-		// set a0 = &buffer, a1 = offset
-		ADDIU(A0, S7, 0x14),
-		MOVE(A1, S1),
 		// if t4: set a0 = buffer
 		MOVN(A0, S0, T4),
 		// if t5: set a0 = offset and a1 = buffer
@@ -355,13 +356,16 @@ _DEF_LABEL(L_LOOP_BZERO),
 		// a2 = length
 		MOVE(A2, S2),
 
+		// revert patch (clobbers t4-t8 only)
+		BAL(F_PATCH),
+
 _DEF_LABEL(L_START_DUMP),
 		// save s2 (remaining length)
-		MOVE(T6, S2),
+		MOVE(V0, S2),
 		// set s2 to MIN(remaining length, chunk size)
 		LW(S2, 0x20, S7),
-		SLT(T4, T6, S2),
-		MOVN(S2, T6, T4),
+		SLT(T4, V0, S2),
+		MOVN(S2, V0, T4),
 		// increment buffer, offset and dump offset
 		ADDU(S0, S0, S3),
 		ADDU(S1, S1, S3),
@@ -402,9 +406,6 @@ _DEF_LABEL(L_LOOP_WORDS),
 		// delay slot
 		NOP,
 _DEF_LABEL(L_OUT),
-		// restore code
-		//BAL(F_PATCH),
-		//NOP,
 		// restore registers
 		LW(RA, 0x00, SP),
 		LW(S7, 0x04, SP),
@@ -418,29 +419,29 @@ _DEF_LABEL(L_OUT),
 
 _DEF_LABEL(F_PATCH),
 		// maximum of 4 words can be patched
-		ORI(V0, ZERO, 4),
+		ORI(T6, ZERO, 4),
 		// pointer to first patch blob
-		ADDIU(V1, S7, 0x2c),
+		ADDIU(T7, S7, 0x2c),
 _DEF_LABEL(L_LOOP_PATCH),
 		// load patch offset
-		LW(A0, 0, V1),
+		LW(T8, 0, T7),
 		// break if patch offset is zero
-		BEQZ(A0, L_PATCH_DONE),
+		BEQZ(T8, L_PATCH_DONE),
 		// delay slot: load patch word
-		LW(T4, 4, V1),
+		LW(T4, 4, T7),
 		// load current word at offset
-		LW(T5, 0, A0),
+		LW(T5, 0, T8),
 		// patch word at offset
-		SW(T4, 0, A0),
+		SW(T4, 0, T8),
 		// store original word in patch (this way, calling this
 		// function again will restore the original code)
-		SW(T5, 4, V1),
+		SW(T5, 4, T7),
 		// decrement counter
-		ADDIU(V0, V0, -1),
+		ADDIU(T6, T6, -1),
 		// loop until we've reached the end
-		BGTZ(V0, L_LOOP_PATCH),
+		BGTZ(T6, L_LOOP_PATCH),
 		// delay slot: set pointer to next patch blob
-		ADDIU(V1, V1, 8),
+		ADDIU(T7, T7, 8),
 _DEF_LABEL(L_PATCH_DONE),
 		JR(RA),
 		NOP,
