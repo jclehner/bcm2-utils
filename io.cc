@@ -360,7 +360,7 @@ void serial::write(const string& str)
 
 void serial::writeln(const string& str)
 {
-	write(str + "\r\n");
+	write(str + "\r");
 	// consume the line we've just written
 	readln();
 }
