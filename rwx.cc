@@ -338,7 +338,7 @@ bool bfc_ram::write_chunk(uint32_t offset, const string& chunk)
 	} else {
 		// diag writemem only supports writing bytes
 		for (char c : chunk) {
-			if (!m_intf->runcmd("/system/diag/writemem 0x" + to_hex(offset, 0) + " 0x" + to_hex(int(c), 0), "Writing")) {
+			if (!m_intf->runcmd("/system/diag writemem 0x" + to_hex(offset, 0) + " 0x" + to_hex(int(c), 0), "Writing")) {
 				return false;
 			}
 		}
