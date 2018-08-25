@@ -52,12 +52,16 @@ void usage(bool help = false)
 				"    offset or alternately a partition name. The <size> argument may be used to\n"
 				"    use only parts of file <in>.\n\n";
 	}
-	os << "  exec  <interface> {<partition>,<offset>}[,<entry>] <in>" << endl;
+	os << "  exec  <interface> <offset>[,<entry>] <in>" << endl;
 	if (help) {
-		os << "\n    Write data to ram, starting at either an explicit offset or alternately a\n"
-				"    partition name. After the data has been written, execute the code and print\n"
-				"    all subsequently generated output to standard output. An <entry> argument\n"
-				"    may be supplied to start execution at a different address.\n\n";
+#if 0
+		os << "\n    Write data to ram at the specified offset. After the data has been written,\n"
+				"    execute the code and print all subsequently generated output to standard output.\n"
+				"    An <entry> argument may be supplied to start execution at a different address.\n\n";
+#else
+		os << "\n    Write data to ram at the specified offset. After the data has been written, execute\n"
+				"    the code. An <entry> argument may be supplied to start execution at a different address.\n\n";
+#endif
 	}
 	os << "  info  <interface>" << endl;
 	if (help) {
@@ -226,24 +230,38 @@ int do_dump(int argc, char** argv, int opts, const string& profile)
 	return 0;
 }
 
-int do_write(int argc, char** argv, int opts, const string& profile)
+int do_write_exec(int argc, char** argv, int opts, const string& profile)
 {
-	if (argc != 5) {
+	bool exec = (argv[0] == "exec"s);
+	string file = exec ? argv[3] : argv[4];
+	uint32_t entry, loadaddr;
+
+	if ((!exec && argc != 5) || (exec && argc != 4)) {
 		usage(false);
 		return 1;
 	}
 
-	if (!(opts & opt_force_write) && argv[2] != "ram"s) {
+	if (exec) {
+		auto tok = split(argv[2], ',');
+		if (tok.empty() || tok.size() > 2) {
+			throw user_error("invalid argument '"s + argv[3] + "'");
+		}
+
+		loadaddr = lexical_cast<uint32_t>(tok[0], 0);
+		entry = (tok.size() == 2 ? lexical_cast<uint32_t>(tok[1], 0) : loadaddr);
+	}
+
+	if (!exec && !(opts & opt_force_write) && argv[2] != "ram"s) {
 		throw user_error("writing to non-ram address space "s + argv[2] + " is dangerous; specify -FF to continue");
 	}
 
-	ifstream in(argv[4], ios::binary);
+	ifstream in(file.c_str(), ios::binary);
 	if (!in.good()) {
-		throw user_error("failed to open "s + argv[4] + " for reading");
+		throw user_error("failed to open " + file + " for reading");
 	}
 
 	auto intf = interface::create(argv[1]);
-	auto rwx = rwx::create(intf, argv[2], opts & opt_safe);
+	auto rwx = rwx::create(intf, exec ? "ram" : argv[2], opts & opt_safe);
 
 	progress pg;
 
@@ -260,7 +278,17 @@ int do_write(int argc, char** argv, int opts, const string& profile)
 		});
 	}
 
-	rwx->write(argv[3], in);
+	if (exec) {
+		rwx->write(loadaddr, in);
+		printf("\n");
+		logger::i("executing code at %08x\n", entry);
+		rwx->exec(entry);
+		// TODO print all subsequent output ?
+	} else {
+		rwx->write(argv[3], in);
+		printf("\n");
+	}
+
 	return 0;
 }
 
@@ -399,8 +427,8 @@ int main(int argc, char** argv)
 			return do_info(argc, argv, profile);
 		} else if (cmd == "dump") {
 			return do_dump(argc, argv, opts, profile);
-		} else if (cmd == "write") {
-			return do_write(argc, argv, opts, profile);
+		} else if (cmd == "write" || cmd == "exec") {
+			return do_write_exec(argc, argv, opts, profile);
 		} else if (cmd == "scan") {
 			return do_scan(argc, argv, opts, profile);
 		} else {
