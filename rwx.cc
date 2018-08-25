@@ -338,7 +338,7 @@ bool bfc_ram::write_chunk(uint32_t offset, const string& chunk)
 	} else {
 		// diag writemem only supports writing bytes
 		for (char c : chunk) {
-			if (!m_intf->runcmd("/system/diag writemem 0x" + to_hex(offset, 0) + " 0x" + to_hex(int(c), 0), "Writing")) {
+			if (!m_intf->runcmd("/system/diag/writemem 0x" + to_hex(offset, 0) + " 0x" + to_hex(int(c), 0), "Writing")) {
 				return false;
 			}
 		}
@@ -838,7 +838,7 @@ class code_rwx : public parsing_rwx
 	{ return limits(16, 16, 0x4000); }
 
 	virtual unsigned capabilities() const override
-	{ return cap_read | cap_write; }
+	{ return cap_rwx; }
 
 	virtual void set_interface(const interface::sp& intf) override
 	{
@@ -925,7 +925,10 @@ class code_rwx : public parsing_rwx
 	}
 
 	virtual bool exec_impl(uint32_t offset) override
-	{ return false; }
+	{
+		m_ram->exec(offset);
+		return true;
+	}
 
 	void on_chunk_retry(uint32_t offset, uint32_t length) override
 	{
