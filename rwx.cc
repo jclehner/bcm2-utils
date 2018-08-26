@@ -107,7 +107,7 @@ uint32_t read_image_length(rwx& rwx, uint32_t offset)
 	rwx.silent(true);
 	ps_header hdr(rwx.read(offset, 92));
 	rwx.silent(false);
-	return hdr.hcs_valid() ? hdr.length() : 0;
+	return hdr.hcs_valid() ? 92 + hdr.length() : 0;
 }
 
 void parse_offset_size(rwx& rwx, const string& arg, uint32_t& offset, uint32_t& length, bool write)
