@@ -177,6 +177,34 @@ struct bcm2_profile bcm2_profiles[] = {
 		}
 	},
 	{
+		.name = "evm3236",
+		.pretty = "Ubee EVM3236",
+		.baudrate = 115200,
+		.kseg1mask = 0x20000000,
+		.magic = {
+			{ 0x806f369e, "EVM3236" },
+		},
+		.spaces = {
+			{
+				.name = "ram",
+				.min = 0x80000000,
+				.size = 256 * 1024 * 1024,
+			},
+			{
+				.name = "flash",
+				.size = 8 * 1024 * 1024,
+				.parts = {
+					{ "bootloader", 0x000000, 0x008000 },
+					{ "unknown",    0x008000, 0x008000 },
+					{ "permnv",     0x010000, 0x010000, "perm" },
+					{ "image1",     0x020000, 0x3e0000 },
+					{ "image2",     0x400000, 0x3e0000 },
+					{ "dynnv",      0x7e0000, 0x010000, "dyn" }
+				}
+			},
+		}
+	},
+	{
 		.name = "tc7200",
 		.pretty = "Technicolor TC7200",
 		.baudrate = 115200,
