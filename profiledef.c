@@ -317,6 +317,20 @@ struct bcm2_profile bcm2_profiles[] = {
 				.buflen = 0x19c0000
 			},
 			{
+				.version = "STD6.02.42",
+				.intf = BCM2_INTF_BFC,
+				.magic = { 0x814e953c, "STD6.02.42" },
+				.spaces = {
+						{
+							.name = "flash",
+							.open = { 0x803f72e4, BCM2_ARGS_OE },
+							.read = { 0x803f6d90, BCM2_READ_FUNC_BOL,
+									.patch = {{ 0x803f6f3c, 0x10000018 }},
+							}
+						},
+				}
+			},
+			{
 				.version = "STD6.02.41",
 				.intf = BCM2_INTF_BFC,
 				.magic = { 0x814e8eac, "STD6.02.41" },
