@@ -109,7 +109,8 @@ int usage(bool help = false)
 	os << get_profile_names(60, 2) << endl;
 	os << endl;
 	os <<
-			"bcm2cfg " VERSION " Copyright (C) 2016 Joseph C. Lehner\n"
+			"bcm2cfg " VERSION "\n"
+		    "Copyright (C) 2016-2018 Joseph C. Lehner\n"
 			"Licensed under the GNU GPLv3; source code is available at\n"
 			"https://github.com/jclehner/bcm2utils\n"
 			"\n";

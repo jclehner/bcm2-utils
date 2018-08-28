@@ -1,3 +1,22 @@
+/**
+ * bcm2-utils
+ * Copyright (C) 2016-2018 Joseph Lehner <joseph.c.lehner@gmail.com>
+ *
+ * bcm2-utils is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * bcm2-utils is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with bcm2-utils.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
 #include <stdexcept>
 #include <iostream>
 #include <fstream>
@@ -89,7 +108,8 @@ void usage(bool help = false)
 	os << "Profiles:" << endl;
 	os << get_profile_names(60, 2) << endl;
 	os << endl;
-	os << "bcm2dump " << VERSION << " Copyright (C) 2016 Joseph C. Lehner" << endl;
+	os << "bcm2dump " << VERSION << endl;
+	os << "Copyright (C) 2016-2018 Joseph C. Lehner" << endl;
 	os << "Licensed under the GNU GPLv3; source code is available at" << endl;
 	os << "https://github.com/jclehner/bcm2utils" << endl;
 	os << endl;
