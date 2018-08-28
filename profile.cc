@@ -418,6 +418,8 @@ bool addrspace::check_range(uint32_t offset, uint32_t length, const string& name
 		return true;
 	}
 
+	string msg;
+
 	if (!(offset % alignment())) {
 		uint32_t offset_c = offset & ~m_kseg1;
 		uint32_t last = offset_c + length - 1;
@@ -428,20 +430,21 @@ bool addrspace::check_range(uint32_t offset, uint32_t length, const string& name
 			}
 		}
 
-		if (!exception) {
-			return false;
+		if (length) {
+			msg = "invalid range " + this->name() + ":0x" + to_hex(offset)
+				+ "-0x" + to_hex(offset + length - 1);
+		} else {
+			msg = "invalid offset " + this->name() + ":0x" + to_hex(offset);
 		}
-	}
-
-	string msg;
-
-	if (length) {
-		msg = "range " + this->name() + ":0x" + to_hex(offset) + "-0x" + to_hex(offset + length - 1);
 	} else {
-		msg = "offset " + this->name() + ":0x" + to_hex(offset);
+		msg = "unaligned offset " + this->name() + ":0x" + to_hex(offset);
 	}
 
-	throw user_error(m_profile_name + ": invalid " + msg + (!name.empty() ? ("(" + name + ")") : ""));
+	if (!exception) {
+		return false;
+	}
+
+	throw user_error(m_profile_name + ": " + msg + (!name.empty() ? ("(" + name + ")") : ""));
 }
 
 const addrspace::part& addrspace::partition(const string& name) const
