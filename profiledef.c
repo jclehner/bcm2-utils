@@ -182,7 +182,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		.baudrate = 115200,
 		.kseg1mask = 0x20000000,
 		.magic = {
-			{ 0x806f369e, "EVM3236" },
+			{ 0x807023d4, "EVM3236" },
 		},
 		.spaces = {
 			{
