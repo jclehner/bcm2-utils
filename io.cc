@@ -38,6 +38,7 @@
 #include <unistd.h>
 #include <netdb.h>
 #else
+#define MSG_DONTWAIT 0
 #include <ws2tcpip.h>
 #include <io.h>
 #endif
@@ -64,7 +65,6 @@ void add_line(const string& line, bool in)
 	logger::t() << lines.back() << endl;
 }
 
-//#ifndef _WIN32
 class scoped_nonblock
 {
 	public:
@@ -118,6 +118,7 @@ ssize_t send_nosignal(int fd, const char* buf, size_t len, int flags = 0)
 
 int connect_nonblock(int fd, sockaddr* addr, socklen_t len)
 {
+#ifndef _WIN32
 	scoped_nonblock f(fd);
 
 	int err = connect(fd, addr, len);
@@ -157,6 +158,10 @@ int connect_nonblock(int fd, sockaddr* addr, socklen_t len)
 	}
 
 	return 0;
+#else
+	// FIXME
+	return connect(fd, addr, len);
+#endif
 }
 
 void set_port(sockaddr* sa, uint16_t port)
@@ -181,7 +186,6 @@ string addr_to_string(sockaddr* sa)
 
 	return buf;
 }
-//#endif
 
 int to_termspeed(unsigned speed)
 {
@@ -314,9 +318,15 @@ bool fdio::pending(unsigned timeout)
 	tv.tv_usec = 1000 * (timeout % 1000);
 
 	int ret = select(m_fd + 1, &fds, NULL, NULL, &tv);
+#ifndef _WIN32
 	if (ret < 0) {
 		throw errno_error("select");
 	}
+#else
+	if (ret == SOCKET_ERROR) {
+		throw winsock_error("select");
+	}
+#endif
 
 	return ret;
 }
@@ -514,7 +524,6 @@ serial::serial(const char* tty, unsigned speed)
 #endif
 }
 
-#ifndef _WIN32
 tcp::tcp(const string& addr, uint16_t port)
 {
 	addrinfo hints = { 0 };
@@ -525,12 +534,19 @@ tcp::tcp(const string& addr, uint16_t port)
 	int error = getaddrinfo(addr.c_str(), nullptr, &hints, &result);
 	if (error) {
 		if (error == EAI_NONAME) {
-			throw system_error(errno, getaddrinfo_category(), addr);
-		} else if (error != EAI_SYSTEM) {
+			throw system_error(error, getaddrinfo_category(), addr);
+		}
+#ifndef _WIN32
+		else if (error != EAI_SYSTEM) {
 			throw system_error(error, getaddrinfo_category(), "getaddrinfo");
 		} else {
 			throw errno_error("getaddrinfo");
 		}
+#else
+		else {
+			throw winsock_error("getaddrinfo");
+		}
+#endif
 	}
 
 	for (addrinfo* rp = result; rp; rp = rp->ai_next) {
@@ -538,7 +554,7 @@ tcp::tcp(const string& addr, uint16_t port)
 			continue;
 		}
 
-		m_fd = socket(rp->ai_family, rp->ai_socktype, 0);
+		m_fd = socket(rp->ai_family, SOCK_STREAM, 0);
 		if (m_fd >= 0) {
 			set_port(rp->ai_addr, port);
 			if (connect_nonblock(m_fd, rp->ai_addr, rp->ai_addrlen) == 0) {
@@ -546,19 +562,32 @@ tcp::tcp(const string& addr, uint16_t port)
 				break;
 			} else {
 				::close(m_fd);
+#ifndef _WIN32
 				error = errno;
-				logger::v() << addr_to_string(rp->ai_addr) << ": " << strerror(errno) << endl;
+#else
+				error = WSAGetLastError();
+#endif
+				logger::v() << addr_to_string(rp->ai_addr) << ": connect:" << error << endl;
 			}
 		} else {
+#ifndef _WIN32
 			error = errno;
-			logger::d() << addr_to_string(rp->ai_addr) << ": socket: " << strerror(errno) << endl;
+#else
+			error = WSAGetLastError();
+#endif
+			logger::d() << addr_to_string(rp->ai_addr) << ": socket: " << error << endl;
 		}
 	}
 
 	freeaddrinfo(result);
 
 	if (error) {
-		throw system_error(error, system_category());
+		string fn = (m_fd >= 0 ? "connect" : "socket");
+#ifndef _WIN32
+		throw errno_error(fn, error);
+#else
+		throw winsock_error(fn, error);
+#endif
 	}
 }
 
@@ -681,7 +710,6 @@ void telnet::send_op_opt(int op, int opt)
 	tcp::write(string("\xff") + char(op) + char(opt));
 }
 #endif
-#endif
 }
 
 string io::readln(unsigned timeout)
@@ -724,7 +752,6 @@ string io::readln(unsigned timeout)
 	return lf ? string("\0", 1) : "";
 }
 
-#ifndef _WIN32
 shared_ptr<io> io::open_telnet(const string& address, unsigned short port)
 {
 	return make_shared<telnet>(address, port);
@@ -734,17 +761,6 @@ shared_ptr<io> io::open_tcp(const string& address, unsigned short port)
 {
 	return make_shared<tcp>(address, port);
 }
-#else
-shared_ptr<io> io::open_telnet(const string& address, unsigned short port)
-{
-	throw user_error("not supported on this platform");
-}
-
-shared_ptr<io> io::open_tcp(const string& address, unsigned short port)
-{
-	throw user_error("not supported on this platform");
-}
-#endif
 
 shared_ptr<io> io::open_serial(const char* tty, unsigned speed)
 {

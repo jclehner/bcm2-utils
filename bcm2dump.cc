@@ -388,13 +388,20 @@ int do_scan(int argc, char** argv, int opts, const string& profile)
 
 }
 
-int main(int argc, char** argv)
+int do_main(int argc, char** argv)
 {
 	ios_base::sync_with_stdio();
 	string profile;
 	int loglevel = logger::info;
 	int opts = 0;
 	int opt;
+
+#ifdef _WIN32
+	WSADATA wsa;
+	if (WSAStartup(0x0202, &wsa) != 0) {
+		throw winsock_error("WSAStartup");
+	}
+#endif
 
 	opterr = 0;
 
@@ -441,18 +448,24 @@ int main(int argc, char** argv)
 	argv += optind;
 	argc -= optind;
 
+	if (cmd == "info") {
+		return do_info(argc, argv, profile);
+	} else if (cmd == "dump") {
+		return do_dump(argc, argv, opts, profile);
+	} else if (cmd == "write" || cmd == "exec") {
+		return do_write_exec(argc, argv, opts, profile);
+	} else if (cmd == "scan") {
+		return do_scan(argc, argv, opts, profile);
+	} else {
+		usage(false);
+		return 1;
+	}
+}
+
+int main(int argc, char** argv)
+{
 	try {
-		if (cmd == "info") {
-			return do_info(argc, argv, profile);
-		} else if (cmd == "dump") {
-			return do_dump(argc, argv, opts, profile);
-		} else if (cmd == "write" || cmd == "exec") {
-			return do_write_exec(argc, argv, opts, profile);
-		} else if (cmd == "scan") {
-			return do_scan(argc, argv, opts, profile);
-		} else {
-			usage(false);
-		}
+		return do_main(argc, argv);
 	} catch (const rwx::interrupted& e) {
 		handle_sigint();
 	} catch (const errno_error& e) {

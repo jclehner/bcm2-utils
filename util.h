@@ -380,6 +380,13 @@ class winapi_error : public std::system_error
 	: std::system_error(error, winapi_category(), what)
 	{}
 };
+
+class winsock_error : public winapi_error
+{
+	public:
+	winsock_error(const std::string& what, DWORD error = WSAGetLastError())
+	: winapi_error(what, error) {}
+};
 #endif
 }
 
