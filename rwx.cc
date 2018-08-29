@@ -320,7 +320,7 @@ class bfc_ram : public parsing_rwx
 
 	private:
 	bool m_hint_decimal = false;
-	bool m_rooted = true;
+	bool m_rooted = false;
 	bool m_check_root = true;
 };
 
@@ -338,7 +338,7 @@ bool bfc_ram::write_chunk(uint32_t offset, const string& chunk)
 	} else {
 		// diag writemem only supports writing bytes
 		for (char c : chunk) {
-			if (!m_intf->runcmd("/system/diag/writemem 0x" + to_hex(offset, 0) + " 0x" + to_hex(int(c), 0), "Writing")) {
+			if (!m_intf->runcmd("/system/diag writemem 0x" + to_hex(offset, 0) + " 0x" + to_hex(int(c), 0), "Writing")) {
 				return false;
 			}
 		}
@@ -410,8 +410,8 @@ void bfc_ram::init(uint32_t offset, uint32_t length, bool write)
 	if (m_check_root) {
 		m_intf->runcmd("cd /");
 		m_intf->foreach_line([this] (const string& line) {
-			if (is_bfc_prompt(line, "Console")) {
-				m_rooted = false;
+			if (is_bfc_prompt(line, "CM")) {
+				m_rooted = true;
 			}
 
 			return true;
