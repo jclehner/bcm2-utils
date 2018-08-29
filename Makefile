@@ -30,25 +30,31 @@ t_nonvol_OBJ = util.o nonvol2.o t_nonvol.o $(profile_OBJ)
 
 all: bcm2dump bcm2cfg t_nonvol psextract
 
-release: clean bcm2cfg bcm2dump
+release-linux: clean bcm2cfg bcm2dump
 	strip bcm2cfg
 	strip bcm2dump
-	zip bcm2utils-$(VERSION).zip README.md bcm2cfg bcm2dump
+	zip bcm2utils-$(VERSION)-linux.zip README.md bcm2cfg bcm2dump
+
+relase-macos: release-linux
+	mv bcm2utils-$(VERSION)-linux.zip bcm2utils-$(VERSION)-macos.zip
+
+release-win32:
+	zip bcm2utils-$(VERSION)-win32.zip README.md bcm2cfg.exe bcm2dump.exe
+
+#bcm2cfg.exe:
+#	UNAME=Wine CC=winegcc CXX=wineg++ CFLAGS=-m32 make bcm2cfg
 
 bcm2cfg: $(bcm2cfg_OBJ)
-	$(CXX) $(CXXFLAGS) $(bcm2cfg_OBJ) -o $@ $(LIBS)
-
-bcm2cfg.exe:
-	UNAME=Wine CC=winegcc CXX=wineg++ CFLAGS=-m32 make bcm2cfg
+	$(CXX) $(CXXFLAGS) $(bcm2cfg_OBJ) -o $@ $(LIBS) $(LDFLAGS)
 
 bcm2dump: $(bcm2dump_OBJ)
-	$(CXX) $(CXXFLAGS) $(bcm2dump_OBJ) -o $@
+	$(CXX) $(CXXFLAGS) $(bcm2dump_OBJ) -o $@ $(LDFLAGS)
 
 psextract: $(psextract_OBJ)
-	$(CXX) $(CXXFLAGS) $(psextract_OBJ) -o $@
+	$(CXX) $(CXXFLAGS) $(psextract_OBJ) -o $@ $(LDFLAGS)
 
 t_nonvol: $(t_nonvol_OBJ)
-	$(CXX) $(CXXFLAGS) $(t_nonvol_OBJ) -o $@
+	$(CXX) $(CXXFLAGS) $(t_nonvol_OBJ) -o $@ $(LDFLAGS)
 
 rwx.o: rwx.cc rwx.h rwcode.c
 	$(CXX) -c $(CXXFLAGS) $< -o $@
