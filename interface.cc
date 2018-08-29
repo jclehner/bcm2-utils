@@ -39,15 +39,6 @@ bool is_char_device(const string& filename)
 	return !errno ? S_ISCHR(st.st_mode) : false;
 }
 
-vector<profile::sp> get_profiles_sorted_by_ram_size()
-{
-	vector<profile::sp> profiles = profile::list();
-	sort(profiles.begin(), profiles.end(), [](const profile::sp& a, const profile::sp& b) {
-		return a->ram().size() < b->ram().size();
-	});
-	return profiles;
-}
-
 class telnet
 {
 	public:
@@ -291,36 +282,68 @@ interface::sp detect_interface(const io::sp &io)
 void detect_profile_if_not_set(const interface::sp& intf, const profile::sp& profile)
 {
 	if (profile) {
+		// TODO allow manually specifying a version, auto-detect otherwise
 		intf->set_profile(profile);
 		return;
 	}
 
 	rwx::sp ram = rwx::create(intf, "ram", true);
 
-	// if device A's magic is at an offset that is invalid for device
-	// B, we could crash device B when checking for the magic of A.
-	// TODO this still breaks if a device's RAM does not start at
-	// 0x80000000!
+	// sort all magic specifications, and try them in ascending order. this
+	// is to avoid crashing a device by trying an offset that is outside its
+	// valid range.
 
-	for (auto p : get_profiles_sorted_by_ram_size()) {
+	struct comp
+	{
+		bool operator()(const bcm2_magic* m1, const bcm2_magic* m2) const
+		{
+			return m1->addr < m2->addr;
+		}
+	};
+
+	multimap<const bcm2_magic*, pair<profile::sp, version>, comp> magics;
+
+	for (auto p : profile::list()) {
 		for (auto v : p->versions()) {
-			string data = v.magic()->data;
-			if (ram->read(v.magic()->addr, data.size()) == data) {
+			if (v.intf() == intf->id()) {
+				magics.insert(make_pair(v.magic(), make_pair(p, v)));
+			}
+		}
+
+		for (auto m : p->magics()) {
+			magics.insert(make_pair(m, make_pair(p, version())));
+		}
+	}
+
+	for (int pass = 0; pass < 2; ++pass) {
+		for (const auto& kv : magics) {
+			// try specific versions in the first pass, and general
+			// magic strings in the second pass.
+			//
+			// TODO: detect device first, then specific version?
+
+			auto v = kv.second.second;
+			if (pass == 0 && v.name().empty()) {
+				continue;
+			}
+
+			string data = kv.first->data;
+			if (ram->read(kv.first->addr, data.size()) == data) {
+
+				auto p = kv.second.first;
+				logger::i() << "detected profile " << p->name() << "(" << intf->name() << ")";
+
+				if (!v.name().empty()) {
+					logger::i() << ", version " << v.name();
+				} else {
+					v = p->default_version(intf->id());
+				}
+
+				logger::i() << endl;
 				intf->set_profile(p, v);
-				logger::i() << "detected profile " << p->name() << "(" << intf->name() << "), version " << v.name() << endl;
 				return;
 			}
 		}
-
-		for (auto magic : p->magics()) {
-			string data = magic->data;
-			if (ram->read(magic->addr, data.size()) == data) {
-				intf->set_profile(p, p->default_version(intf->id()));
-				logger::i() << "detected profile " << p->name() << " (" << intf->name() << ")" << endl;
-				return;
-			}
-		}
-
 	}
 
 	logger::i() << "profile auto-detection failed" << endl;
