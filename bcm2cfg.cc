@@ -111,7 +111,7 @@ int usage(bool help = false)
 	os <<
 			"bcm2cfg " VERSION " Copyright (C) 2016-2018 Joseph C. Lehner\n"
 			"Licensed under the GNU GPLv3; source code is available at\n"
-			"https://github.com/jclehner/bcm2utils\n"
+			"https://github.com/jclehner/bcm2-utils\n"
 			"\n";
 
 	return help ? 0 : 1;

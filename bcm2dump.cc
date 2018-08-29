@@ -110,7 +110,7 @@ void usage(bool help = false)
 	os << endl;
 	os << "bcm2dump " << VERSION <<" Copyright (C) 2016-2018 Joseph C. Lehner" << endl;
 	os << "Licensed under the GNU GPLv3; source code is available at" << endl;
-	os << "https://github.com/jclehner/bcm2utils" << endl;
+	os << "https://github.com/jclehner/bcm2-utils" << endl;
 	os << endl;
 }
 
