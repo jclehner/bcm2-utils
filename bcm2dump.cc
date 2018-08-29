@@ -279,7 +279,7 @@ int do_write_exec(int argc, char** argv, int opts, const string& profile)
 		throw user_error("failed to open " + file + " for reading");
 	}
 
-	auto intf = interface::create(argv[1]);
+	auto intf = interface::create(argv[1], profile);
 	auto rwx = rwx::create(intf, exec ? "ram" : argv[2], opts & opt_safe);
 
 	progress pg;
@@ -319,7 +319,7 @@ int do_info(int argc, char** argv, const string& profile)
 	}
 
 	if (argc == 2) {
-		auto intf = interface::create(argv[1]);
+		auto intf = interface::create(argv[1], profile);
 		if (intf->profile()) {
 			intf->profile()->print_to_stdout();
 		}
@@ -339,7 +339,7 @@ int do_scan(int argc, char** argv, int opts, const string& profile)
 		return 1;
 	}
 
-	auto intf = interface::create(argv[1]);
+	auto intf = interface::create(argv[1], profile);
 	auto rwx = rwx::create(intf, argv[2], opts & opt_safe);
 
 	if (!intf->profile() && argc != 6) {
