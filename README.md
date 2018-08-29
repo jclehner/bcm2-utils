@@ -38,9 +38,10 @@ Options:
   -v               Increase verbosity
 
 Commands: 
-  dump  <interface> <addrspace> {<partition>[+<offset>],<offset>}[,<size>] <outfile>
-  write <interface> <addrspace> {<partition>[+<offset>],<offset>}[,<size>] <infile>
-  exec  <interface> {<partition>,<offset>}[,<entry>] <infile>
+  dump  <interface> <addrspace> {<partition>[+<offset>],<offset>}[,<size>] <out>
+  scan  <interface> <addrspace> <step> [<start> <size>]
+  write <interface> <addrspace> {<partition>[+<offset>],<offset>}[,<size>] <in>
+  exec  <interface> <offset>[,<entry>] <in>
   info  <interface>
   help
 
@@ -48,10 +49,15 @@ Interfaces:
   /dev/ttyUSB0             Serial console with default baud rate
   /dev/ttyUSB0,115200      Serial console, 115200 baud
   192.168.0.1,2323         Raw TCP connection to 192.168.0.1, port 2323
-  192.168.0.1,foo,bar      Telnet, server 192.168.0.1, user 'foo', password 'bar'
+  192.168.0.1,foo,bar      Telnet, server 192.168.0.1, user 'foo',
+                           password 'bar'
   192.168.0.1,foo,bar,233  Same as above, port 233
 
-bcm2dump e741871 Copyright (C) 2016 Joseph C. Lehner
+Profiles:
+  gen2pslc, cg3000, sbg6580, fast3686dna, twg850, tcw770, 
+  twg870, evm3236, tc7200, generic
+
+bcm2dump v0.9.1 Copyright (C) 2016-2018 Joseph C. Lehner
 Licensed under the GNU GPLv3; source code is available at
 https://github.com/jclehner/bcm2utils
 ```
@@ -174,9 +180,17 @@ Commands:
   get     <infile> [<name>]
   set     <infile> <name> <value> [<outfile>]
   dump    <infile> [<name>]
-  type    <infile> <name>
+  type    <infile> [<name>]
   info    <infile>
   help
+
+Profiles:
+  gen2pslc, cg3000, sbg6580, fast3686dna, twg850, tcw770, 
+  twg870, evm3236, tc7200, generic
+
+bcm2cfg v0.9.1 Copyright (C) 2016-2018 Joseph C. Lehner
+Licensed under the GNU GPLv3; source code is available at
+https://github.com/jclehner/bcm2utils
 ```
 
 `bcm2cfg` can be used to inspect and modify device configuration data. Currently supported formats are the
