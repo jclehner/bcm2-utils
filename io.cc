@@ -17,6 +17,10 @@
  *
  */
 
+#ifdef _WIN32
+#define _WIN32_WINNT _WIN32_WINNT_VISTA
+#endif
+
 #include <system_error>
 #include <sys/types.h>
 #include <stdexcept>
@@ -34,6 +38,7 @@
 #include <unistd.h>
 #include <netdb.h>
 #else
+#include <ws2tcpip.h>
 #include <io.h>
 #endif
 
@@ -59,29 +64,37 @@ void add_line(const string& line, bool in)
 	logger::t() << lines.back() << endl;
 }
 
-#ifndef _WIN32
-class scoped_flags
+//#ifndef _WIN32
+class scoped_nonblock
 {
 	public:
-	scoped_flags(int fd, int flags, bool replace = false)
+	scoped_nonblock(int fd)
 	: m_fd(fd)
 	{
+#ifndef _WIN32
 		if ((m_orig = fcntl(fd, F_GETFL, 0)) < 0) {
 			throw errno_error("fcntl(F_GETFL)");
 		}
 
-		if (!replace) {
-			flags |= m_orig;
-		}
-
-		if (fcntl(fd, F_SETFL, flags) < 0) {
+		if (fcntl(fd, F_SETFL, m_orig | O_NONBLOCK) < 0) {
 			throw errno_error("fcntl(F_SETFL");
 		}
+#else
+		u_long arg = 1;
+		if ((ioctlsocket(fd, FIONBIO, &arg) != 0)) {
+			throw winapi_error("ioctlsocket(FIONBIO)");
+		}
+#endif
 	}
 
-	~scoped_flags()
+	~scoped_nonblock()
 	{
+#ifndef _WIN32
 		fcntl(m_fd, F_SETFL, m_orig);
+#else
+		u_long arg = 0;
+		ioctlsocket(m_fd, FIONBIO, &arg);
+#endif
 	}
 
 	private:
@@ -91,7 +104,7 @@ class scoped_flags
 
 ssize_t recv_dontwait(int fd, char* buf, size_t len, int flags = 0)
 {
-	scoped_flags f(fd, O_NONBLOCK);
+	scoped_nonblock f(fd);
 	return recv(fd, buf, len, flags);
 }
 
@@ -105,7 +118,7 @@ ssize_t send_nosignal(int fd, const char* buf, size_t len, int flags = 0)
 
 int connect_nonblock(int fd, sockaddr* addr, socklen_t len)
 {
-	scoped_flags f(fd, O_NONBLOCK);
+	scoped_nonblock f(fd);
 
 	int err = connect(fd, addr, len);
 	if (err) {
@@ -135,7 +148,7 @@ int connect_nonblock(int fd, sockaddr* addr, socklen_t len)
 		err = 0;
 		len = sizeof(err);
 
-		if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len) != 0 || err) {
+		if (getsockopt(fd, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&err), &len) != 0 || err) {
 			if (err) {
 				errno = err;
 			}
@@ -168,7 +181,7 @@ string addr_to_string(sockaddr* sa)
 
 	return buf;
 }
-#endif
+//#endif
 
 int to_termspeed(unsigned speed)
 {
