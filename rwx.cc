@@ -316,8 +316,6 @@ class bfc_ram : public parsing_rwx
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
 
-	virtual void init(uint32_t offset, uint32_t length, bool write) override;
-
 	private:
 	bool m_hint_decimal = false;
 	bool m_rooted = false;
@@ -331,7 +329,7 @@ bool bfc_ram::exec_impl(uint32_t offset)
 
 bool bfc_ram::write_chunk(uint32_t offset, const string& chunk)
 {
-	if (m_rooted) {
+	if (m_intf->is_privileged()) {
 		uint32_t val = chunk.size() == 4 ? ntoh(extract<uint32_t>(chunk)) : chunk[0];
 		return m_intf->runcmd("/write_memory -s " + to_string(chunk.size()) + " 0x" +
 				to_hex(offset, 0) + " 0x" + to_hex(val, 0), "Writing");
@@ -349,7 +347,7 @@ bool bfc_ram::write_chunk(uint32_t offset, const string& chunk)
 
 void bfc_ram::do_read_chunk(uint32_t offset, uint32_t length)
 {
-	if (m_rooted) {
+	if (m_intf->is_privileged()) {
 		m_intf->runcmd("/read_memory -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
 	} else {
 		m_intf->runcmd("/system/diag readmem -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
@@ -401,23 +399,6 @@ string bfc_ram::parse_chunk_line(const string& line, uint32_t offset)
 	}
 
 	return linebuf;
-}
-
-void bfc_ram::init(uint32_t offset, uint32_t length, bool write)
-{
-	parsing_rwx::init(offset, length, write);
-
-	if (m_check_root) {
-		m_intf->runcmd("cd /");
-		m_intf->foreach_line([this] (const string& line) {
-			if (is_bfc_prompt(line, "CM")) {
-				m_rooted = true;
-			}
-
-			return true;
-		});
-		m_check_root = false;
-	}
 }
 
 class bfc_flash2 : public bfc_ram

@@ -114,7 +114,7 @@ void bootloader::runcmd(const string& cmd)
 	m_io->write(cmd);
 }
 
-class bfc_telnet : public bfc, public telnet
+class bfc_telnet : public bfc, public telnet, public enable_shared_from_this<bfc_telnet>
 {
 	public:
 	static unsigned constexpr invalid = 0;
@@ -138,8 +138,8 @@ class bfc_telnet : public bfc, public telnet
 
 	bool login(const string& user, const string& pass) override;
 
-	unsigned status() const
-	{ return m_status; }
+	virtual bool is_privileged() const override
+	{ return m_status == rooted; }
 
 	protected:
 	virtual uint32_t timeout() const override
@@ -237,6 +237,7 @@ bool bfc_telnet::login(const string& user, const string& pass)
 		}
 	}
 
+#if 1
 	if (m_status == authenticated) {
 		runcmd("su");
 		foreach_line([this] (const string& line) {
@@ -250,6 +251,28 @@ bool bfc_telnet::login(const string& user, const string& pass)
 			return false;
 		});
 	}
+#else
+	if (m_status == authenticated) {
+		uint32_t conthread_instance_ptr = 0x81315C24;
+		uint32_t conthread_su_offset = 0x74;
+
+		wait_ready();
+
+		rwx::sp ram = rwx::create(shared_from_this(), "ram");
+		uint32_t conthread_instance = ntoh(extract<uint32_t>(ram->read(conthread_instance_ptr, 4)));
+
+		ram->write(conthread_instance + conthread_su_offset, "\x01"s);
+
+		writeln();
+		foreach_line([this] (const string& line) {
+			if (is_bfc_prompt(line, "CM")) {
+				m_status = rooted;
+			}
+
+			return false;
+		});
+	}
+#endif
 
 	if (m_status == authenticated) {
 		logger::w() << "failed to switch to super-user; some functions might not work" << endl;
