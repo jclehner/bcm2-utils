@@ -1431,7 +1431,7 @@ void rwx::write(uint32_t offset, const string& buf, uint32_t length)
 		if (contents.empty() || contents.substr(begin, n) != chunk) {
 			bool ok = false;
 
-			while (!ok && retries < 2) {
+			while (!ok) {
 				string what;
 				try {
 					ok = write_chunk(offset_w, chunk);
@@ -1447,7 +1447,7 @@ void rwx::write(uint32_t offset, const string& buf, uint32_t length)
 						msg += " (" + what + ")";
 					}
 
-					if (++retries < 2 && wait_for_interface(m_intf)) {
+					if (++retries < 5 && wait_for_interface(m_intf)) {
 						logger::d() << endl << msg << "; retrying" << endl;
 						//on_chunk_retry(offset_w, chunk.size());
 						continue;
