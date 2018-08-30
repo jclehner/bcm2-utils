@@ -392,19 +392,16 @@ bool interface::runcmd(const string& cmd, const string& expect, bool stop_on_mat
 	runcmd(cmd);
 	bool match = false;
 
-	while (pending()) {
-		string line = readln();
-		if (line.empty()) {
-			break;
-		}
-
+	foreach_line([&expect, &stop_on_match, &match] (const string& line) -> bool {
 		if (line.find(expect) != string::npos) {
 			match = true;
 			if (stop_on_match) {
-				break;
+				return true;
 			}
 		}
-	}
+
+		return false;
+	});
 
 	return match;
 }
