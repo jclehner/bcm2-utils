@@ -202,7 +202,18 @@ struct bcm2_profile bcm2_profiles[] = {
 					{ "dynnv",      0x7e0000, 0x010000, "dyn" }
 				}
 			},
-		}
+		},
+		.versions = {
+			{
+				.intf = BCM2_INTF_BFC,
+				.loadaddr = 0x80002000,
+			},
+			{
+				.version = "7.18.1009",
+				.intf = BCM2_INTF_BFC,
+				.magic = { 0x807023d4, "7.18.1009" },
+			}
+		},
 	},
 	{
 		.name = "tc7200",
