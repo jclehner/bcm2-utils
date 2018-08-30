@@ -377,6 +377,24 @@ do { \
 	}
 }
 
+const bcm2_typed_val* version::get_opt(const string& name, bcm2_type type) const
+{
+	for (auto i = 0; i < ARRAY_SIZE(m_p->options); ++i) {
+		if (m_p->options[i].name == name) {
+			if (type != BCM2_TYPE_NIL && type != m_p->options[i].type) {
+				throw runtime_error(name + ": invalid type requested");
+			}
+			return &m_p->options[i];
+		}
+	}
+
+	if (type == BCM2_TYPE_NIL) {
+		return nullptr;
+	}
+
+	throw runtime_error(name + ": no such option");
+}
+
 addrspace::addrspace(const bcm2_addrspace* a, const profile& p)
 : m_p(a), m_profile_name(p.name())
 {

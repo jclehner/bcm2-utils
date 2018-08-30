@@ -148,6 +148,23 @@ struct bcm2_version_addrspace
 	struct bcm2_func close;
 };
 
+enum bcm2_type
+{
+	BCM2_TYPE_U32 = 0,
+	BCM2_TYPE_STR = 1,
+	BCM2_TYPE_NIL = 9,
+};
+
+struct bcm2_typed_val
+{
+	char name[32];
+	union {
+		uint32_t n;
+		char s[32];
+	} val;
+	enum bcm2_type type;
+};
+
 struct bcm2_version {
 	char version[16];
 	int intf;
@@ -173,6 +190,7 @@ struct bcm2_version {
 	// a0 = buffer, a1 = size
 	uint32_t getline;
 	struct bcm2_version_addrspace spaces[8];
+	struct bcm2_typed_val options[8];
 };
 
 struct bcm2_profile {
@@ -299,12 +317,22 @@ class version
 		return iter != m_functions.end() ? iter->second : funcmap();
 	}
 
+	bool has_opt(const std::string& name) const
+	{ return get_opt(name, BCM2_TYPE_NIL); }
+
+	uint32_t get_opt_num(const std::string& name) const
+	{ return get_opt(name, BCM2_TYPE_U32)->val.n; }
+
+	std::string get_opt_str(const std::string& name) const
+	{ return get_opt(name, BCM2_TYPE_STR)->val.s; }
+
 	const bcm2_version* raw() const
 	{ return m_p; }
 
 	private:
 	void parse_codecfg();
 	void parse_functions();
+	const bcm2_typed_val* get_opt(const std::string& name, bcm2_type type) const;
 
 	const bcm2_version* m_p;
 	const profile* m_prof;

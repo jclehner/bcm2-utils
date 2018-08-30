@@ -84,6 +84,8 @@ class interface
 	virtual bool is_privileged() const
 	{ return true; }
 
+	virtual void elevate_privileges() {}
+
 	virtual void writeln(const std::string& str = "")
 	{ m_io->writeln(str); }
 

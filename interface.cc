@@ -141,6 +141,8 @@ class bfc_telnet : public bfc, public telnet, public enable_shared_from_this<bfc
 	virtual bool is_privileged() const override
 	{ return m_status == rooted; }
 
+	virtual void elevate_privileges() override;
+
 	protected:
 	virtual uint32_t timeout() const override
 	{ return 50; }
@@ -237,6 +239,15 @@ bool bfc_telnet::login(const string& user, const string& pass)
 		}
 	}
 
+	return m_status >= authenticated;
+}
+
+void bfc_telnet::elevate_privileges()
+{
+	if (m_status == rooted || m_status != authenticated) {
+		return;
+	}
+
 #if 1
 	if (m_status == authenticated) {
 		runcmd("su");
@@ -251,35 +262,40 @@ bool bfc_telnet::login(const string& user, const string& pass)
 			return false;
 		});
 	}
-#else
-	if (m_status == authenticated) {
-		uint32_t conthread_instance_ptr = 0x81315C24;
-		uint32_t conthread_su_offset = 0x74;
+#endif
 
-		wait_ready();
+	if (m_status == authenticated && !m_version.name().empty()) {
+		if (m_version.has_opt("console_instance_ptr") && m_version.has_opt("console_priv_offset")) {
+			uint32_t ct_instance_ptr = m_version.get_opt_num("console_instance_ptr");
+			uint32_t ct_priv_offset = m_version.get_opt_num("console_priv_offset");
 
-		rwx::sp ram = rwx::create(shared_from_this(), "ram");
-		uint32_t conthread_instance = ntoh(extract<uint32_t>(ram->read(conthread_instance_ptr, 4)));
+			rwx::sp ram = rwx::create(shared_from_this(), "ram");
 
-		ram->write(conthread_instance + conthread_su_offset, "\x01"s);
-
-		writeln();
-		foreach_line([this] (const string& line) {
-			if (is_bfc_prompt(line, "CM")) {
-				m_status = rooted;
+			try {
+				wait_ready();
+				ram->space().check_offset(ct_instance_ptr, "console_instance_ptr");
+				uint32_t addr = ntoh(extract<uint32_t>(ram->read(ct_instance_ptr, 4)));
+				addr += ct_priv_offset;
+				ram->space().check_offset(addr, "console_priv_flag");
+				ram->write(addr, "\x01"s);
+			} catch (const exception& e) {
+				logger::v() << "while writing to console thread instance: " << e.what() << endl;
 			}
 
-			return false;
-		});
+			writeln();
+			foreach_line([this] (const string& line) {
+				if (is_bfc_prompt(line, "CM")) {
+					m_status = rooted;
+				}
+
+				return false;
+			});
+		}
 	}
-#endif
 
 	if (m_status == authenticated) {
 		logger::w() << "failed to switch to super-user; some functions might not work" << endl;
 	}
-
-	return m_status >= authenticated;
-
 }
 
 interface::sp detect_interface(const io::sp &io)
@@ -428,6 +444,7 @@ interface::sp interface::detect(const io::sp& io, const profile::sp& profile)
 {
 	interface::sp intf = detect_interface(io);
 	detect_profile_if_not_set(intf, profile);
+	intf->elevate_privileges();
 	return intf;
 }
 
@@ -480,6 +497,7 @@ interface::sp interface::create(const string& spec, const string& profile_name)
 			}
 
 			detect_profile_if_not_set(intf, profile);
+			intf->elevate_privileges();
 			return intf;
 		}
 	} catch (const bad_lexical_cast& e) {

@@ -212,6 +212,10 @@ struct bcm2_profile bcm2_profiles[] = {
 				.version = "7.18.1009",
 				.intf = BCM2_INTF_BFC,
 				.magic = { 0x807023d4, "7.18.1009" },
+				.options = {
+					{ "console_instance_ptr", { 0x808bc084 }},
+					{ "console_priv_offset", { 0x6c }},
+				}
 			}
 		},
 	},
@@ -367,7 +371,7 @@ struct bcm2_profile bcm2_profiles[] = {
 									.patch = {{ 0x803e5c2c, 0x10000018 }},
 							}
 						},
-				}
+				},
 			},
 			{
 				.version = "STD6.01.27",
@@ -381,7 +385,11 @@ struct bcm2_profile bcm2_profiles[] = {
 									.patch = {{ 0x8039e9bc, 0x10000018 }},
 							}
 						},
-				}
+				},
+				.options = {
+					{ "console_instance_ptr", { 0x81315c24 }},
+					{ "console_priv_offset", { 0x74 }},
+				},
 			},
 		},
 	},
