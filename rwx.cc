@@ -304,7 +304,13 @@ class bfc_ram : public parsing_rwx
 	{ return limits(4, 16, 8192); }
 
 	virtual limits limits_write() const override
-	{ return limits(4, 1, 4); }
+	{
+		if (m_intf->is_privileged()) {
+			return limits(4, 1, 4);
+		} else {
+			return limits(1, 1, 1);
+		}
+	}
 
 	unsigned capabilities() const override
 	{ return m_space.is_ram() ? cap_rwx : (cap_read | (m_space.is_writable() ? cap_write : 0)); }
@@ -318,8 +324,6 @@ class bfc_ram : public parsing_rwx
 
 	private:
 	bool m_hint_decimal = false;
-	bool m_rooted = false;
-	bool m_check_root = true;
 };
 
 bool bfc_ram::exec_impl(uint32_t offset)
@@ -335,13 +339,8 @@ bool bfc_ram::write_chunk(uint32_t offset, const string& chunk)
 				to_hex(offset, 0) + " 0x" + to_hex(val, 0), "Writing");
 	} else {
 		// diag writemem only supports writing bytes
-		for (char c : chunk) {
-			if (!m_intf->runcmd("/system/diag writemem 0x" + to_hex(offset, 0) + " 0x" + to_hex(int(c), 0), "Writing")) {
-				return false;
-			}
-		}
-
-		return true;
+		return m_intf->runcmd("/system/diag writemem 0x" + to_hex(offset, 0) + " 0x" +
+				to_hex(chunk[0] & 0xff, 0), "Writing");
 	}
 }
 
