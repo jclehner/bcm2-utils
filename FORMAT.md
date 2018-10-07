@@ -156,6 +156,9 @@ would be padded to
 000041b0  69 6e 00 05 61 64 6d 69  6e 00 00 00 00 00 00 06  |in..admin.......|
 ```
 
+###### Encryption (Sagem)
+The Sagem F@ST 3686 AC uses a simple XOR `0x80` pad. The GatewatSettings.bin header is preceeded by a
+12 byte data blob, which is also appended to the end of the data. 
 
 
 ### GatewaySettings.bin (dynnv)
