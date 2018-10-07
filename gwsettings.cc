@@ -122,8 +122,9 @@ string gws_encrypt(string buf, const string& key, const csp<profile>& p, bool pa
 	return buf;
 }
 
-string group_header_to_string(int format, const string& checksum, bool is_chksum_valid, size_t size, bool is_size_valid,
-		const string& key, bool is_encrypted, const string& profile, bool is_auto_profile)
+string group_header_to_string(int format, const string& checksum, bool is_chksum_valid,
+		size_t size, bool is_size_valid, const string& key, bool is_encrypted,
+		const string& profile, bool is_auto_profile, const string& unknown)
 {
 	ostringstream ostr;
 	ostr << "type    : ";
@@ -165,6 +166,10 @@ string group_header_to_string(int format, const string& checksum, bool is_chksum
 
 	if (is_encrypted) {
 		ostr << "key     : " << (key.empty() ? "(unknown)" : to_hex(key)) << endl;
+	}
+
+	if (!unknown.empty()) {
+		ostr << "unknown : " << to_hex(unknown) << endl;
 	}
 
 	return ostr.str();
@@ -280,7 +285,7 @@ class permdyn : public settings
 	virtual string header_to_string() const override
 	{
 		return group_header_to_string(m_format, to_hex(m_checksum.num()), m_checksum_valid,
-				m_size.num(), true, "", false, "", false);
+				m_size.num(), true, "", false, "", false, "");
 	}
 
 	private:
@@ -360,6 +365,7 @@ class gwsettings : public encryptable_settings
 
 		m_checksum_valid = false;
 
+		clip_unknown(buf);
 		validate_checksum_and_detect_profile(buf);
 		validate_magic(buf);
 		m_encrypted = !m_magic_valid;
@@ -422,6 +428,8 @@ class gwsettings : public encryptable_settings
 			buf = gws_checksum(buf, m_profile) + buf;
 		}
 
+		buf = m_unknown + buf + m_unknown;
+
 		if (!(os.write(buf.data(), buf.size()))) {
 			throw runtime_error("error while writing data");
 		}
@@ -433,11 +441,23 @@ class gwsettings : public encryptable_settings
 	{
 		return group_header_to_string(m_format, to_hex(m_checksum), m_checksum_valid,
 				m_size.num(), m_size_valid, m_key, m_encrypted, profile() ? profile()->name() : "",
-				m_is_auto_profile);
+				m_is_auto_profile, m_unknown);
 	}
 
 	private:
 	string m_checksum;
+
+	void clip_unknown(string& buf)
+	{
+		string top = m_checksum.substr(0, 12);
+		string btm = buf.substr(buf.size() - 12, 12);
+
+		if (top == btm) {
+			m_unknown = top;
+			m_checksum = m_checksum.substr(12) + buf.substr(0, 12);
+			buf = buf.substr(12, buf.size() - 24);
+		}
+	}
 
 	void validate_checksum_and_detect_profile(const string& buf)
 	{
@@ -556,6 +576,7 @@ class gwsettings : public encryptable_settings
 	string m_magic;
 	string m_key;
 	string m_pw;
+	string m_unknown;
 	bool m_padded = false;
 };
 
