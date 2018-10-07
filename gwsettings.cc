@@ -463,7 +463,13 @@ class gwsettings : public encryptable_settings
 
 	bool validate_magic(const string& buf)
 	{
-		return do_validate_magic(buf.substr(0, 74)) || do_validate_magic(buf.substr(0, 54));
+		for (int n : { 74, 59, 54 }) {
+			if (do_validate_magic(buf.substr(0, n))) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	bool do_validate_magic(const string& magic)
