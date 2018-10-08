@@ -75,6 +75,10 @@ string gws_decrypt(string buf, string& checksum, string& key, const csp<profile>
 		}
 		buf = crypt_motorola(buf.substr(0, buf.size() - 1), key);
 	} else {
+		if (enc == BCM2_CFG_ENC_XOR_0x80) {
+			key = "\x80"s;
+		}
+
 		buf = gws_crypt(buf, key, enc, false);
 	}
 
