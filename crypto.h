@@ -29,6 +29,7 @@ std::string crypt_3des_ecb(const std::string& buf, const std::string& key, bool 
 
 std::string crypt_motorola(std::string buf, const std::string& key);
 std::string crypt_sub_16x16(std::string buf, bool encrypt);
+std::string crypt_xor_char(std::string buf, const std::string& key);
 
 }
 #endif

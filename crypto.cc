@@ -410,4 +410,15 @@ string crypt_sub_16x16(string buf, bool encrypt)
 
 	return buf;
 }
+
+string crypt_xor_char(string buf, const string& key)
+{
+	check_keysize(key, 1, "xor");
+
+	for (size_t i = 0; i < buf.size(); ++i) {
+		buf[i] ^= (key[0] & 0xff);
+	}
+
+	return buf;
+}
 }

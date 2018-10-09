@@ -31,15 +31,6 @@ string read_stream(istream& is)
 	return string(std::istreambuf_iterator<char>(is), {});
 }
 
-string xor_string(string buf, char b)
-{
-	for (size_t i = 0; i < buf.size(); ++i) {
-		buf[i] ^= b;
-	}
-
-	return buf;
-}
-
 string gws_checksum(string buf, const csp<profile>& p)
 {
 	return hash_md5(buf + (p ? p->md5_key() : ""));
@@ -53,8 +44,8 @@ string gws_crypt(const string& buf, const string& key, int type, bool encrypt)
 		return crypt_3des_ecb(buf, key, encrypt);
 	} else if (type == BCM2_CFG_ENC_SUB_16x16) {
 		return crypt_sub_16x16(buf, encrypt);
-	} else if (type == BCM2_CFG_ENC_XOR_0x80) {
-		return xor_string(buf, 0x80);
+	} else if (type == BCM2_CFG_ENC_XOR) {
+		return crypt_xor_char(buf, key);
 	} else {
 		throw runtime_error("invalid encryption type " + to_string(type));
 	}
@@ -75,10 +66,6 @@ string gws_decrypt(string buf, string& checksum, string& key, const csp<profile>
 		}
 		buf = crypt_motorola(buf.substr(0, buf.size() - 1), key);
 	} else {
-		if (enc == BCM2_CFG_ENC_XOR_0x80) {
-			key = "\x80"s;
-		}
-
 		buf = gws_crypt(buf, key, enc, false);
 	}
 

@@ -75,8 +75,9 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "fast3686",
 		.pretty = "Sagemcom F@ST 3686 AC",
-		.cfg_flags = BCM2_CFG_ENC_XOR_0x80 | BCM2_CFG_FMT_GWS_FULL_ENC,
+		.cfg_flags = BCM2_CFG_ENC_XOR | BCM2_CFG_FMT_GWS_FULL_ENC,
 		.cfg_md5key = "3250736c633b752865676d64302d2778",
+		.cfg_defkeys = { "80" },
 		.spaces = {
 			{ .name = "ram" },
 		},
