@@ -165,6 +165,7 @@ class nv_group_mlog : public nv_group
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_u16, "http_idle_timeout"),
+				NV_VAR(nv_u8, "", true),
 			};
 		}
 	}
