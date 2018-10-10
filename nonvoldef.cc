@@ -107,25 +107,66 @@ class nv_group_mlog : public nv_group
 			return nv_group::definition(type, ver);
 		}
 
-		return {
-			NV_VAR(nv_p16string, "http_user", 32),
-			NV_VAR(nv_p16string, "http_pass", 32),
-			NV_VAR(nv_p16string, "http_admin_user", 32),
-			NV_VAR(nv_p16string, "http_admin_pass", 32),
-			NV_VAR(nv_u8, "telnet_enabled", true),
-			NV_VAR(nv_zstring, "remote_acc_user", 16),
-			NV_VAR(nv_zstring, "remote_acc_pass", 16),
-			NV_VAR(nv_ipstacks, "telnet_ipstacks"),
-			NV_VAR3(ver.num() >= 0x0006, nv_ipstacks, "ssh_ipstacks"),
-			NV_VAR3(ver.num() >= 0x0006, nv_bool, "ssh_enabled"),
-			NV_VAR3(ver.num() >= 0x0006, nv_bool, "http_enabled"),
-			NV_VAR3(ver.num() >= 0x0006, nv_u16, "remote_acc_timeout"),
-			//NV_VAR3(ver.num() <= 0x0006, nv_data, "", 2),
-			NV_VAR2(nv_ipstacks, "http_ipstacks"),
-			NV_VAR2(nv_ipstacks, "http_adv_ipstacks"),
-			NV_VAR(nv_data, "", 1),
-			NV_VAR2(nv_p8string, "http_seed"),
-		};
+		if (ver.num() >= 0x0006) {
+			return {
+				NV_VAR(nv_p16string, "http_user", 32),
+				NV_VAR(nv_p16string, "http_pass", 32),
+				NV_VAR(nv_p16string, "http_admin_user", 32),
+				NV_VAR(nv_p16string, "http_admin_pass", 32),
+				NV_VAR(nv_u8, "telnet_enabled", true),
+				NV_VAR(nv_zstring, "remote_acc_user", 16),
+				NV_VAR(nv_zstring, "remote_acc_pass", 16),
+				NV_VAR2(nv_ipstacks, "telnet_ipstacks"),
+				NV_VAR2(nv_ipstacks, "ssh_ipstacks"),
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_u16, "remote_acc_timeout"),
+				NV_VAR2(nv_ipstacks, "http_ipstacks"),
+				NV_VAR2(nv_ipstacks, "http_adv_ipstacks"),
+				// maybe p16string?
+				NV_VAR(nv_data, "", 1),
+				NV_VAR2(nv_p8string, "http_seed"),
+				NV_VAR(nv_data, "", 1),
+				// p16data? actually this is a list of from-to ipv4 pairs
+				NV_VAR2(nv_p8data, "http_acl_hosts"),
+				NV_VAR(nv_data, "", 2),
+				NV_VAR(nv_u16, "http_idle_timeout"),
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_u8, "", true),
+
+
+
+
+				// last byte:
+				// 0x82 = http_enable true
+				// 0x80 = http_enable false
+			};
+		} else {
+			return {
+				NV_VAR(nv_p16string, "http_user", 32),
+				NV_VAR(nv_p16string, "http_pass", 32),
+				NV_VAR(nv_p16string, "http_admin_user", 32),
+				NV_VAR(nv_p16string, "http_admin_pass", 32),
+				NV_VAR(nv_p16string, "remote_acc_user", 16),
+				NV_VAR(nv_p16string, "remote_acc_pass", 16),
+				NV_VAR(nv_data, "", 181),
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_u16, "remote_acc_timeout"),
+				NV_VAR2(nv_ipstacks, "http_ipstacks"),
+				NV_VAR2(nv_ipstacks, "http_adv_ipstacks"),
+				NV_VAR2(nv_p16string, "http_seed"),
+				NV_VAR2(nv_p16data, "http_acl_hosts"),
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_u16, "http_idle_timeout"),
+			};
+		}
 	}
 };
 
