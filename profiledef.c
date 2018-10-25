@@ -212,7 +212,7 @@ struct bcm2_profile bcm2_profiles[] = {
 			{
 				.version = "7.18.1009",
 				.intf = BCM2_INTF_BFC,
-				.magic = { 0x807023d4, "7.18.1009" },
+				.magic = { 0x8070244c, "7.18.1009" },
 				.options = {
 					{ "console_instance_ptr", { 0x808bc084 }},
 					{ "console_priv_offset", { 0x6c }},
