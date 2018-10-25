@@ -363,7 +363,11 @@ void detect_profile_if_not_set(const interface::sp& intf, const profile::sp& pro
 		{
 			if (a.p->name() == b.p->name()) {
 				if (a.v.name().empty() != b.v.name().empty()) {
-					return a.v.name().empty();
+					return b.v.name().empty();
+				}
+
+				if (a.m->addr == b.m->addr) {
+					return a.v.name() < b.v.name();
 				}
 
 				return a.m->addr < b.m->addr;
