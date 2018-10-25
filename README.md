@@ -11,19 +11,18 @@ Fully supported devices:
 * Technicolor TC7200 (bootloader, shell)
 * Thomson TWG850-4 (shell)
 * Thomson TWG870 (shell)
+* Ubee EVM3236 (shell)
 
 Partially supported:
 
-* Thomson TCW770 (`bcm2cfg` only)
-* Netgear CG3000 (`bcm2cfg` only, untested)
+* Thomson TCW770
+* Netgear CG3000
+* Motorola Surfboard SBG6580
+* Sagemcom F@ST 3686 AC
+
+Devices _not_ listed above may still be supported, but with less features! It should be easy to add support for other devices. Some pointers can be found [below](#writing-a-device-profile).
 
 Binaries for macOS and Windows are available [here](https://github.com/jclehner/bcm2-utils/releases).
-
-It should be easy to add support for other devices. Some pointers can
-be found [below](#writing-a-device-profile).
-
-These utilities are not yet stable - command line options are likely
-to change. Bug reports are always welcome.
 
 ## bcm2dump
 ```
