@@ -20,7 +20,7 @@
 #include <sys/stat.h>
 #include <algorithm>
 #include <unistd.h>
-#include <list>
+#include <set>
 #include "interface.h"
 #include "rwx.h"
 using namespace std;
@@ -37,6 +37,23 @@ bool is_char_device(const string& filename)
 	}
 
 	return !errno ? S_ISCHR(st.st_mode) : false;
+}
+
+uint32_t get_max_magic_addr(const profile::sp& p, int intf_id)
+{
+	uint32_t ret = 0;
+
+	for (auto v : p->versions()) {
+		if (v.intf() == intf_id) {
+			ret = max(ret, v.magic()->addr);
+		}
+	}
+
+	for (auto m : p->magics()) {
+		ret = max(ret, m->addr);
+	}
+
+	return ret;
 }
 
 class telnet
@@ -332,56 +349,62 @@ void detect_profile_if_not_set(const interface::sp& intf, const profile::sp& pro
 	// is to avoid crashing a device by trying an offset that is outside its
 	// valid range.
 
+	struct helper
+	{
+		const bcm2_magic* m;
+		const profile::sp p;
+		const version v;
+		const uint32_t x;
+	};
+
 	struct comp
 	{
-		bool operator()(const bcm2_magic* m1, const bcm2_magic* m2) const
+		bool operator()(const helper& a, const helper& b)
 		{
-			return m1->addr < m2->addr;
+			if (a.p->name() == b.p->name()) {
+				if (a.v.name().empty() != b.v.name().empty()) {
+					return a.v.name().empty();
+				}
+
+				return a.m->addr < b.m->addr;
+			}
+
+			return a.x < b.x;
 		}
 	};
 
-	multimap<const bcm2_magic*, pair<profile::sp, version>, comp> magics;
+	set<helper, comp> magics;
 
 	for (auto p : profile::list()) {
+		uint32_t x = get_max_magic_addr(p, intf->id());
+
 		for (auto v : p->versions()) {
 			if (v.intf() == intf->id()) {
-				magics.insert(make_pair(v.magic(), make_pair(p, v)));
+				magics.insert({ v.magic(), p, v, x });
 			}
 		}
 
 		for (auto m : p->magics()) {
-			magics.insert(make_pair(m, make_pair(p, version())));
+			magics.insert({ m, p, version(), x });
 		}
 	}
 
-	for (int pass = 0; pass < 2; ++pass) {
-		for (const auto& kv : magics) {
-			// try specific versions in the first pass, and general
-			// magic strings in the second pass.
-			//
-			// TODO: detect device first, then specific version?
+	for (const helper& h : magics) {
+		string data = h.m->data;
+		if (ram->read(h.m->addr, data.size()) == data) {
 
-			auto v = kv.second.second;
-			if (pass == 0 && v.name().empty()) {
-				continue;
+			logger::i() << "detected profile " << h.p->name() << "(" << intf->name() << ")";
+			version v = h.v;
+
+			if (!v.name().empty()) {
+				logger::i() << ", version " << v.name();
+			} else {
+				v = h.p->default_version(intf->id());
 			}
 
-			string data = kv.first->data;
-			if (ram->read(kv.first->addr, data.size()) == data) {
-
-				auto p = kv.second.first;
-				logger::i() << "detected profile " << p->name() << "(" << intf->name() << ")";
-
-				if (!v.name().empty()) {
-					logger::i() << ", version " << v.name();
-				} else {
-					v = p->default_version(intf->id());
-				}
-
-				logger::i() << endl;
-				intf->set_profile(p, v);
-				return;
-			}
+			logger::i() << endl;
+			intf->set_profile(h.p, v);
+			return;
 		}
 	}
 
