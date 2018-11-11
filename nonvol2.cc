@@ -389,12 +389,7 @@ istream& nv_compound::read(istream& is)
 		auto pos = is.tellg();
 
 		if (!end) {
-			try {
-				v.val->read(is);
-			} catch (const exception& e) {
-				logger::t() << "  caught exception: " << e.what() << endl;
-				end = true;
-			}
+			v.val->read(is);
 		}
 
 		if (!is) {
