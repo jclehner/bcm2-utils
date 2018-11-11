@@ -83,6 +83,35 @@ struct bcm2_profile bcm2_profiles[] = {
 		},
 	},
 	{
+		.name = "mg7550",
+		.pretty = "Motorola MG7550",
+		.pssig = 0x7550,
+		.kseg1mask = 0x20000000,
+		.cfg_md5key = "3250736c633b752865676d64302d2778",
+		.spaces = {
+			{
+				.name = "ram",
+				.min = 0x80000000,
+				.size = 256 * 1024 * 1024,
+			},
+		},
+		.versions = {
+			{
+				.intf = BCM2_INTF_BFC,
+				.loadaddr = 0x80002000,
+			},
+			{
+				.version = "5.7.1.27",
+				.intf = BCM2_INTF_BFC,
+				.magic = { 0x80eb8a91, "5.7.1.27" },
+				.options = {
+					{ "console_instance_ptr", { 0x812efff4 }},
+					{ "console_priv_offset", { 0x74 }},
+				}
+			}
+		},
+	},
+	{
 		.name = "twg850",
 		.pretty = "Thomson TWG850-4",
 		.baudrate = 115200,
