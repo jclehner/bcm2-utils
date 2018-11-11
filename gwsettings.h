@@ -54,6 +54,9 @@ class settings : public nv_compound
 
 	virtual std::ostream& write(std::ostream& is) const override;
 
+	int format() const
+	{ return m_format; }
+
 	protected:
 	settings(const std::string& name, int format, const csp<bcm2dump::profile>& p)
 	: nv_compound(true, name), m_profile(p), m_format(format) {}

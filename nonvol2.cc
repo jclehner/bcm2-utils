@@ -63,7 +63,7 @@ size_t to_index(const string& str, const nv_val& val)
 	}
 }
 
-bool read_group_header(istream& is, nv_u16& size, nv_magic& magic, size_t maxsize)
+bool read_group_header(istream& is, nv_u16& size, nv_magic& magic, size_t remaining)
 {
 	if (size.read(is)) {
 		if (size.num() < 6) {
@@ -837,17 +837,18 @@ map<nv_magic, csp<nv_group>>& nv_group::registry()
 	return ret;
 }
 
-istream& nv_group::read(istream& is, sp<nv_group>& group, int format, size_t maxsize)
+istream& nv_group::read(istream& is, sp<nv_group>& group, int format,
+		size_t remaining, const csp<bcm2dump::profile>& p)
 {
 	nv_u16 size;
 	nv_magic magic;
 
-	if (!read_group_header(is, size, magic, maxsize)) {
+	if (!read_group_header(is, size, magic, remaining)) {
 		group = nullptr;
 		return is;
-	} else if (size.num() > maxsize) {
-		logger::v() << "group size " << size.to_str() << " exceeds maximum size " << maxsize << endl;
-		size.num(maxsize);
+	} else if (size.num() > remaining) {
+		logger::v() << "group size " << size.to_str() << " exceeds maximum size " << remaining << endl;
+		size.num(remaining);
 	}
 
 	auto i = registry().find(magic);
@@ -861,6 +862,7 @@ istream& nv_group::read(istream& is, sp<nv_group>& group, int format, size_t max
 	group->m_size = size;
 	group->m_magic = magic;
 	group->m_format = format;
+	group->m_profile = p;
 
 	return group->read(is);
 }

@@ -26,6 +26,7 @@
 #include <memory>
 #include <string>
 #include <map>
+#include "profile.h"
 #include "util.h"
 #undef minor
 #undef major
@@ -946,7 +947,8 @@ class nv_group : public nv_compound, public cloneable
 
 	virtual std::ostream& write(std::ostream& os) const override;
 
-	static std::istream& read(std::istream& is, sp<nv_group>& group, int format, size_t maxsize);
+	static std::istream& read(std::istream& is, sp<nv_group>& group, int format,
+			size_t remaining, const csp<bcm2dump::profile>& profile);
 	static void registry_add(const csp<nv_group>& group);
 
 	virtual nv_group* clone() const override = 0;
@@ -959,6 +961,9 @@ class nv_group : public nv_compound, public cloneable
 
 	bool init(bool force) override;
 
+	csp<bcm2dump::profile> profile() const
+	{ return m_profile; }
+
 	protected:
 	static std::map<nv_magic, csp<nv_group>>& registry();
 
@@ -966,10 +971,14 @@ class nv_group : public nv_compound, public cloneable
 	virtual list definition(int format, const nv_version& ver) const;
 	virtual std::istream& read(std::istream& is) override;
 
+	uint16_t size() const
+	{ return m_size.num(); }
+
 	nv_u16 m_size;
 	nv_magic m_magic;
 	nv_version m_version;
 	int m_format = fmt_unknown;
+	csp<bcm2dump::profile> m_profile;
 
 	private:
 	static std::map<nv_magic, csp<nv_group>> s_registry;

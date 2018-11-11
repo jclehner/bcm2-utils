@@ -589,7 +589,7 @@ istream& settings::read(istream& is)
 	unsigned mult = 1;
 
 	while (remaining && !is.eof()) {
-		if (!nv_group::read(is, group, m_format, remaining) || !group) {
+		if (!nv_group::read(is, group, m_format, remaining, m_profile) || !group) {
 			if (is.eof() || !group) {
 				break;
 			}
