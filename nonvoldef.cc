@@ -140,7 +140,7 @@ class nv_group_mlog : public nv_group
 			};
 		}
 
-		if (ver.num() >= 0x0006) {
+		if (true || ver.num() >= 0x0006) {
 			return {
 				NV_VAR(nv_p16string, "http_user", 32),
 				NV_VAR(nv_p16string, "http_pass", 32),
@@ -151,19 +151,13 @@ class nv_group_mlog : public nv_group
 				NV_VAR(nv_zstring, "remote_acc_pass", 16),
 				NV_VAR2(nv_ipstacks, "telnet_ipstacks"),
 				NV_VAR2(nv_ipstacks, "ssh_ipstacks"),
-				NV_VAR(nv_u8, "", true),
-				NV_VAR(nv_u8, "", true),
-				NV_VAR(nv_u16, "remote_acc_timeout"),
+				NV_VAR(nv_u32, "remote_acc_timeout"),
 				NV_VAR2(nv_ipstacks, "http_ipstacks"),
 				NV_VAR2(nv_ipstacks, "http_adv_ipstacks"),
-				// maybe p16string?
+				NV_VAR2(nv_p16string, "http_seed"),
 				NV_VAR(nv_data, "", 1),
-				NV_VAR2(nv_p8string, "http_seed"),
-				NV_VAR(nv_data, "", 1),
-				// p16data? actually this is a list of from-to ipv4 pairs
-				NV_VAR2(nv_p8data, "http_acl_hosts"),
-				NV_VAR(nv_data, "", 2),
-				NV_VAR(nv_u16, "http_idle_timeout"),
+				NV_VAR2(nv_p16data, "http_acl_hosts"),
+				NV_VAR(nv_u32, "http_idle_timeout"),
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_u8, "", true),
 				NV_VAR(nv_u8, "", true),
