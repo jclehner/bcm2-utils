@@ -266,7 +266,7 @@ csp<nv_val> nv_compound::get(const string& name) const
 {
 	auto val = find(name);
 	if (!val) {
-		throw invalid_argument("requested non-existing member '" + name);
+		throw invalid_argument("requested non-existing member '" + name + "'");
 	}
 
 	return val;
