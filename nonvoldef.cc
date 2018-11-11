@@ -101,10 +101,43 @@ class nv_group_mlog : public nv_group
 		}) {}
 	};
 
+	class nv_remote_acc_methods : public nv_bitmask<nv_u8>
+	{
+		public:
+		nv_remote_acc_methods() : nv_bitmask("remote_acc_methods", {
+				"telnet", "", "", "ssh"
+		}) {}
+	};
+
 	virtual list definition(int type, const nv_version& ver) const override
 	{
 		if (type == fmt_perm) {
-			return nv_group::definition(type, ver);
+			return {
+				NV_VAR2(nv_bitmask<nv_u32>, "log_severities", {
+						"fatal",
+						"error",
+						"warning",
+						"fn_entry_exit",
+						"trace",
+						"info",
+				}),
+				NV_VAR2(nv_bitmask<nv_u8>, "log_fields", {
+						"severity",
+						"instance",
+						"function",
+						"module",
+						"timestamp",
+						"thread",
+						"milliseconds"
+				}),
+				NV_VAR(nv_data, "", 33),
+				NV_VAR(nv_ip4, "remote_acc_ip"),
+				NV_VAR(nv_ip4, "remote_acc_subnet"),
+				NV_VAR(nv_ip4, "remote_acc_router"),
+				NV_VAR(nv_u8, "remote_acc_ipstack"),
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_u8, "virtual_enet_ipstack"),
+			};
 		}
 
 		if (ver.num() >= 0x0006) {
@@ -113,7 +146,7 @@ class nv_group_mlog : public nv_group
 				NV_VAR(nv_p16string, "http_pass", 32),
 				NV_VAR(nv_p16string, "http_admin_user", 32),
 				NV_VAR(nv_p16string, "http_admin_pass", 32),
-				NV_VAR(nv_u8, "telnet_enabled", true),
+				NV_VAR2(nv_remote_acc_methods, "remote_acc_methods"),
 				NV_VAR(nv_zstring, "remote_acc_user", 16),
 				NV_VAR(nv_zstring, "remote_acc_pass", 16),
 				NV_VAR2(nv_ipstacks, "telnet_ipstacks"),
@@ -152,13 +185,8 @@ class nv_group_mlog : public nv_group
 				NV_VAR(nv_p16string, "http_admin_pass", 32),
 				NV_VAR(nv_p16string, "remote_acc_user", 16),
 				NV_VAR(nv_p16string, "remote_acc_pass", 16),
-				NV_VAR2(nv_bitmask<nv_u8>, "remote_acc_methods", "", {
-						"telnet",
-						"",
-						"",
-						"ssh",
-				}),
 				NV_VAR(nv_data, "", 180),
+				NV_VAR2(nv_remote_acc_methods, "remote_acc_methods"),
 				NV_VAR2(nv_ipstacks, "telnet_ipstacks"),
 				NV_VAR2(nv_ipstacks, "ssh_ipstacks"),
 				NV_VAR2(nv_u32, "remote_acc_timeout"),
