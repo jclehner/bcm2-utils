@@ -140,26 +140,7 @@ class nv_group_mlog : public nv_group
 			};
 		}
 
-		if (profile()->name() != "fast3686") {
-			return {
-				NV_VAR(nv_p16string, "http_user", 32),
-				NV_VAR(nv_p16string, "http_pass", 32),
-				NV_VAR(nv_p16string, "http_admin_user", 32),
-				NV_VAR(nv_p16string, "http_admin_pass", 32),
-				NV_VAR(nv_remote_acc_methods, "remote_acc_methods"),
-				NV_VAR(nv_fzstring<16>, "remote_acc_user"),
-				NV_VAR(nv_fzstring<16>, "remote_acc_pass"),
-				NV_VAR(nv_ipstacks, "telnet_ipstacks"),
-				NV_VAR(nv_ipstacks, "ssh_ipstacks"),
-				NV_VAR(nv_u32, "remote_acc_timeout"),
-				NV_VAR(nv_ipstacks, "http_ipstacks"),
-				NV_VAR(nv_ipstacks, "http_adv_ipstacks"),
-				NV_VAR(nv_p16string, "http_seed"),
-				NV_VAR(nv_p16data, "http_acl_hosts"),
-				NV_VAR(nv_u32, "http_idle_timeout"),
-				NV_VAR(nv_bool, "log_exceptions"),
-			};
-		} else {
+		if (profile()->cfg_flags() & BCM2_CFG_DATA_USERIF_ALT) {
 			return {
 				NV_VAR(nv_p16string, "http_user", 32),
 				NV_VAR(nv_p16string, "http_pass", 32),
@@ -178,6 +159,25 @@ class nv_group_mlog : public nv_group
 				NV_VAR2(nv_p16data, "http_acl_hosts"),
 				NV_VAR2(nv_u32, "http_idle_timeout"),
 				NV_VAR2(nv_bool, "log_exceptions"),
+			};
+		} else {
+			return {
+				NV_VAR(nv_p16string, "http_user", 32),
+				NV_VAR(nv_p16string, "http_pass", 32),
+				NV_VAR(nv_p16string, "http_admin_user", 32),
+				NV_VAR(nv_p16string, "http_admin_pass", 32),
+				NV_VAR(nv_remote_acc_methods, "remote_acc_methods"),
+				NV_VAR(nv_fzstring<16>, "remote_acc_user"),
+				NV_VAR(nv_fzstring<16>, "remote_acc_pass"),
+				NV_VAR(nv_ipstacks, "telnet_ipstacks"),
+				NV_VAR(nv_ipstacks, "ssh_ipstacks"),
+				NV_VAR(nv_u32, "remote_acc_timeout"),
+				NV_VAR(nv_ipstacks, "http_ipstacks"),
+				NV_VAR(nv_ipstacks, "http_adv_ipstacks"),
+				NV_VAR(nv_p16string, "http_seed"),
+				NV_VAR(nv_p16data, "http_acl_hosts"),
+				NV_VAR(nv_u32, "http_idle_timeout"),
+				NV_VAR(nv_bool, "log_exceptions"),
 			};
 		}
 	}

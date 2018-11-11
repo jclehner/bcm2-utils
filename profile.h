@@ -47,10 +47,13 @@ enum bcm2_cfg_flags
 	BCM2_CFG_ENC_SUB_16x16 = 4,
 	BCM2_CFG_ENC_XOR = 5,
 
-	BCM2_CFG_FMT_MASK = 0x38,
+	BCM2_CFG_FMT_MASK = 0xf8,
 	BCM2_CFG_FMT_GWS_DEFAULT = 0 << 3,
 	BCM2_CFG_FMT_GWS_DYNNV = 1 << 3,
 	BCM2_CFG_FMT_GWS_FULL_ENC = 2 << 3,
+
+	BCM2_CFG_DATA_MASK = 0xff00,
+	BCM2_CFG_DATA_USERIF_ALT = 1 << 16,
 };
 
 enum bcm2_interface
