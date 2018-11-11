@@ -155,17 +155,9 @@ class nv_group_mlog : public nv_group
 				NV_VAR2(nv_ipstacks, "http_ipstacks"),
 				NV_VAR2(nv_ipstacks, "http_adv_ipstacks"),
 				NV_VAR2(nv_p16string, "http_seed"),
-				NV_VAR(nv_data, "", 1),
 				NV_VAR2(nv_p16data, "http_acl_hosts"),
 				NV_VAR(nv_u32, "http_idle_timeout"),
-				NV_VAR(nv_u8, "", true),
-				NV_VAR(nv_u8, "", true),
-				NV_VAR(nv_u8, "", true),
-				NV_VAR(nv_u8, "", true),
-				NV_VAR(nv_u8, "", true),
-
-
-
+				NV_VAR2(nv_bool, "log_exceptions"),
 
 				// last byte:
 				// 0x82 = http_enable true
