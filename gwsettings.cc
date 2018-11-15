@@ -588,7 +588,7 @@ istream& settings::read(istream& is)
 	size_t remaining = data_bytes();
 	unsigned mult = 1;
 
-	while (remaining && !is.eof()) {
+	while (remaining >= 8 && !is.eof()) {
 		if (!nv_group::read(is, group, m_format, remaining, m_profile) || !group) {
 			if (is.eof() || !group) {
 				break;
@@ -606,13 +606,18 @@ istream& settings::read(istream& is)
 		}
 	}
 
+	if (remaining) {
+		m_junk = read_stream(is);
+	}
+
 	return is;
 }
 
 ostream& settings::write(ostream& os) const
 {
 	if (!m_is_raw) {
-		return nv_compound::write(os);
+		nv_compound::write(os);
+		return os.write(m_junk.data(), m_junk.size());
 	} else {
 		return os.write(m_raw_data.data(), m_raw_data.size());
 	}
