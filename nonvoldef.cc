@@ -178,6 +178,7 @@ class nv_group_mlog : public nv_group
 				NV_VAR(nv_p16data, "http_acl_hosts"),
 				NV_VAR(nv_u32, "http_idle_timeout"),
 				NV_VAR(nv_bool, "log_exceptions"),
+				NV_VAR(nv_u32, "ssh_inactivity_timeout"),
 			};
 		}
 	}
@@ -191,11 +192,19 @@ class nv_group_cmap : public nv_group
 	protected:
 	virtual list definition(int type, const nv_version& ver) const override
 	{
-		return {
-			NV_VAR(nv_bool, "stop_at_console"),
-			NV_VAR(nv_bool, "skip_driver_init_prompt"),
-			NV_VAR(nv_bool, "stop_at_console_prompt"),
-			NV_VAR2(nv_enum<nv_u8>, "serial_console_mode", "serial_console_mode", { "disabled", "ro", "rw", "factory" }),
+		if (type == fmt_perm) {
+			return {
+				NV_VAR2(nv_bitmask<nv_u8>, "console_features", {
+						"stop_at_console",
+						"skip_driver_init_prompt",
+						"stop_at_console_prompt"
+				}),
+			};
+		} else {
+			return {
+				NV_VAR2(nv_enum<nv_u32>, "serial_console_mode", "serial_console_mode",
+						{ "disabled", "ro", "rw", "factory" }),
+			};
 		};
 	}
 };
