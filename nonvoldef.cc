@@ -223,7 +223,9 @@ class nv_group_thom : public nv_group
 		return {
 			// 0x6 = rw (0x4 = write, 0x2 = read)
 			// 0x6 = rw (0x4 = rw, 0x2 = enable (?), 0x1 = factory (?))
-			NV_VAR(nv_bitmask<nv_u8>, "serial_console_mode"),
+			NV_VAR2(nv_bitmask<nv_u8>, "serial_console_mode", {
+				"", "read", "write", "factory"
+			}),
 #if 0
 			NV_VAR(nv_bool, "early_console_enable"), // ?
 			NV_VAR(nv_u16, "early_console_bufsize", true),
