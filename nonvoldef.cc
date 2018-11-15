@@ -140,7 +140,7 @@ class nv_group_mlog : public nv_group
 			};
 		}
 
-		if (profile()->cfg_flags() & BCM2_CFG_DATA_USERIF_ALT) {
+		if (profile() && profile()->cfg_flags() & BCM2_CFG_DATA_USERIF_ALT) {
 			return {
 				NV_VAR(nv_p16string, "http_user", 32),
 				NV_VAR(nv_p16string, "http_pass", 32),
