@@ -35,7 +35,7 @@ release-linux: clean bcm2cfg bcm2dump
 	strip bcm2dump
 	zip bcm2utils-$(VERSION)-linux.zip README.md bcm2cfg bcm2dump
 
-relase-macos: release-linux
+release-macos: release-linux
 	mv bcm2utils-$(VERSION)-linux.zip bcm2utils-$(VERSION)-macos.zip
 
 release-win32:
