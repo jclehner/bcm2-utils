@@ -326,10 +326,8 @@ string crypt_des_ecb(const string& ibuf, const string& key, bool encrypt)
 					encrypt ? DES_ENCRYPT : DES_DECRYPT);
 	});
 #elif defined(BCM2UTILS_USE_COMMON_CRYPTO)
-#error
 	return crypt_generic_ecb(kCCAlgorithmDES, kCCKeySizeDES, 8, ibuf, key, encrypt);
 #elif defined(BCM2UTILS_USE_WINCRYPT)
-#error
 	return crypt_generic_ecb<8>(CALG_DES, 8, ibuf, key, encrypt);
 #else
 	throw runtime_error("encryption not supported on this platform");
