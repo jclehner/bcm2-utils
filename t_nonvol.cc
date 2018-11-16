@@ -95,12 +95,12 @@ void test_group()
 	sp<nv_group> group;
 	stringstream istr(data1);
 
-	nv_group::read(istr, group, nv_group::fmt_dyn, data1.size());
+	nv_group::read(istr, group, nv_group::fmt_dyn, data1.size(), nullptr);
 
 	if (!group) {
 		istr.str(data1);
 		logger::loglevel(logger::debug);
-		nv_group::read(istr, group, nv_group::fmt_dyn, data1.size());
+		nv_group::read(istr, group, nv_group::fmt_dyn, data1.size(), nullptr);
 		logger::loglevel(logger::verbose);
 		throw failed_test("failed to read group");
 	}
