@@ -52,6 +52,14 @@ struct bcm2_profile bcm2_profiles[] = {
 		.name = "cg3000",
 		.pretty = "Netgear CG3000",
 		.pssig = 0xa0f7,
+		.spaces = {
+				{ .name = "ram" },
+		},
+	},
+	{
+		.name = "cg3101",
+		.pretty = "Netgear CG3101",
+		.pssig = 0xa0e7,
 		.cfg_flags = BCM2_CFG_ENC_3DES_ECB | BCM2_CFG_FMT_GWS_FULL_ENC,
 		.cfg_md5key = "3250736c633b752865676d64302d2778",
 		.cfg_defkeys = {
@@ -61,6 +69,8 @@ struct bcm2_profile bcm2_profiles[] = {
 		.spaces = {
 				{ .name = "ram" },
 		},
+
+
 	},
 	{
 		.name = "sbg6580",
