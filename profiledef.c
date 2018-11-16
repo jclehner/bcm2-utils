@@ -69,8 +69,16 @@ struct bcm2_profile bcm2_profiles[] = {
 		.spaces = {
 				{ .name = "ram" },
 		},
-
-
+	},
+	{
+		.name = "cbw383zn",
+		.pretty = "NetMASTER CBW-383ZN",
+		.cfg_flags = BCM2_CFG_ENC_DES_ECB | BCM2_CFG_FMT_GWS_FULL_ENC,
+		.cfg_md5key = "3250736c633b752865676d64302d2778",
+		.cfg_defkeys = { "1122334455667788" },
+		.spaces = {
+				{ .name = "ram" },
+		},
 	},
 	{
 		.name = "sbg6580",
