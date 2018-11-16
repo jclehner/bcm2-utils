@@ -79,6 +79,21 @@ struct bcm2_profile bcm2_profiles[] = {
 		.spaces = {
 				{ .name = "ram" },
 		},
+		.versions = {
+			{
+				.intf = BCM2_INTF_BFC,
+				.loadaddr = 0x80002000,
+			},
+			{
+				.version = "0081.799.009",
+				.intf = BCM2_INTF_BFC,
+				.magic = { 0x80dc48c4, "0081    799 009" },
+				.options = {
+					{ "console_instance_ptr", { 0x81204074 }},
+					{ "console_priv_offset", { 0x74 }},
+				}
+			}
+		},
 	},
 	{
 		.name = "sbg6580",
