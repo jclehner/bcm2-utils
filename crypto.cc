@@ -313,6 +313,29 @@ string crypt_3des_ecb(const string& ibuf, const string& key, bool encrypt)
 #endif
 }
 
+string crypt_des_ecb(const string& ibuf, const string& key, bool encrypt)
+{
+	check_keysize(key, 8, "des-ecb");
+
+#if defined(BCM2UTILS_USE_OPENSSL)
+	DES_key_schedule ks;
+	DES_set_key_unchecked(to_ccblock(key, 0), &ks);
+
+	return crypt_generic_ecb<8>(ibuf, [&ks, &encrypt](const uint8_t *iblock, uint8_t *oblock) {
+			DES_ecb_encrypt(to_ccblock(iblock), to_cblock(oblock), &ks,
+					encrypt ? DES_ENCRYPT : DES_DECRYPT);
+	});
+#elif defined(BCM2UTILS_USE_COMMON_CRYPTO)
+#error
+	return crypt_generic_ecb(kCCAlgorithmDES, kCCKeySizeDES, 8, ibuf, key, encrypt);
+#elif defined(BCM2UTILS_USE_WINCRYPT)
+#error
+	return crypt_generic_ecb<8>(CALG_DES, 8, ibuf, key, encrypt);
+#else
+	throw runtime_error("encryption not supported on this platform");
+#endif
+}
+
 string crypt_aes_256_ecb(const string& ibuf, const string& key, bool encrypt)
 {
 	check_keysize(key, 32, "aes-256-ecb");

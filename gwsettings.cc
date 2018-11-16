@@ -42,6 +42,8 @@ string gws_crypt(const string& buf, const string& key, int type, bool encrypt)
 		return crypt_aes_256_ecb(buf, key, encrypt);
 	} else if (type == BCM2_CFG_ENC_3DES_ECB) {
 		return crypt_3des_ecb(buf, key, encrypt);
+	} else if (type == BCM2_CFG_ENC_DES_ECB) {
+		return crypt_des_ecb(buf, key, encrypt);
 	} else if (type == BCM2_CFG_ENC_SUB_16x16) {
 		return crypt_sub_16x16(buf, encrypt);
 	} else if (type == BCM2_CFG_ENC_XOR) {
