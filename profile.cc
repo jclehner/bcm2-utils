@@ -255,7 +255,7 @@ class profile_wrapper : public profile
 	{
 		for (size_t i = 0; i < BCM2_INTF_NUM && m_p->magic[i].addr; ++i) {
 			const bcm2_magic* m = &m_p->magic[i];
-			uint32_t size = m->size ? min(sizeof(m->data), m->size) : strlen(m->data);
+			uint32_t size = m->size ? m->size : strlen(m->data);
 			m_ram.check_range(m->addr, size, "magic");
 			m_magic.push_back(m);
 		}

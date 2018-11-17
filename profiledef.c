@@ -74,16 +74,21 @@ struct bcm2_profile bcm2_profiles[] = {
 		.name = "cbw383zn",
 		.pretty = "NetMASTER CBW-383ZN",
 		.pssig = 0x8364,
+		.blsig = 0x3383,
 		.cfg_flags = BCM2_CFG_ENC_DES_ECB | BCM2_CFG_FMT_GWS_FULL_ENC,
 		.cfg_md5key = "3250736c633b752865676d64302d2778",
 		.cfg_defkeys = { "1122334455667788" },
+		.magic = {
+			{ 0x83f8a9ac, "2.4.0" },
+		},
 		.spaces = {
 			{
 				.name = "ram",
 				.min = 0x80000000,
 				.size = 128 * 1024 * 1024,
 				.parts = {
-					{ "image",   0x85f00000, 0xff0000 },
+					{ "image",      0x85f00000, 0xff0000 },
+					{ "bootloader", 0x83f80000, 0x020000 },
 				}
 			},
 			{
@@ -106,12 +111,22 @@ struct bcm2_profile bcm2_profiles[] = {
 			{
 				.version = "0081.799.009",
 				.intf = BCM2_INTF_BFC,
-				.magic = { 0x80dc48c4, "0081" },
+				.magic = { 0x80dc48c4, "0081\x00\x00\x00\x00799\x00009", 15 },
 				.options = {
 					{ "bfc:conthread_instance", { 0x81204074 }},
 					{ "bfc:conthread_priv_off", { 0x74 }},
 				}
-			}
+			},
+			{
+				.intf = BCM2_INTF_BLDR,
+				.loadaddr = 0x84010000,
+				.buffer = 0x85f00000
+			},
+			{
+				.version = "2.4.0",
+				.intf = BCM2_INTF_BLDR,
+				.magic = { 0x83f8a9ac, "2.4.0" },
+			},
 		},
 	},
 	{
