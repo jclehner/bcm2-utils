@@ -107,6 +107,9 @@ struct bcm2_profile bcm2_profiles[] = {
 			{
 				.intf = BCM2_INTF_BFC,
 				.loadaddr = 0x80002000,
+				.options = {
+					{ "bfc:flash_read_direct", { false }},
+				}
 			},
 			{
 				.version = "0081.799.009",
