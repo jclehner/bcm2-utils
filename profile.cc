@@ -399,7 +399,7 @@ do { \
 const bcm2_typed_val* version::get_opt(const string& name, bcm2_type type) const
 {
 	auto ret = get_version_opt(m_p, name, BCM2_TYPE_NIL);
-	if (ret && ret->type == type) {
+	if (ret && (ret->type == type || type == BCM2_TYPE_NIL)) {
 		return ret;
 	}
 
