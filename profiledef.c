@@ -111,7 +111,7 @@ struct bcm2_profile bcm2_profiles[] = {
 			{
 				.version = "0081.799.009",
 				.intf = BCM2_INTF_BFC,
-				.magic = { 0x80dc48c4, "0081\x00\x00\x00\x00799\x00009", 15 },
+				.magic = { 0x80dc48d0, "009" },
 				.options = {
 					{ "bfc:conthread_instance", { 0x81204074 }},
 					{ "bfc:conthread_priv_off", { 0x74 }},
