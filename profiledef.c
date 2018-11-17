@@ -198,6 +198,15 @@ struct bcm2_profile bcm2_profiles[] = {
 				.loadaddr = 0x80002000,
 			},
 			{
+				.version = "5.7.1.19 MAC14",
+				.intf = BCM2_INTF_BFC,
+				.magic = { 0x80624d91, "5.7.1.19 MAC14" },
+				.options = {
+					{ "bfc:conthread_instance", { 0x8071e198 }},
+					{ "bfc:conthread_priv_off", { 0x74 }},
+				}
+			},
+			{
 				.version = "5.7.1.19",
 				.intf = BCM2_INTF_BFC,
 				.magic = { 0x80624d91, "5.7.1.19" },
@@ -205,7 +214,7 @@ struct bcm2_profile bcm2_profiles[] = {
 					{ "bfc:conthread_instance", { 0x8071e170 }},
 					{ "bfc:conthread_priv_off", { 0x74 }},
 				}
-			}
+			},
 		},
 	},
 	{
