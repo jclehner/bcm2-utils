@@ -296,7 +296,7 @@ void bfc_telnet::elevate_privileges()
 				ram->space().check_offset(addr, "console_priv_flag");
 				ram->write(addr, "\x01"s);
 			} catch (const exception& e) {
-				logger::v() << "while writing to console thread instance: " << e.what() << endl;
+				logger::d() << "while writing to console thread instance: " << e.what() << endl;
 			}
 
 			writeln();
