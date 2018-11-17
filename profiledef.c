@@ -106,7 +106,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		.versions = {
 			{
 				.intf = BCM2_INTF_BFC,
-				.loadaddr = 0x80002000,
+				.rwcode = 0x80002000,
 				.options = {
 					{ "bfc:flash_read_direct", { true }},
 				}
@@ -122,7 +122,7 @@ struct bcm2_profile bcm2_profiles[] = {
 			},
 			{
 				.intf = BCM2_INTF_BLDR,
-				.loadaddr = 0x84010000,
+				.rwcode = 0x84010000,
 				.buffer = 0x85f00000
 			},
 			{
@@ -168,7 +168,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		.versions = {
 			{
 				.intf = BCM2_INTF_BFC,
-				.loadaddr = 0x80002000,
+				.rwcode = 0x80002000,
 			},
 			{
 				.version = "5.7.1.27",
@@ -195,7 +195,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		.versions = {
 			{
 				.intf = BCM2_INTF_BFC,
-				.loadaddr = 0x80002000,
+				.rwcode = 0x80002000,
 			},
 			{
 				.version = "5.7.1.19 MAC14",
@@ -342,7 +342,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		.versions = {
 			{
 				.intf = BCM2_INTF_BFC,
-				.loadaddr = 0x80002000,
+				.rwcode = 0x80002000,
 			},
 			{
 				.version = "7.18.1009",
@@ -432,7 +432,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		.versions = {
 			{
 				.intf = BCM2_INTF_BLDR,
-				.loadaddr = 0x84010000,
+				.rwcode = 0x84010000,
 				.buffer = 0x85f00000
 			},
 			{
@@ -463,7 +463,7 @@ struct bcm2_profile bcm2_profiles[] = {
 			},
 			{
 				.intf = BCM2_INTF_BFC,
-				.loadaddr = 0x80002000,
+				.rwcode = 0x80002000,
 				.buffer = 0x85f00000,
 				.buflen = 0x19c0000
 			},

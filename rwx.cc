@@ -839,10 +839,10 @@ class code_rwx : public parsing_rwx
 		}
 
 		auto cfg = intf->version().codecfg();
-		if (!cfg["loadaddr"] || !cfg["buffer"] || !cfg["printf"]) {
+		if (!cfg["rwcode"] || !cfg["buffer"] || !cfg["printf"]) {
 			throw runtime_error("insufficient profile information for code dumper");
-		} else if (cfg["loadaddr"] & 0xffff) {
-			throw runtime_error("loadaddr must be aligned to 64k");
+		} else if (cfg["rwcode"] & 0xffff) {
+			throw runtime_error("rwcode address must be aligned to 64k");
 		}
 
 		m_ram = rwx::create(intf, "ram");
@@ -968,7 +968,7 @@ class code_rwx : public parsing_rwx
 		m_rw_length = length;
 
 		uint32_t kseg1 = profile->kseg1();
-		m_loadaddr = kseg1 | (cfg["loadaddr"] + (write ? 0 : 0 /*0x10000*/));
+		m_loadaddr = kseg1 | (cfg["rwcode"] + (write ? 0 : 0 /*0x10000*/));
 
 		// TODO: check whether we have a custom code file
 		if (true) {

@@ -177,7 +177,7 @@ struct bcm2_version {
 	struct bcm2_magic magic;
 	// address where dump code can be loaded (dump code
 	// is short, currently around 512 bytes)
-	uint32_t loadaddr;
+	uint32_t rwcode;
 	// location in memory where we can store read images
 	uint32_t buffer;
 	// length of buffer (if 0, buffer will be checked 
