@@ -241,7 +241,7 @@ int do_dump(int argc, char** argv, int opts, const string& profile)
 		if (argv[3] != "dumpcode"s) {
 			rwx->dump(argv[3], of, opts & opt_resume);
 		} else {
-			rwx->dump(intf->profile()->codecfg(intf->id()).loadaddr | intf->profile()->kseg1(), 512, of);
+			rwx->dump(intf->version().codecfg()["rwcode"] | intf->profile()->kseg1(), 512, of);
 		}
 	} else {
 		rwx->dump(0, 0, of);
