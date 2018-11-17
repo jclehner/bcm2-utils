@@ -328,6 +328,24 @@ void parse_funcs(const addrspace& a, const profile& p, const bcm2_func* ifuncs, 
 		}
 	}
 }
+
+const bcm2_typed_val* get_version_opt(const bcm2_version* v, const string& name, bcm2_type type)
+{
+	for (auto i = 0; i < ARRAY_SIZE(v->options); ++i) {
+		if (v->options[i].name == name) {
+			if (type != BCM2_TYPE_NIL && type != v->options[i].type) {
+				throw runtime_error(name + ": invalid type requested");
+			}
+			return &v->options[i];
+		}
+	}
+
+	if (type == BCM2_TYPE_NIL) {
+		return nullptr;
+	}
+
+	throw runtime_error(name + ": no such option");
+}
 }
 
 void version::parse_codecfg()
@@ -380,20 +398,12 @@ do { \
 
 const bcm2_typed_val* version::get_opt(const string& name, bcm2_type type) const
 {
-	for (auto i = 0; i < ARRAY_SIZE(m_p->options); ++i) {
-		if (m_p->options[i].name == name) {
-			if (type != BCM2_TYPE_NIL && type != m_p->options[i].type) {
-				throw runtime_error(name + ": invalid type requested");
-			}
-			return &m_p->options[i];
-		}
+	auto ret = get_version_opt(m_p, name, BCM2_TYPE_NIL);
+	if (ret && ret->type == type) {
+		return ret;
 	}
 
-	if (type == BCM2_TYPE_NIL) {
-		return nullptr;
-	}
-
-	throw runtime_error(name + ": no such option");
+	return get_version_opt(m_def, name, type);
 }
 
 addrspace::addrspace(const bcm2_addrspace* a, const profile& p)
