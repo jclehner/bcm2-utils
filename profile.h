@@ -451,23 +451,8 @@ class addrspace
 	std::vector<func> m_erase_funcs;
 };
 
-
-struct codecfg
-{
-	uint32_t loadaddr;
-	uint32_t buffer;
-	uint32_t buflen;
-	uint32_t printf;
-	uint32_t scanf;
-	uint32_t sscanf;
-	uint32_t getline;
-};
-
 class profile
 {
-	protected:
-	typedef bcm2dump::codecfg codecfg_type;
-
 	public:
 	typedef std::shared_ptr<profile> sp;
 
@@ -487,7 +472,6 @@ class profile
 	virtual const addrspace& space(const std::string& name, bcm2_interface intf) const = 0;
 	virtual const addrspace& ram() const = 0;
 
-	virtual const codecfg_type& codecfg(bcm2_interface intf) const = 0;
 	virtual std::string md5_key() const = 0;
 
 	virtual uint32_t cfg_encryption() const = 0;

@@ -165,9 +165,6 @@ class profile_wrapper : public profile
 	virtual const addrspace& ram() const override
 	{ return m_ram; }
 
-	virtual const codecfg_type& codecfg(bcm2_interface intf) const override
-	{ return m_codecfg; }
-
 	virtual string md5_key() const override
 	{ return from_hex(m_p->cfg_md5key); }
 
@@ -295,7 +292,6 @@ class profile_wrapper : public profile
 	map<int, version> m_defaults;
 	vector<addrspace> m_spaces;
 	addrspace m_ram;
-	codecfg_type m_codecfg;
 };
 
 func get_func(const vector<func>& funcs, int intf)
