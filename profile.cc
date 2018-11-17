@@ -255,8 +255,7 @@ class profile_wrapper : public profile
 	{
 		for (size_t i = 0; i < BCM2_INTF_NUM && m_p->magic[i].addr; ++i) {
 			const bcm2_magic* m = &m_p->magic[i];
-			uint32_t size = m->size ? m->size : strlen(m->data);
-			m_ram.check_range(m->addr, size, "magic");
+			m_ram.check_range(m->addr, magic_size(m), "magic");
 			m_magic.push_back(m);
 		}
 	}
@@ -570,6 +569,20 @@ void profile::print_to_stdout(bool verbose) const
 				cout << endl;
 		}
 	}
+}
+
+uint32_t magic_size(const bcm2_magic* magic)
+{
+	if (!magic->size) {
+		return strnlen(magic->data, sizeof(bcm2_magic::data));
+	} else {
+		return min(sizeof(bcm2_magic::data), size_t(magic->size));
+	}
+}
+
+string magic_data(const bcm2_magic* magic)
+{
+	return string(magic->data, magic_size(magic));
 }
 
 string get_profile_names(unsigned width, unsigned indent)

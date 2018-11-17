@@ -359,7 +359,7 @@ void detect_profile_if_not_set(const interface::sp& intf, const profile::sp& pro
 
 	struct comp
 	{
-		bool operator()(const helper& a, const helper& b)
+		bool operator()(const helper& a, const helper& b) const
 		{
 			if (a.p->name() == b.p->name()) {
 				if (a.v.name().empty() != b.v.name().empty()) {
@@ -367,7 +367,12 @@ void detect_profile_if_not_set(const interface::sp& intf, const profile::sp& pro
 				}
 
 				if (a.m->addr == b.m->addr) {
-					return a.v.name() < b.v.name();
+					if (magic_size(a.m) == magic_size(b.m)) {
+						return a.v.name() < b.v.name();
+					}
+
+					// try the longer magic value first
+					return magic_size(a.m) > magic_size(b.m);
 				}
 
 				return a.m->addr < b.m->addr;
@@ -394,7 +399,7 @@ void detect_profile_if_not_set(const interface::sp& intf, const profile::sp& pro
 	}
 
 	for (const helper& h : magics) {
-		string data = h.m->data;
+		string data = magic_data(h.m);
 		if (ram->read(h.m->addr, data.size()) == data) {
 
 			logger::i() << "detected profile " << h.p->name() << "(" << intf->name() << ")";

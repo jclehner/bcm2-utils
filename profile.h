@@ -509,6 +509,9 @@ class profile
 	static std::vector<profile::sp> s_profiles;
 };
 
+uint32_t magic_size(const bcm2_magic* magic);
+std::string magic_data(const bcm2_magic* magic);
+
 std::string get_profile_names(unsigned width, unsigned indent);
 }
 
