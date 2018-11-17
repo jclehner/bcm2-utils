@@ -182,6 +182,33 @@ struct bcm2_profile bcm2_profiles[] = {
 		},
 	},
 	{
+		.name = "mb7420",
+		.pretty = "Motorola MB7420",
+		.pssig = 0x3843,
+		.kseg1mask = 0x20000000,
+		.spaces = {
+			{
+				.name = "ram",
+				.min = 0x80000000,
+			},
+		},
+		.versions = {
+			{
+				.intf = BCM2_INTF_BFC,
+				.loadaddr = 0x80002000,
+			},
+			{
+				.version = "5.7.1.19",
+				.intf = BCM2_INTF_BFC,
+				.magic = { 0x80624d91, "5.7.1.19" },
+				.options = {
+					{ "bfc:conthread_instance", { 0x8071e170 }},
+					{ "bfc:conthread_priv_off", { 0x74 }},
+				}
+			}
+		},
+	},
+	{
 		.name = "twg850",
 		.pretty = "Thomson TWG850-4",
 		.baudrate = 115200,
