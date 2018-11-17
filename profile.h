@@ -140,6 +140,7 @@ struct bcm2_addrspace {
 struct bcm2_magic {
 	uint32_t addr;
 	char data[32];
+	uint8_t size;
 };
 
 struct bcm2_version_addrspace
