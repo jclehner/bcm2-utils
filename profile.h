@@ -157,6 +157,7 @@ enum bcm2_type
 {
 	BCM2_TYPE_U32 = 0,
 	BCM2_TYPE_STR = 1,
+	BCM2_TYPE_BOOL = BCM2_TYPE_U32,
 	BCM2_TYPE_NIL = 9,
 };
 

@@ -565,11 +565,7 @@ class bfc_flash : public parsing_rwx
 
 	virtual limits limits_read() const override
 	{
-#ifdef BFC_FLASH_READ_DIRECT
-		return limits(1, 16, 8192);
-#else
-		return limits(1, 16, 512);
-#endif
+		return use_direct_read() ? limits(1, 16, 8192) : limits(1, 16, 512);
 	}
 
 	virtual limits limits_write() const override
@@ -586,7 +582,8 @@ class bfc_flash : public parsing_rwx
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
 
 	private:
-	uint32_t to_partition_offset(uint32_t offset);
+	uint32_t to_partition_offset(uint32_t offset) const;
+	bool use_direct_read() const;
 };
 
 void bfc_flash::init(uint32_t offset, uint32_t length, bool write)
@@ -646,28 +643,26 @@ bool bfc_flash::write_chunk(uint32_t offset, const std::string& chunk)
 void bfc_flash::do_read_chunk(uint32_t offset, uint32_t length)
 {
 	offset = to_partition_offset(offset);
-#ifdef BFC_FLASH_READ_DIRECT
-	m_intf->runcmd("/flash/readDirect " + to_string(length) + " " + to_string(offset));
-#else
-	m_intf->runcmd("/flash/read 4 " + to_string(length) + " " + to_string(offset));
-#endif
+	if (use_direct_read()) {
+		m_intf->runcmd("/flash/readDirect " + to_string(length) + " " + to_string(offset));
+	} else {
+		m_intf->runcmd("/flash/read 4 " + to_string(length) + " " + to_string(offset));
+	}
 }
 
 bool bfc_flash::is_ignorable_line(const string& line)
 {
-#ifdef BFC_FLASH_READ_DIRECT
-	if (line.size() >= 53) {
-		if (line.substr(11, 3) == "   " && line.substr(25, 3) == "   ") {
-			return false;
+	if (use_direct_read()) {
+		if (line.size() >= 53) {
+			if (line.substr(11, 3) == "   " && line.substr(25, 3) == "   ") {
+				return false;
+			}
 		}
-	}	
-#else
-	if (line.size() >= 36) {
+	} else if (line.size() >= 36) {
 		if (line[8] == ' ' && line[17] == ' ' && line[26] == ' ') {
 			return false;
 		}
 	}
-#endif
 
 	return true;
 }
@@ -676,30 +671,30 @@ string bfc_flash::parse_chunk_line(const string& line, uint32_t offset)
 {
 	string linebuf;
 
-#ifdef BFC_FLASH_READ_DIRECT
-	for (unsigned i = 0; i < 16; ++i) {
-		// don't change this to uint8_t
-		uint32_t val = hex_cast<uint32_t>(line.substr(i * 3 + (i / 4) * 2, 2));
-		if (val > 0xff) {
-			throw runtime_error("value out of range: 0x" + to_hex(val));
-		}
+	if (use_direct_read()) {
+		for (unsigned i = 0; i < 16; ++i) {
+			// don't change this to uint8_t
+			uint32_t val = hex_cast<uint32_t>(line.substr(i * 3 + (i / 4) * 2, 2));
+			if (val > 0xff) {
+				throw runtime_error("value out of range: 0x" + to_hex(val));
+			}
 
-		linebuf += char(val);
-	}
-#else
-	for (size_t i = 0; i < line.size(); i += 9) {
-		linebuf += to_buf(hton(hex_cast<uint32_t>(line.substr(i, 8))));
+			linebuf += char(val);
+		}
+	} else {
+		for (size_t i = 0; i < line.size(); i += 9) {
+			linebuf += to_buf(hton(hex_cast<uint32_t>(line.substr(i, 8))));
 
-		if (!(i % 128)) {
-			update_progress(offset + i, 0);
+			if (!(i % 128)) {
+				update_progress(offset + i, 0);
+			}
 		}
 	}
-#endif
 
 	return linebuf;
 }
 
-uint32_t bfc_flash::to_partition_offset(uint32_t offset)
+uint32_t bfc_flash::to_partition_offset(uint32_t offset) const
 {
 	if (offset < m_partition.offset()) {
 		// just to be safe. this should never happen
@@ -707,6 +702,21 @@ uint32_t bfc_flash::to_partition_offset(uint32_t offset)
 	}
 
 	return offset - m_partition.offset();
+}
+
+bool bfc_flash::use_direct_read() const
+{
+	auto v = m_intf->version();
+
+	if (v.has_opt("bfc:flash_read_direct")) {
+		return v.get_opt_num("bfc:flash_read_direct");
+	}
+
+#ifdef BFC_FLASH_READ_DIRECT
+	return true;
+#else
+	return false;
+#endif
 }
 
 class bootloader_ram : public parsing_rwx
