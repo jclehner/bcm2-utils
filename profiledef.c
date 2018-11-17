@@ -73,11 +73,30 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "cbw383zn",
 		.pretty = "NetMASTER CBW-383ZN",
+		.pssig = 0x8364,
 		.cfg_flags = BCM2_CFG_ENC_DES_ECB | BCM2_CFG_FMT_GWS_FULL_ENC,
 		.cfg_md5key = "3250736c633b752865676d64302d2778",
 		.cfg_defkeys = { "1122334455667788" },
 		.spaces = {
-				{ .name = "ram" },
+			{
+				.name = "ram",
+				.min = 0x80000000,
+				.size = 128 * 1024 * 1024,
+				.parts = {
+					{ "image",   0x85f00000, 0xff0000 },
+				}
+			},
+			{
+				.name = "flash",
+				.size = 32 * 1024 * 1024,
+				.parts = {
+					{ "bootloader", 0x0000000, 0x010000 },
+					{ "permnv",     0x0010000, 0x010000, "perm" },
+					{ "image1",     0x0030000, 0xfe0000 },
+					{ "image2",     0x1000000, 0xff0000 },
+					{ "dynnv",      0x1ff0000, 0x010000, "dyn" }
+				}
+			},
 		},
 		.versions = {
 			{
@@ -87,7 +106,7 @@ struct bcm2_profile bcm2_profiles[] = {
 			{
 				.version = "0081.799.009",
 				.intf = BCM2_INTF_BFC,
-				.magic = { 0x80dc48c4, "0081    799 009" },
+				.magic = { 0x80dc48c4, "0081" },
 				.options = {
 					{ "console_instance_ptr", { 0x81204074 }},
 					{ "console_priv_offset", { 0x74 }},
