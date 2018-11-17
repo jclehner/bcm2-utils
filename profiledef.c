@@ -108,8 +108,8 @@ struct bcm2_profile bcm2_profiles[] = {
 				.intf = BCM2_INTF_BFC,
 				.magic = { 0x80dc48c4, "0081" },
 				.options = {
-					{ "console_instance_ptr", { 0x81204074 }},
-					{ "console_priv_offset", { 0x74 }},
+					{ "bfc:conthread_instance", { 0x81204074 }},
+					{ "bfc:conthread_priv_off", { 0x74 }},
 				}
 			}
 		},
@@ -157,8 +157,8 @@ struct bcm2_profile bcm2_profiles[] = {
 				.intf = BCM2_INTF_BFC,
 				.magic = { 0x80eb8a91, "5.7.1.27" },
 				.options = {
-					{ "console_instance_ptr", { 0x812efff4 }},
-					{ "console_priv_offset", { 0x74 }},
+					{ "bfc:conthread_instance", { 0x812efff4 }},
+					{ "bfc:conthread_priv_off", { 0x74 }},
 				}
 			}
 		},
@@ -295,8 +295,8 @@ struct bcm2_profile bcm2_profiles[] = {
 				.intf = BCM2_INTF_BFC,
 				.magic = { 0x8070244c, "7.18.1009" },
 				.options = {
-					{ "console_instance_ptr", { 0x808bc084 }},
-					{ "console_priv_offset", { 0x6c }},
+					{ "bfc:conthread_instance", { 0x808bc084 }},
+					{ "bfc:conthread_priv_off", { 0x6c }},
 				}
 			}
 		},
@@ -469,8 +469,8 @@ struct bcm2_profile bcm2_profiles[] = {
 						},
 				},
 				.options = {
-					{ "console_instance_ptr", { 0x81315c24 }},
-					{ "console_priv_offset", { 0x74 }},
+					{ "bfc:conthread_instance", { 0x81315c24 }},
+					{ "bfc:conthread_priv_off", { 0x74 }},
 				},
 			},
 		},

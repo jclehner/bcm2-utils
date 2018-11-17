@@ -282,15 +282,15 @@ void bfc_telnet::elevate_privileges()
 #endif
 
 	if (m_status == authenticated && !m_version.name().empty()) {
-		if (m_version.has_opt("console_instance_ptr") && m_version.has_opt("console_priv_offset")) {
-			uint32_t ct_instance_ptr = m_version.get_opt_num("console_instance_ptr");
-			uint32_t ct_priv_offset = m_version.get_opt_num("console_priv_offset");
+		if (m_version.has_opt("bfc:conthread_instance") && m_version.has_opt("bfc:conthread_priv_off")) {
+			uint32_t ct_instance_ptr = m_version.get_opt_num("bfc:conthread_instance");
+			uint32_t ct_priv_offset = m_version.get_opt_num("bfc:conthread_priv_off");
 
 			rwx::sp ram = rwx::create(shared_from_this(), "ram");
 
 			try {
 				wait_ready();
-				ram->space().check_offset(ct_instance_ptr, "console_instance_ptr");
+				ram->space().check_offset(ct_instance_ptr, "bfc:conthread_instance");
 				uint32_t addr = ntoh(extract<uint32_t>(ram->read(ct_instance_ptr, 4)));
 				addr += ct_priv_offset;
 				ram->space().check_offset(addr, "console_priv_flag");
