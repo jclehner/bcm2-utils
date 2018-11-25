@@ -726,6 +726,7 @@ bool nv_group::init(bool force)
 	if (nv_compound::init(force)) {
 		m_bytes = is_versioned() ? 8 : 6;
 		m_width = m_size.num();
+		m_set = true;
 		return true;
 	}
 
@@ -804,7 +805,11 @@ ostream& nv_group::write(ostream& os) const
 		return os;
 	}
 
-	return nv_compound::write(os);
+	if (m_bytes > 8) {
+		nv_compound::write(os);
+	}
+
+	return os;
 }
 
 nv_val::list nv_group::definition() const
