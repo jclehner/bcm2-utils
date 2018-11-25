@@ -382,8 +382,7 @@ istream& nv_compound::read(istream& is)
 		logger::t() << "pos " << is.tellg() << ": " << desc(v) << " " << v.val->bytes() << endl;
 
 		if ((m_width && (m_bytes + v.val->bytes()) > m_width)) {
-			end = true;
-			logger::t() << "  variable size exceeds compound size" << endl;
+			throw runtime_error(v.name + ": variable size exceeds compound size");
 		}
 
 		auto pos = is.tellg();
@@ -405,8 +404,7 @@ istream& nv_compound::read(istream& is)
 		// byte count (by a pX_string for instance)
 
 		if (!end && (m_width && (m_bytes + v.val->bytes()) > m_width)) {
-			end = true;
-			logger::t() << "  new variable size exceeds compound size" << endl;
+			throw runtime_error("new variable size exceeds compound size");
 		}
 
 		if (end) {
