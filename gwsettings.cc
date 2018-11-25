@@ -204,7 +204,7 @@ class permdyn : public settings
 				throw runtime_error("failed to read header");
 			}
 
-			logger::w() << "m_size=" << m_size.num() << ", m_checksum=" << m_checksum.num() << endl;
+			logger::d() << "m_size=" << m_size.num() << ", m_checksum=" << m_checksum.num() << endl;
 		}
 
 		m_magic_valid = true;

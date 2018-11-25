@@ -458,7 +458,7 @@ ostream& nv_compound::write(ostream& os) const
 			throw runtime_error("failed to write " + desc(v));
 		}
 
-		logger::t() << desc(v) << " = " << v.val->to_pretty() << endl;
+		logger::t() << desc(v) << endl;
 		pos += v.val->bytes();
 	}
 
