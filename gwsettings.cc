@@ -223,6 +223,7 @@ class permdyn : public settings
 		}
 
 		m_footer = m_size.num() < buf.size() ? buf.substr(m_size.num()) : "";
+		m_raw_size = buf.size();
 
 		if (!m_format) {
 			if (m_footer.size() >= 8) {
@@ -268,7 +269,23 @@ class permdyn : public settings
 			throw runtime_error("failed to write data");
 		}
 
-		if (!os.write(m_footer.data(), m_footer.size())) {
+		string footer = m_footer;
+		ssize_t diff = (buf.size() + footer.size()) - m_raw_size;
+
+		if (diff < 0) {
+			// new size is smaller, pad with \xff
+			footer.insert(0, string(-diff, '\xff'));
+		} else if (diff) {
+			// new size is larger, so we truncate m_footer
+			if (diff < m_footer.size()) {
+				footer.erase(0, diff);
+			} else {
+				logger::w() << "growing file to fit new data" << endl;
+				footer.clear();
+			}
+		}
+
+		if (!os.write(footer.data(), footer.size())) {
 			throw runtime_error("failed to write footer");
 		}
 
@@ -316,6 +333,7 @@ class permdyn : public settings
 	nv_u32 m_size;
 	nv_u32 m_checksum;
 	string m_footer;
+	uint32_t m_raw_size = 0;
 	bool m_checksum_valid = false;
 	bool m_magic_valid = false;
 };
@@ -608,18 +626,13 @@ istream& settings::read(istream& is)
 		}
 	}
 
-	if (remaining) {
-		m_junk = read_stream(is);
-	}
-
 	return is;
 }
 
 ostream& settings::write(ostream& os) const
 {
 	if (!m_is_raw) {
-		nv_compound::write(os);
-		return os.write(m_junk.data(), m_junk.size());
+		return nv_compound::write(os);
 	} else {
 		return os.write(m_raw_data.data(), m_raw_data.size());
 	}
