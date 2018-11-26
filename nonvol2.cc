@@ -642,8 +642,9 @@ istream& nv_string::read(istream& is)
 ostream& nv_string::write(ostream& os) const
 {
 	string val = m_val;
-	if ((m_flags & flag_fixed_width) && val.size() < m_width) {
-		val.resize(m_width);
+	if ((m_flags & flag_fixed_width) && (val.size() < m_width)) {
+		val.resize(val.size() + 1);
+		val.resize(m_width, '\xff');
 	} else if (m_flags & flag_require_nul) {
 		val.resize(val.size() + 1);
 	}
