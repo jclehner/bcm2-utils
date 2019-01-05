@@ -326,12 +326,15 @@ void parse_funcs(const addrspace& a, const profile& p, const bcm2_func* ifuncs, 
 
 const bcm2_typed_val* get_version_opt(const bcm2_version* v, const string& name, bcm2_type type)
 {
-	for (auto i = 0; i < ARRAY_SIZE(v->options); ++i) {
-		if (v->options[i].name == name) {
-			if (type != BCM2_TYPE_NIL && type != v->options[i].type) {
-				throw runtime_error(name + ": invalid type requested");
+	if (v) {
+		for (auto i = 0; i < ARRAY_SIZE(v->options); ++i) {
+			printf("v->options[%d].name=%p\n", i, v->options[i].name);
+			if (v->options[i].name == name) {
+				if (type != BCM2_TYPE_NIL && type != v->options[i].type) {
+					throw runtime_error(name + ": invalid type requested");
+				}
+				return &v->options[i];
 			}
-			return &v->options[i];
 		}
 	}
 
