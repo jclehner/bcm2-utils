@@ -12,12 +12,16 @@ Fully supported devices:
 * Thomson TWG850-4 (shell)
 * Thomson TWG870 (shell)
 * Ubee EVM3236 (shell)
+* NetMASTER CBW-383ZN
 
 Partially supported:
 
 * Thomson TCW770
 * Netgear CG3000
+* Netgear CG3101
 * Motorola Surfboard SBG6580
+* Motorola MG7550
+* Motorola MB7420
 * Sagemcom F@ST 3686 AC
 
 Devices _not_ listed above may still be supported, but with less features! It should be easy to add support for other devices. Some pointers can be found [below](#writing-a-device-profile).
