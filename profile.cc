@@ -328,7 +328,6 @@ const bcm2_typed_val* get_version_opt(const bcm2_version* v, const string& name,
 {
 	if (v) {
 		for (auto i = 0; i < ARRAY_SIZE(v->options); ++i) {
-			printf("v->options[%d].name=%p\n", i, v->options[i].name);
 			if (v->options[i].name == name) {
 				if (type != BCM2_TYPE_NIL && type != v->options[i].type) {
 					throw runtime_error(name + ": invalid type requested");
