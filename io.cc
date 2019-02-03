@@ -404,12 +404,12 @@ void hio::write(const string& str)
 string hio::read(size_t length, bool all)
 {
 	DWORD bytes = 0;
-	string buf(length, '\0');
-	if (!ReadFile(m_h, &buf[0], length, &bytes, nullptr) || (all && bytes != length)) {
+	auto buf = make_unique<char[]>(length);
+	if (!ReadFile(m_h, buf.get(), length, &bytes, nullptr) || (all && bytes != length)) {
 		throw winapi_error("ReadFile");
 	}
 
-	return buf;
+	return string(buf.get(), bytes);
 }
 
 int hio::getc()
@@ -764,7 +764,7 @@ shared_ptr<io> io::open_tcp(const string& address, unsigned short port)
 
 shared_ptr<io> io::open_serial(const char* tty, unsigned speed)
 {
-	return make_shared<serial>(tty, speed);	
+	return make_shared<serial>(tty, speed);
 }
 
 list<string> io::get_last_lines()
