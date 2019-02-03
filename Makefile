@@ -11,7 +11,7 @@ CROSS ?= mips-linux-gnu-
 
 ifeq ($(UNAME),Darwin)
 	CFLAGS +=
-else ifneq (,$(findstring MINGW,$(UNAME)))
+else ifneq (,$(findstring MINGW,$(MSYSTEM)))
 	LDFLAGS += -lws2_32 -static
 else
 	bcm2cfg_LIBS += -lssl -lcrypto
@@ -43,14 +43,12 @@ release-linux: release
 release-macos: release
 	$(call PackageRelease,macos)
 
-release-win32:
+release-win32-extbuild:
 	$(call PackageRelease,win32,.exe)
 
-release-mingw: release release-win32
-
-
-#bcm2cfg.exe:
-#	UNAME=Wine CC=winegcc CXX=wineg++ CFLAGS=-m32 make bcm2cfg
+ifeq ($(MSYSTEM), MINGW32)
+release-mingw32: release release-win32-extbuild
+endif
 
 bcm2cfg: $(bcm2cfg_OBJ)
 	$(CXX) $(CXXFLAGS) $(bcm2cfg_OBJ) -o $@ $(bcm2cfg_LIBS) $(LDFLAGS)
