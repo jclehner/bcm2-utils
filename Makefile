@@ -9,12 +9,10 @@ UNAME ?= $(shell uname)
 
 CROSS ?= mips-linux-gnu-
 
-ifeq ($(UNAME), Linux)
-	LIBS += -lssl -lcrypto
-endif
-
 ifeq ($(UNAME), Darwin)
 	CFLAGS +=
+else
+	LIBS += -lssl -lcrypto
 endif
 
 profile_OBJ = profile.o profiledef.o
