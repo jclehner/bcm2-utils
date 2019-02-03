@@ -12,7 +12,7 @@ CROSS ?= mips-linux-gnu-
 ifeq ($(UNAME),Darwin)
 	CFLAGS +=
 else ifneq (,$(findstring MINGW,$(UNAME)))
-	LDFLAGS += -lws2_32
+	LDFLAGS += -lws2_32 -static
 else
 	bcm2cfg_LIBS += -lssl -lcrypto
 endif
