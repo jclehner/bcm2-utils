@@ -26,20 +26,28 @@ bcm2cfg_OBJ = util.o nonvol2.o bcm2cfg.o nonvoldef.o \
 psextract_OBJ = util.o ps.o psextract.o
 t_nonvol_OBJ = util.o nonvol2.o t_nonvol.o $(profile_OBJ)
 
+define PackageRelease
+	strip bcm2cfg$(2) bcm2dump$(2) psextract$(2)
+	zip bcm2utils-$(VERSION)-$(1).zip README.md bcm2cfg$(2) bcm2dump$(2) psextract$(2)
+endef
+
 .PHONY: all clean bcm2cfg.exe
 
-all: bcm2dump bcm2cfg t_nonvol psextract
+all: bcm2dump bcm2cfg psextract
 
-release-linux: clean bcm2cfg bcm2dump
-	strip bcm2cfg
-	strip bcm2dump
-	zip bcm2utils-$(VERSION)-linux.zip README.md bcm2cfg bcm2dump
+release: clean all
 
-release-macos: release-linux
-	mv bcm2utils-$(VERSION)-linux.zip bcm2utils-$(VERSION)-macos.zip
+release-linux: release
+	$(call PackageRelease,linux)
+
+release-macos: release
+	$(call PackageRelease,macos)
 
 release-win32:
-	zip bcm2utils-$(VERSION)-win32.zip README.md bcm2cfg.exe bcm2dump.exe
+	$(call PackageRelease,win32,.exe)
+
+release-mingw: release release-win32
+
 
 #bcm2cfg.exe:
 #	UNAME=Wine CC=winegcc CXX=wineg++ CFLAGS=-m32 make bcm2cfg
