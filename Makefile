@@ -9,10 +9,12 @@ UNAME ?= $(shell uname)
 
 CROSS ?= mips-linux-gnu-
 
-ifeq ($(UNAME), Darwin)
+ifeq ($(UNAME),Darwin)
 	CFLAGS +=
+else ifneq (,$(findstring MINGW,$(UNAME)))
+	LDFLAGS += -lws2_32
 else
-	LIBS += -lssl -lcrypto
+	bcm2cfg_LIBS += -lssl -lcrypto
 endif
 
 profile_OBJ = profile.o profiledef.o
@@ -43,7 +45,7 @@ release-win32:
 #	UNAME=Wine CC=winegcc CXX=wineg++ CFLAGS=-m32 make bcm2cfg
 
 bcm2cfg: $(bcm2cfg_OBJ)
-	$(CXX) $(CXXFLAGS) $(bcm2cfg_OBJ) -o $@ $(LIBS) $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) $(bcm2cfg_OBJ) -o $@ $(bcm2cfg_LIBS) $(LDFLAGS)
 
 bcm2dump: $(bcm2dump_OBJ)
 	$(CXX) $(CXXFLAGS) $(bcm2dump_OBJ) -o $@ $(LDFLAGS)
