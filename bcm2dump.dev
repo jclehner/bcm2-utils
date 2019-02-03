@@ -9,8 +9,8 @@ Libs=
 PrivateResource=
 ResourceIncludes=
 MakeIncludes=
-Compiler=-DVERSION="\"v0.9.1\"" -std=c99 _@@_
-CppCompiler=-DVERSION="\"v0.9.1\"" -std=c++14_@@_
+Compiler=-DVERSION="\"v0.9.3\"" -std=c99 _@@_
+CppCompiler=-DVERSION="\"v0.9.3\"" -std=c++14_@@_
 Linker=-lws2_32_@@_
 IsCpp=1
 Icon=
@@ -239,4 +239,3 @@ Link=1
 Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
-
