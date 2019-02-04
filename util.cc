@@ -78,12 +78,12 @@ string trim(string str)
 		return str;
 	}
 
-	auto i = str.find_last_not_of(" \x0d\n\t");
+	auto i = str.find_last_not_of(" \r\n\t");
 	if (i != string::npos) {
 		str.erase(i + 1);
 	}
 
-	i = str.find_first_not_of(" \x0d\n\t");
+	i = str.find_first_not_of(" \r\n\t");
 	if (i == string::npos) {
 		return "";
 	}
