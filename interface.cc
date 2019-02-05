@@ -107,7 +107,7 @@ class bfc : public interface, public enable_shared_from_this<bfc>
 	virtual bool check_privileged();
 
 	private:
-	bool m_privileged = true;
+	bool m_privileged = false;
 };
 
 bool bfc::is_ready(bool passive)
