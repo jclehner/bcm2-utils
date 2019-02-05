@@ -52,6 +52,7 @@ typedef runtime_error user_error;
 namespace bcm2dump {
 namespace {
 
+ofstream logfile;
 list<string> lines;
 
 void add_line(const string& line, bool in)
@@ -63,7 +64,8 @@ void add_line(const string& line, bool in)
 	lines.push_back((in ? "==> " : "<== ") + (line.empty() ?
 				"(empty)"s : ("'" + trim(line.c_str()) + "'")));
 
-	logger::t() << lines.back() << endl;
+	ostream& os = logfile ? logfile : logger::t();
+	os << lines.back() << endl;
 }
 
 class scoped_nonblock
@@ -771,5 +773,13 @@ shared_ptr<io> io::open_serial(const char* tty, unsigned speed)
 list<string> io::get_last_lines()
 {
 	return lines;
+}
+
+void io::set_logfile(const char* filename)
+{
+	logfile.open(filename);
+	if (!logfile) {
+		logger::w() << "failed to open io logfile" << endl;
+	}
 }
 }

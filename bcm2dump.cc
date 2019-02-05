@@ -50,6 +50,7 @@ void usage(bool help = false)
 	os << "  -R               Resume dump" << endl;
 	os << "  -F               Force operation" << endl;
 	os << "  -P <profile>     Force profile" << endl;
+	os << "  -L <filename>    I/O log file" << endl;
 	os << "  -q               Decrease verbosity" << endl;
 	os << "  -v               Increase verbosity" << endl;
 	os << endl;
@@ -405,7 +406,7 @@ int do_main(int argc, char** argv)
 
 	opterr = 0;
 
-	while ((opt = getopt(argc, argv, "hsARFqvP:")) != -1) {
+	while ((opt = getopt(argc, argv, "hsARFqvP:L:")) != -1) {
 		switch (opt) {
 		case 's':
 			opts |= opt_safe;
@@ -428,6 +429,9 @@ int do_main(int argc, char** argv)
 			break;
 		case 'P':
 			profile = optarg;
+			break;
+		case 'L':
+			io::set_logfile(optarg);
 			break;
 		case 'h':
 		default:
