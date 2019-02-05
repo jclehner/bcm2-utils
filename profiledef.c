@@ -359,7 +359,6 @@ struct bcm2_profile bcm2_profiles[] = {
 		.name = "evw32c",
 		.pretty = "Ubee EVW32C",
 		.pssig = 0x1007,
-		.blsig = 0x3384,
 		.baudrate = 115200,
 		.kseg1mask = 0x20000000,
 		.spaces = {
