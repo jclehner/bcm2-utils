@@ -36,7 +36,8 @@ bool is_bfc_prompt(const string& str, const string& prompt)
 
 bool is_bfc_prompt_privileged(const string& str)
 {
-	return is_bfc_prompt(str, "CM_Console") || is_bfc_prompt(str, "CM");
+	//return is_bfc_prompt(str, "CM_Console") || is_bfc_prompt(str, "CM");
+	return is_bfc_prompt(str, "CM");
 }
 
 bool is_bfc_prompt_unprivileged(const string& str)
@@ -142,6 +143,7 @@ void bfc::elevate_privileges()
 		return;
 	}
 
+#if 0
 	// TODO make this conditional, based on the profile?
 	runcmd("switchCpuConsole");
 	sleep(1);
@@ -150,6 +152,7 @@ void bfc::elevate_privileges()
 	if (check_privileged()) {
 		return;
 	}
+#endif
 
 	if (m_version.has_opt("bfc:conthread_instance") && m_version.has_opt("bfc:conthread_priv_off")) {
 		uint32_t ct_instance_ptr = m_version.get_opt_num("bfc:conthread_instance");
