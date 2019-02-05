@@ -167,6 +167,8 @@ void bfc::elevate_privileges()
 		} catch (const exception& e) {
 			logger::d() << "while writing to console thread instance: " << e.what() << endl;
 		}
+
+		writeln();
 	}
 
 	if (!check_privileged()) {
