@@ -116,8 +116,13 @@ bool bfc::is_ready(bool passive)
 		writeln();
 	}
 
-	return foreach_line([] (const string& line) {
-		return is_bfc_prompt(line);
+	return foreach_line([this] (const string& line) {
+		if (is_bfc_prompt(line)) {
+			m_privileged = is_bfc_prompt_privileged(line);
+			return true;
+		}
+
+		return false;
 	}, 2000);
 }
 
@@ -162,8 +167,6 @@ void bfc::elevate_privileges()
 		} catch (const exception& e) {
 			logger::d() << "while writing to console thread instance: " << e.what() << endl;
 		}
-
-		writeln();
 	}
 
 	if (!check_privileged()) {
@@ -173,9 +176,16 @@ void bfc::elevate_privileges()
 
 bool bfc::check_privileged()
 {
-	m_privileged = foreach_line([] (const string& l) {
-		return is_bfc_prompt_privileged(l);
-	}, 2000);
+	foreach_line([this] (const string& l) {
+		if (is_bfc_prompt_privileged(l)) {
+			m_privileged = true;
+		} else if (is_bfc_prompt_unprivileged(l)) {
+			m_privileged = false;
+		}
+
+		return false;
+	}, 0, 1000);
+
 	return m_privileged;
 }
 
@@ -246,6 +256,12 @@ class bfc_telnet : public bfc, public telnet
 
 	private:
 	unsigned m_status = invalid;
+	bool m_have_login_prompt = false;
+
+	static bool is_login_prompt(const string& line)
+	{
+		return contains(line, "Login:") || contains(line, "login:");
+	}
 };
 
 bool bfc_telnet::is_ready(bool passive)
@@ -256,22 +272,20 @@ bool bfc_telnet::is_ready(bool passive)
 		}
 
 		foreach_line([this] (const string& line) {
-			if (m_status != invalid) {
-				return true;
-			}
-
-			if (contains(line, "Telnet")) {
+			if (contains(line, "BFC Telnet")) {
 				m_status = connected;
-			}
-
-			if (m_status == connected && (contains(line, "refused")
-					|| contains(line, "logged and reported"))) {
-				throw runtime_error("ip is blocked by server");
+			} else if (m_status == connected) {
+				if (contains(line, "refused") || contains(line, "logged and reported")) {
+					throw user_error("ip is blocked by server");
+				} else if (is_login_prompt(line)) {
+					m_have_login_prompt = true;
+					return true;
+				}
 			}
 
 			return false;
 
-		}, 2000, 500);
+		}, 0, 1000);
 
 		return m_status >= connected;
 	} else {
@@ -290,16 +304,12 @@ void bfc_telnet::runcmd(const string& cmd)
 
 bool bfc_telnet::login(const string& user, const string& pass)
 {
-	bool have_prompt = false;
+	bool have_prompt = m_have_login_prompt;
 	bool send_newline = true;
 
 	while (!have_prompt) {
 		have_prompt = foreach_line([] (const string& line) {
-			if (contains(line, "Login:") || contains(line, "login:")) {
-				return true;
-			}
-
-			return false;
+			return is_login_prompt(line);
 		}, 0, 1000);
 
 		if (!have_prompt) {
