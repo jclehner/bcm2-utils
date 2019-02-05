@@ -97,6 +97,9 @@ class bfc : public interface
 
 	virtual void runcmd(const string& cmd) override
 	{ writeln(cmd); }
+
+	protected:
+	virtual bool check_privileged();
 };
 
 bool bfc::is_ready(bool passive)
@@ -107,6 +110,13 @@ bool bfc::is_ready(bool passive)
 
 	return foreach_line([] (const string& line) {
 		return is_bfc_prompt(line);
+	}, 2000);
+}
+
+bool bfc::check_privileged()
+{
+	return foreach_line([] (const string& l) {
+		return is_bfc_prompt_privileged(l);
 	}, 2000);
 }
 
@@ -272,9 +282,9 @@ bool bfc_telnet::login(const string& user, const string& pass)
 	foreach_line([this, &send_newline] (const string& line) {
 		if (contains(line, "Invalid login")) {
 			return true;
-		} else if (is_bfc_unprivileged(line)) {
+		} else if (is_bfc_prompt_unprivileged(line)) {
 			m_status = authenticated;
-		} else if (is_bfc_privileged(line)) {
+		} else if (is_bfc_prompt_privileged(line)) {
 			m_status = rooted;
 
 			if (send_newline) {
@@ -298,21 +308,28 @@ void bfc_telnet::elevate_privileges()
 		return;
 	}
 
-#if 1
+	// TODO make this conditional, based on the profile?
 	if (m_status == authenticated) {
 		runcmd("su");
-		foreach_line([this] (const string& line) {
-			if (contains(line, "Password:")) {
-				writeln("brcm");
-				writeln();
-			} else if (is_bfc_privileged(line)) {
-				m_status = rooted;
-			}
+		usleep(200000);
+		writeln("brcm");
+		writeln();
 
-			return false;
-		});
+		if (check_privileged()) {
+			m_status = rooted;
+		}
 	}
-#endif
+
+	// TODO make this conditional, based on the profile?
+	if (m_status == authenticated) {
+		runcmd("switchCpuConsole");
+		sleep(1);
+		writeln();
+
+		if (check_privileged()) {
+			m_status = rooted;
+		}
+	}
 
 	if (m_status == authenticated && !m_version.name().empty()) {
 		if (m_version.has_opt("bfc:conthread_instance") && m_version.has_opt("bfc:conthread_priv_off")) {
@@ -334,7 +351,7 @@ void bfc_telnet::elevate_privileges()
 
 			writeln();
 			foreach_line([this] (const string& line) {
-				if (is_bfc_privileged(line)) {
+				if (is_bfc_prompt_privileged(line)) {
 					m_status = rooted;
 				}
 
