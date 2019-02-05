@@ -84,7 +84,7 @@ class telnet
 	virtual bool login(const string& user, const string& pw) = 0;
 };
 
-class bfc : public interface
+class bfc : public interface, public enable_shared_from_this<bfc>
 {
 	public:
 	virtual string name() const override
@@ -98,8 +98,16 @@ class bfc : public interface
 	virtual void runcmd(const string& cmd) override
 	{ writeln(cmd); }
 
+	virtual void elevate_privileges() override;
+
+	virtual bool is_privileged() const override
+	{ return m_privileged; }
+
 	protected:
 	virtual bool check_privileged();
+
+	private:
+	bool m_privileged = true;
 };
 
 bool bfc::is_ready(bool passive)
@@ -113,11 +121,62 @@ bool bfc::is_ready(bool passive)
 	}, 2000);
 }
 
+void bfc::elevate_privileges()
+{
+	if (m_privileged || check_privileged()) {
+		return;
+	}
+
+	// TODO make this conditional, based on the profile?
+	runcmd("su");
+	usleep(200000);
+	writeln("brcm");
+	writeln();
+
+	if (check_privileged()) {
+		return;
+	}
+
+	// TODO make this conditional, based on the profile?
+	runcmd("switchCpuConsole");
+	sleep(1);
+	writeln();
+
+	if (check_privileged()) {
+		return;
+	}
+
+	if (m_version.has_opt("bfc:conthread_instance") && m_version.has_opt("bfc:conthread_priv_off")) {
+		uint32_t ct_instance_ptr = m_version.get_opt_num("bfc:conthread_instance");
+		uint32_t ct_priv_offset = m_version.get_opt_num("bfc:conthread_priv_off");
+
+		rwx::sp ram = rwx::create(shared_from_this(), "ram");
+
+		try {
+			wait_ready();
+			ram->space().check_offset(ct_instance_ptr, "bfc:conthread_instance");
+			uint32_t addr = ntoh(extract<uint32_t>(ram->read(ct_instance_ptr, 4)));
+			addr += ct_priv_offset;
+			ram->space().check_offset(addr, "console_priv_flag");
+			ram->write(addr, "\x01"s);
+		} catch (const exception& e) {
+			logger::d() << "while writing to console thread instance: " << e.what() << endl;
+		}
+
+		writeln();
+	}
+
+	if (!check_privileged()) {
+		logger::w() << "failed to switch to super-user; some functions might not work" << endl;
+	}
+}
+
 bool bfc::check_privileged()
 {
-	return foreach_line([] (const string& l) {
+	m_privileged = foreach_line([] (const string& l) {
 		return is_bfc_prompt_privileged(l);
 	}, 2000);
+	return m_privileged;
 }
 
 class bootloader : public interface
@@ -156,13 +215,12 @@ void bootloader::runcmd(const string& cmd)
 	m_io->write(cmd);
 }
 
-class bfc_telnet : public bfc, public telnet, public enable_shared_from_this<bfc_telnet>
+class bfc_telnet : public bfc, public telnet
 {
 	public:
 	static unsigned constexpr invalid = 0;
 	static unsigned constexpr connected = 1;
 	static unsigned constexpr authenticated = 2;
-	static unsigned constexpr rooted = 3;
 
 	virtual ~bfc_telnet()
 	{
@@ -179,9 +237,6 @@ class bfc_telnet : public bfc, public telnet, public enable_shared_from_this<bfc
 	virtual bool is_ready(bool passive) override;
 
 	bool login(const string& user, const string& pass) override;
-
-	virtual bool is_privileged() const override
-	{ return m_status == rooted; }
 
 	virtual void elevate_privileges() override;
 
@@ -277,92 +332,33 @@ bool bfc_telnet::login(const string& user, const string& pass)
 	writeln(pass);
 	writeln();
 
-	send_newline = true;
-
 	foreach_line([this, &send_newline] (const string& line) {
 		if (contains(line, "Invalid login")) {
 			return true;
-		} else if (is_bfc_prompt_unprivileged(line)) {
+		} else if (is_bfc_prompt(line)) {
 			m_status = authenticated;
-		} else if (is_bfc_prompt_privileged(line)) {
-			m_status = rooted;
-
-			if (send_newline) {
-				// in some cases, after a telnet login, the prompt displays
-				// CM/Console>, but hitting enter switches to Console>, meaning
-				// we're NOT rooted.
-				writeln();
-				send_newline = false;
-			}
 		}
 
 		return false;
 	}, 0, 1000);
 
-	return m_status >= authenticated;
+	if (m_status == authenticated) {
+		writeln();
+		writeln();
+		check_privileged();
+		return true;
+	}
+
+	return false;
 }
 
 void bfc_telnet::elevate_privileges()
 {
-	if (m_status == rooted || m_status != authenticated) {
+	if (m_status != authenticated) {
 		return;
 	}
 
-	// TODO make this conditional, based on the profile?
-	if (m_status == authenticated) {
-		runcmd("su");
-		usleep(200000);
-		writeln("brcm");
-		writeln();
-
-		if (check_privileged()) {
-			m_status = rooted;
-		}
-	}
-
-	// TODO make this conditional, based on the profile?
-	if (m_status == authenticated) {
-		runcmd("switchCpuConsole");
-		sleep(1);
-		writeln();
-
-		if (check_privileged()) {
-			m_status = rooted;
-		}
-	}
-
-	if (m_status == authenticated && !m_version.name().empty()) {
-		if (m_version.has_opt("bfc:conthread_instance") && m_version.has_opt("bfc:conthread_priv_off")) {
-			uint32_t ct_instance_ptr = m_version.get_opt_num("bfc:conthread_instance");
-			uint32_t ct_priv_offset = m_version.get_opt_num("bfc:conthread_priv_off");
-
-			rwx::sp ram = rwx::create(shared_from_this(), "ram");
-
-			try {
-				wait_ready();
-				ram->space().check_offset(ct_instance_ptr, "bfc:conthread_instance");
-				uint32_t addr = ntoh(extract<uint32_t>(ram->read(ct_instance_ptr, 4)));
-				addr += ct_priv_offset;
-				ram->space().check_offset(addr, "console_priv_flag");
-				ram->write(addr, "\x01"s);
-			} catch (const exception& e) {
-				logger::d() << "while writing to console thread instance: " << e.what() << endl;
-			}
-
-			writeln();
-			foreach_line([this] (const string& line) {
-				if (is_bfc_prompt_privileged(line)) {
-					m_status = rooted;
-				}
-
-				return false;
-			});
-		}
-	}
-
-	if (m_status == authenticated) {
-		logger::w() << "failed to switch to super-user; some functions might not work" << endl;
-	}
+	bfc::elevate_privileges();
 }
 
 interface::sp detect_interface(const io::sp &io)
