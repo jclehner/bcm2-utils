@@ -66,12 +66,12 @@ uint32_t get_max_magic_addr(const profile::sp& p, int intf_id)
 
 	for (auto v : p->versions()) {
 		if (v.intf() == intf_id) {
-			ret = max(ret, v.magic()->addr);
+			ret = max(ret, v.magic()->addr + magic_size(v.magic()) - 1);
 		}
 	}
 
 	for (auto m : p->magics()) {
-		ret = max(ret, m->addr);
+		ret = max(ret, m->addr + magic_size(v.magic()) - 1);
 	}
 
 	return ret;
