@@ -28,6 +28,27 @@ using namespace std;
 namespace bcm2dump {
 namespace {
 
+bool is_bfc_prompt(const string& str, const string& prompt)
+{
+	return str.find(prompt + ">") != std::string::npos
+			|| str.find(prompt + "/") != std::string::npos;
+}
+
+bool is_bfc_privileged(const string& str)
+{
+	return is_bfc_prompt(str, "CM_Console") || is_bfc_prompt(str, "CM");
+}
+
+bool is_bfc_unprivileged(const string& str)
+{
+	return is_bfc_prompt(str, "RG_Console") || is_bfc_prompt(str, "Console");
+}
+
+bool is_bfc_prompt(const string& str)
+{
+	return is_bfc_privileged(str) || is_bfc_unprivileged(str);
+}
+
 bool is_char_device(const string& filename)
 {
 	struct stat st;
@@ -85,13 +106,7 @@ bool bfc::is_ready(bool passive)
 	}
 
 	return foreach_line([] (const string& line) {
-		if (is_bfc_prompt(line, "CM")) {
-			return true;
-		} else if (is_bfc_prompt(line, "Console")) {
-			return true;
-		}
-
-		return false;
+		return is_bfc_prompt(line);
 	}, 2000);
 }
 
@@ -257,9 +272,9 @@ bool bfc_telnet::login(const string& user, const string& pass)
 	foreach_line([this, &send_newline] (const string& line) {
 		if (contains(line, "Invalid login")) {
 			return true;
-		} else if (is_bfc_prompt(line, "Console")) {
+		} else if (is_bfc_unprivileged(line)) {
 			m_status = authenticated;
-		} else if (is_bfc_prompt(line, "CM")) {
+		} else if (is_bfc_privileged(line)) {
 			m_status = rooted;
 
 			if (send_newline) {
@@ -290,7 +305,7 @@ void bfc_telnet::elevate_privileges()
 			if (contains(line, "Password:")) {
 				writeln("brcm");
 				writeln();
-			} else if (is_bfc_prompt(line, "CM")) {
+			} else if (is_bfc_privileged(line)) {
 				m_status = rooted;
 			}
 
@@ -319,7 +334,7 @@ void bfc_telnet::elevate_privileges()
 
 			writeln();
 			foreach_line([this] (const string& line) {
-				if (is_bfc_prompt(line, "CM")) {
+				if (is_bfc_privileged(line)) {
 					m_status = rooted;
 				}
 
