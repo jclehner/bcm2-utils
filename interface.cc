@@ -210,51 +210,69 @@ void bfc_telnet::runcmd(const string& cmd)
 
 bool bfc_telnet::login(const string& user, const string& pass)
 {
-	bool send_crlf = true;
+	bool have_prompt = false;
+	bool send_newline = true;
 
-	while (pending(1000)) {
-		string line = readln();
-		if (contains(line, "Login:") || contains(line, "login:")) {
-			send_crlf = false;
-			break;
+	while (!have_prompt) {
+		have_prompt = foreach_line([] (const string& line) {
+			if (contains(line, "Login:") || contains(line, "login:")) {
+				return true;
+			}
+
+			return false;
+		}, 0, 1000);
+
+		if (!have_prompt) {
+			if (send_newline) {
+				writeln();
+				send_newline = false;
+			} else {
+				logger::d() << "telnet: no login prompt" << endl;
+				return false;
+			}
 		}
-	}
-
-	if (send_crlf) {
-		writeln();
 	}
 
 	writeln(user);
-	while (pending(1000)) {
-		string line = readln();
+
+	have_prompt = foreach_line([] (const string& line) {
 		if (contains(line, "Password:") || contains(line, "password:")) {
-			break;
+			return true;
 		}
+
+		return false;
+	}, 0, 1000);
+
+	if (!have_prompt) {
+		logger::d() << "telnet: no password prompt" << endl;
+		return false;
 	}
+
 
 	writeln(pass);
 	writeln();
 
-	send_crlf = true;
+	send_newline = true;
 
-	while (pending(1000)) {
-		string line = readln();
+	foreach_line([this, &send_newline] (const string& line) {
 		if (contains(line, "Invalid login")) {
-			break;
+			return true;
 		} else if (is_bfc_prompt(line, "Console")) {
 			m_status = authenticated;
 		} else if (is_bfc_prompt(line, "CM")) {
 			m_status = rooted;
 
-			if (send_crlf) {
+			if (send_newline) {
 				// in some cases, after a telnet login, the prompt displays
 				// CM/Console>, but hitting enter switches to Console>, meaning
 				// we're NOT rooted.
 				writeln();
-				send_crlf = false;
+				send_newline = false;
 			}
 		}
-	}
+
+		return false;
+	}, 0, 1000);
 
 	return m_status >= authenticated;
 }
