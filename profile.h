@@ -171,6 +171,12 @@ struct bcm2_typed_val
 	enum bcm2_type type;
 };
 
+#define BCM2_VAL_U32(name, val) BCM2_TYPED_VAL(name, n, val, BCM2_TYPE_U32)
+#define BCM2_VAL_STR(name, str) BCM2_TYPED_VAL(name, s, str, BCM2_TYPE_STR)
+
+#define BCM2_TYPED_VAL(a_name, a_dest, a_val, a_type) \
+	{ .name = (a_name), .val = { .a_dest = (a_val) }, .type = a_type }
+
 struct bcm2_version {
 	char version[16];
 	int intf;
