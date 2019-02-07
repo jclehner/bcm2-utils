@@ -253,7 +253,6 @@ int do_dump(int argc, char** argv, int opts, const string& profile)
 int do_write_exec(int argc, char** argv, int opts, const string& profile)
 {
 	bool exec = (argv[0] == "exec"s);
-	string file = exec ? argv[3] : argv[4];
 	uint32_t entry, loadaddr;
 
 	if ((!exec && argc != 5) || (exec && argc != 4)) {
@@ -275,6 +274,7 @@ int do_write_exec(int argc, char** argv, int opts, const string& profile)
 		throw user_error("writing to non-ram address space "s + argv[2] + " is dangerous; specify -FF to continue");
 	}
 
+	string file = exec ? argv[3] : argv[4];
 	ifstream in(file.c_str(), ios::binary);
 	if (!in.good()) {
 		throw user_error("failed to open " + file + " for reading");
