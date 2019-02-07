@@ -36,13 +36,14 @@ bool is_bfc_prompt(const string& str, const string& prompt)
 
 bool is_bfc_prompt_privileged(const string& str)
 {
-	//return is_bfc_prompt(str, "CM_Console") || is_bfc_prompt(str, "CM");
 	return is_bfc_prompt(str, "CM");
 }
 
 bool is_bfc_prompt_unprivileged(const string& str)
 {
-	return is_bfc_prompt(str, "RG_Console") || is_bfc_prompt(str, "Console");
+	return is_bfc_prompt(str, "RG_Console")
+		|| is_bfc_prompt(str, "CM_Console")
+		|| is_bfc_prompt(str, "Console");
 }
 
 bool is_bfc_prompt(const string& str)
