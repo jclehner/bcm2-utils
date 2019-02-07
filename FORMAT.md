@@ -63,12 +63,12 @@ it would be `~(0xaaaaaaaa + 0x0000bb00)` (assuming `uint32_t` rollover on overfl
 
 Currently known magic values:
 
-| Vendor              | Magic                                                                        |
-|---------------------|-----------------------------------------------------------------------------:|
-| Technicolor/Thomson | `6u9E9eWF0bt9Y8Rw690Le4669JYe4d-056T9p4ijm4EA6u9ee659jn9E-54e4j6rPj069K-670` |
-| Netgear, Motorola   | `6u9e9ewf0jt9y85w690je4669jye4d-056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056` |
-| Sagem 3686 AC (DNA) | `FAST3686DNA056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056`                     |
-| Sagem 3686 AC (SFR) | `FAST3686SFR-PC20056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056`                |
+| Vendor                    | Magic                                                                        |
+|---------------------------|-----------------------------------------------------------------------------:|
+| Technicolor/Thomson       | `6u9E9eWF0bt9Y8Rw690Le4669JYe4d-056T9p4ijm4EA6u9ee659jn9E-54e4j6rPj069K-670` |
+| Netgear, Motorola, Ubee   | `6u9e9ewf0jt9y85w690je4669jye4d-056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056` |
+| Sagem 3686 AC (DNA)       | `FAST3686DNA056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056`                     |
+| Sagem 3686 AC (SFR)       | `FAST3686SFR-PC20056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056`                |
 
 The checksum is an MD5 hash, calculated from the file contents immediately after the checksum (i.e.
 *everything* but the first 16 bytes). To calculate the checksum, a 16-byte device-specific key is added
