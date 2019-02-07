@@ -152,6 +152,11 @@ void bfc::do_elevate_privileges()
 	}
 
 	if (m_is_rg_prompt) {
+		if (m_privileged) {
+			runcmd("exit");
+			m_privileged = false;
+		}
+
 		runcmd("switchCpuConsole");
 		sleep(1);
 		writeln();
