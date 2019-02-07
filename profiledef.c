@@ -361,6 +361,10 @@ struct bcm2_profile bcm2_profiles[] = {
 		.pssig = 0x1007,
 		.baudrate = 115200,
 		.kseg1mask = 0x20000000,
+		.cfg_md5key = "3250736c633b752865676d64302d2778",
+		.cfg_defkeys = {
+			"6c3ea0477630ce21a2ce334aa746c2cdc782dc4c098c66cbd9cd27d825682c81",
+		},
 		.spaces = {
 			{
 				.name = "ram",
@@ -390,6 +394,20 @@ struct bcm2_profile bcm2_profiles[] = {
 				}
 			},
 		},
+		.versions = {
+			{
+				.intf = BCM2_INTF_BFC,
+				.options = {
+					BCM2_VAL_STR("bfc:su_password", "ubeecable"),
+					BCM2_VAL_U32("bfc:conthread_priv_off", 0x74)
+				},
+			},
+			{
+				.version = "2.7.1002",
+				.intf = BCM2_INTF_BFC,
+				.magic = { 0x810a4390, "2.7.1002-NCS" },
+			},
+		}
 	},
 	{
 		.name = "tc7200",
