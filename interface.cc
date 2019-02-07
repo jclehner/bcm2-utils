@@ -109,6 +109,7 @@ class bfc : public interface, public enable_shared_from_this<bfc>
 	virtual bool check_privileged();
 
 	private:
+	void do_elevate_privileges();
 	bool m_privileged = false;
 };
 
@@ -134,7 +135,19 @@ void bfc::elevate_privileges()
 		return;
 	}
 
-	// TODO make this conditional, based on the profile?
+	do_elevate_privileges();
+
+	if (!m_privileged) {
+		logger::w() << "failed to switch to super-user; some functions might not work" << endl;
+	}
+}
+
+void bfc::do_elevate_privileges()
+{
+	if (m_privileged || check_privileged()) {
+		return;
+	}
+
 	runcmd("su");
 	usleep(200000);
 	writeln(m_version.get_opt_str("bfc:su_password", "brcm"));
@@ -155,17 +168,17 @@ void bfc::elevate_privileges()
 	}
 #endif
 
-	if (m_version.has_opt("bfc:conthread_instance") && m_version.has_opt("bfc:conthread_priv_off")) {
-		uint32_t ct_instance_ptr = m_version.get_opt_num("bfc:conthread_instance");
-		uint32_t ct_priv_offset = m_version.get_opt_num("bfc:conthread_priv_off");
+	uint32_t ct_instance = m_version.get_opt_num("bfc:conthread_instance", 0);
+	uint32_t ct_priv_off = m_version.get_opt_num("bfc:conthread_priv_off", 0);
 
+	if (ct_instance && ct_priv_off) {
 		rwx::sp ram = rwx::create(shared_from_this(), "ram");
 
 		try {
 			wait_ready();
-			ram->space().check_offset(ct_instance_ptr, "bfc:conthread_instance");
-			uint32_t addr = ntoh(extract<uint32_t>(ram->read(ct_instance_ptr, 4)));
-			addr += ct_priv_offset;
+			ram->space().check_offset(ct_instance, "bfc:conthread_instance");
+			uint32_t addr = ntoh(extract<uint32_t>(ram->read(ct_instance, 4)));
+			addr += ct_priv_off;
 			ram->space().check_offset(addr, "console_priv_flag");
 			ram->write(addr, "\x01"s);
 		} catch (const exception& e) {
@@ -175,9 +188,7 @@ void bfc::elevate_privileges()
 		writeln();
 	}
 
-	if (!check_privileged()) {
-		logger::w() << "failed to switch to super-user; some functions might not work" << endl;
-	}
+	check_privileged();
 }
 
 bool bfc::check_privileged()
