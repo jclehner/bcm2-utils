@@ -335,8 +335,14 @@ class version
 	uint32_t get_opt_num(const std::string& name) const
 	{ return get_opt(name, BCM2_TYPE_U32)->val.n; }
 
+	uint32_t get_opt_num(const std::string& name, uint32_t def) const
+	{ return has_opt(name) ? get_opt_num(name) : def; }
+
 	std::string get_opt_str(const std::string& name) const
 	{ return get_opt(name, BCM2_TYPE_STR)->val.s; }
+
+	std::string get_opt_str(const std::string& name, const std::string& def) const
+	{ return has_opt(name) ? get_opt_str(name) : def; }
 
 	const bcm2_version* raw() const
 	{ return m_p; }

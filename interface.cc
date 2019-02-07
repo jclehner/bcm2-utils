@@ -137,7 +137,7 @@ void bfc::elevate_privileges()
 	// TODO make this conditional, based on the profile?
 	runcmd("su");
 	usleep(200000);
-	writeln("brcm");
+	writeln(m_version.get_opt_str("bfc:su_password", "brcm"));
 	writeln();
 
 	if (check_privileged()) {
