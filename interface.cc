@@ -36,7 +36,8 @@ bool is_bfc_prompt(const string& str, const string& prompt)
 
 bool is_bfc_prompt_privileged(const string& str)
 {
-	return is_bfc_prompt(str, "CM");
+	return is_bfc_prompt(str, "CM")
+		|| is_bfc_prompt(str, "RG");
 }
 
 bool is_bfc_prompt_unprivileged(const string& str)
@@ -44,6 +45,11 @@ bool is_bfc_prompt_unprivileged(const string& str)
 	return is_bfc_prompt(str, "RG_Console")
 		|| is_bfc_prompt(str, "CM_Console")
 		|| is_bfc_prompt(str, "Console");
+}
+
+bool is_bfc_prompt_rg(const string& str)
+{
+	return is_bfc_prompt(str, "RG_Console") || is_bfc_prompt(str, "RG");
 }
 
 bool is_bfc_prompt(const string& str)
@@ -111,6 +117,7 @@ class bfc : public interface, public enable_shared_from_this<bfc>
 	private:
 	void do_elevate_privileges();
 	bool m_privileged = false;
+	bool m_is_rg_prompt = false;
 };
 
 bool bfc::is_ready(bool passive)
@@ -131,10 +138,6 @@ bool bfc::is_ready(bool passive)
 
 void bfc::elevate_privileges()
 {
-	if (m_privileged || check_privileged()) {
-		return;
-	}
-
 	do_elevate_privileges();
 
 	if (!m_privileged) {
@@ -144,7 +147,18 @@ void bfc::elevate_privileges()
 
 void bfc::do_elevate_privileges()
 {
-	if (m_privileged || check_privileged()) {
+	if (!m_privileged) {
+		check_privileged();
+	}
+
+	if (m_is_rg_prompt) {
+		runcmd("switchCpuConsole");
+		sleep(1);
+		writeln();
+		m_is_rg_prompt = false;
+	}
+
+	if (m_privileged) {
 		return;
 	}
 
@@ -156,17 +170,6 @@ void bfc::do_elevate_privileges()
 	if (check_privileged()) {
 		return;
 	}
-
-#if 0
-	// TODO make this conditional, based on the profile?
-	runcmd("switchCpuConsole");
-	sleep(1);
-	writeln();
-
-	if (check_privileged()) {
-		return;
-	}
-#endif
 
 	uint32_t ct_instance = m_version.get_opt_num("bfc:conthread_instance", 0);
 	uint32_t ct_priv_off = m_version.get_opt_num("bfc:conthread_priv_off", 0);
@@ -199,6 +202,8 @@ bool bfc::check_privileged()
 		} else if (is_bfc_prompt_unprivileged(l)) {
 			m_privileged = false;
 		}
+
+		m_is_rg_prompt = is_bfc_prompt_rg(l);
 
 		return false;
 	}, 0, 1000);
