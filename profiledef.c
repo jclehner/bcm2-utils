@@ -385,11 +385,11 @@ struct bcm2_profile bcm2_profiles[] = {
 				.name = "flash",
 				.size = 128 * 1024 * 1024,
 				.parts = {
-					{ "linuxapps", 0x0000000, 0x4c40000 },
+					{ "linuxapps", 0x0000000, 0x4c40000, "image3e" },
 					{ "image1",    0x4c40000, 0x0d80000 },
 					{ "image2",    0x59c0000, 0x0d80000 },
-					{ "linux",     0x6740000, 0x0480000 },
-					{ "linuxkfs",  0x6bc0000, 0x1200000 },
+					{ "linux",     0x6740000, 0x0480000, "image3" },
+					{ "linuxkfs",  0x6bc0000, 0x1200000, "" },
 					{ "dhtml",     0x7dc0000, 0x0240000 },
 				}
 			},
