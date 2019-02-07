@@ -160,6 +160,12 @@ would be padded to
 The Sagem F@ST 3686 AC uses a simple XOR `0x80` pad. The GatewatSettings.bin header is preceeded by a
 12 byte data blob, which is also appended to the end of the data. 
 
+###### Encryption (Ubee)
+
+Some ubee modems encrypt the config file using AES-128-CBC with a static key and IV. The whole file
+is encrypted, similar to the Netgear method described above. Additionally, the encrypted data is
+preceeded by a 4-byte value encoding the length. PKCS#7-style padding is used.
+
 
 ### GatewaySettings.bin (dynnv)
 

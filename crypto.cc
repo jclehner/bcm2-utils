@@ -56,6 +56,11 @@ inline const unsigned char* data(const string& buf)
 	return reinterpret_cast<const unsigned char*>(buf.data());
 }
 
+inline unsigned char* data(string& buf)
+{
+	return reinterpret_cast<unsigned char*>(&buf[0]);
+}
+
 void check_keysize(const string& key, size_t size, const string& name)
 {
 	if (key.size() != size) {
@@ -79,6 +84,23 @@ inline const_DES_cblock* to_ccblock(const string& buf, size_t offset)
 	return (const_DES_cblock*)&buf[offset];
 }
 
+AES_KEY make_aes_key(const string& key, bool encrypt)
+{
+	AES_KEY ret;
+	int err;
+
+	if (!encrypt) {
+		err = AES_set_decrypt_key(data(key), key.size() * 8, &ret);
+	} else {
+		err = AES_set_encrypt_key(data(key), key.size() * 8, &ret);
+	}
+
+	if (err) {
+		throw runtime_error("failed to set AES key: error " + to_string(err));
+	}
+
+	return ret;
+}
 #endif
 
 #ifdef BCM2UTILS_USE_WINCRYPT
@@ -339,18 +361,7 @@ string crypt_aes_256_ecb(const string& ibuf, const string& key, bool encrypt)
 	check_keysize(key, 32, "aes-256-ecb");
 
 #if defined(BCM2UTILS_USE_OPENSSL)
-	AES_KEY aes;
-	int err;
-
-	if (!encrypt) {
-		err = AES_set_decrypt_key(data(key), 256, &aes);
-	} else {
-		err = AES_set_encrypt_key(data(key), 256, &aes);
-	}
-
-	if (err) {
-		throw runtime_error("failed to set AES key: error " + to_string(err));
-	}
+	AES_KEY aes = make_aes_key(key, encrypt);
 
 	return crypt_generic_ecb<16>(ibuf, [&aes, &encrypt](const uint8_t *iblock, uint8_t *oblock) {
 			if (encrypt) {
@@ -366,6 +377,32 @@ string crypt_aes_256_ecb(const string& ibuf, const string& key, bool encrypt)
 #else
 	throw runtime_error("encryption not supported on this platform");
 #endif
+}
+
+namespace {
+template<size_t BITS> string crypt_aes_cbc(const string& ibuf, const string& key_and_iv, bool encrypt)
+{
+	// first the key, then the iv
+	check_keysize(key_and_iv, (BITS / 8) + 16, "aes-" + to_string(BITS) + "-cbc");
+
+	string key = key_and_iv.substr(0, BITS / 8);
+	string iv = key_and_iv.substr(BITS / 8);
+
+#if defined(BCM2UTILS_USE_OPENSSL)
+	AES_KEY aes = make_aes_key(key, encrypt);
+	string obuf = ibuf;
+	AES_cbc_encrypt(data(ibuf), data(obuf), ibuf.size(), &aes, data(iv), encrypt);
+	return obuf;
+#else
+#warning "Not yet supported"
+	return ibuf;
+#endif
+}
+}
+
+string crypt_aes_128_cbc(const string& ibuf, const string& key_and_iv, bool encrypt)
+{
+	return crypt_aes_cbc<128>(ibuf, key_and_iv, encrypt);
 }
 
 namespace {

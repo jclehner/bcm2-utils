@@ -361,9 +361,11 @@ struct bcm2_profile bcm2_profiles[] = {
 		.pssig = 0x1007,
 		.baudrate = 115200,
 		.kseg1mask = 0x20000000,
+		.cfg_flags = BCM2_CFG_ENC_AES128_CBC | BCM2_CFG_FMT_GWS_FULL_ENC,
 		.cfg_md5key = "3250736c633b752865676d64302d2778",
 		.cfg_defkeys = {
-			"6c3ea0477630ce21a2ce334aa746c2cdc782dc4c098c66cbd9cd27d825682c81",
+			// key, followed by initialization vector
+			"6c3ea0477630ce21a2ce334aa746c2cd" "c782dc4c098c66cbd9cd27d825682c81",
 		},
 		.spaces = {
 			{
