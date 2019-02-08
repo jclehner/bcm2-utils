@@ -153,6 +153,7 @@ void bfc::do_elevate_privileges()
 
 	if (m_is_rg_prompt) {
 		if (m_privileged) {
+			// switchCpuConsole isn't available in the root shell!
 			runcmd("exit");
 			m_privileged = false;
 		}
@@ -380,6 +381,9 @@ bool bfc_telnet::login(const string& user, const string& pass)
 	}, 0, 1000);
 
 	if (m_status == authenticated) {
+		// in some cases, the shell prompt is CM/Console>, but
+		// switches to Console> after hitting enter, meaning that
+		// we're NOT rooted!
 		writeln();
 		writeln();
 		check_privileged();
