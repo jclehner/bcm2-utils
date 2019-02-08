@@ -719,9 +719,11 @@ bool bfc_flash::use_direct_read() const
 
 void bfc_flash::on_chunk_retry(uint32_t offset, uint32_t length)
 {
+	auto v = m_intf->version();
+
 	if (v.get_opt_num("bfc:flash_reinit_on_retry", false)) {
 		cleanup();
-		init(0, 0, m_write);
+		init(0, 0, false);
 	}
 }
 
