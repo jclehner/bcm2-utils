@@ -561,7 +561,8 @@ class bfc_flash2 : public bfc_ram
 class bfc_flash : public parsing_rwx
 {
 	public:
-	virtual ~bfc_flash() {}
+	virtual ~bfc_flash()
+	{ cleanup(); }
 
 	virtual limits limits_read() const override
 	{
@@ -580,23 +581,20 @@ class bfc_flash : public parsing_rwx
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
 	virtual bool is_ignorable_line(const string& line) override;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
+	virtual void on_chunk_retry(uint32_t offset, uint32_t length) override;
 
 	private:
 	uint32_t to_partition_offset(uint32_t offset) const;
 	bool use_direct_read() const;
 };
 
-void bfc_flash::init(uint32_t offset, uint32_t length, bool write)
+void bfc_flash::init(uint32_t, uint32_t, bool write)
 {
 	if (m_partition.name().empty()) {
 		throw user_error("partition name required");
 	}
 
 	for (unsigned pass = 0; pass < 2; ++pass) {
-#if 0
-		m_intf->runcmd("/write_memory -s 4 0xa03f6ca4 0x10000018");
-#endif
-
 		m_intf->runcmd("/flash/open " + m_partition.altname());
 
 		bool opened = false;
@@ -717,6 +715,14 @@ bool bfc_flash::use_direct_read() const
 #else
 	return false;
 #endif
+}
+
+void bfc_flash::on_chunk_retry(uint32_t offset, uint32_t length)
+{
+	if (v.get_opt_num("bfc:flash_reinit_on_retry", false)) {
+		cleanup();
+		init(0, 0, m_write);
+	}
 }
 
 class bootloader_ram : public parsing_rwx
