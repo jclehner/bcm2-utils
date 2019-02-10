@@ -171,6 +171,9 @@ class profile_wrapper : public profile
 	virtual uint32_t cfg_encryption() const override
 	{ return cfg_flags() & BCM2_CFG_ENC_MASK; }
 
+	virtual uint32_t cfg_padding() const override
+	{ return cfg_flags() & BCM2_CFG_PAD_MASK; }
+
 	virtual uint32_t cfg_flags() const override
 	{ return m_p->cfg_flags; }
 

@@ -89,6 +89,11 @@ inline bool ends_with(const std::string& haystack, const std::string& needle)
 	}
 }
 
+template<class T> std::string to_buf(const T& t)
+{
+	return std::string(reinterpret_cast<const char*>(&t), sizeof(T));
+}
+
 template<class T> T extract(const std::string& data, std::string::size_type offset = 0)
 {
 	return *reinterpret_cast<const T*>(data.substr(offset, sizeof(data)).c_str());

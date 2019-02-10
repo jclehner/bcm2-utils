@@ -39,7 +39,7 @@ extern "C" {
 
 enum bcm2_cfg_flags
 {
-	BCM2_CFG_ENC_MASK = 0x07,
+	BCM2_CFG_ENC_MASK = 0x0f,
 	BCM2_CFG_ENC_NONE = 0,
 	BCM2_CFG_ENC_AES256_ECB = 1,
 	BCM2_CFG_ENC_3DES_ECB = 2,
@@ -49,13 +49,21 @@ enum bcm2_cfg_flags
 	BCM2_CFG_ENC_DES_ECB = 6,
 	BCM2_CFG_ENC_AES128_CBC = 7,
 
-	BCM2_CFG_FMT_MASK = 0xf8,
-	BCM2_CFG_FMT_GWS_DEFAULT = 0 << 3,
-	BCM2_CFG_FMT_GWS_DYNNV = 1 << 3,
-	BCM2_CFG_FMT_GWS_FULL_ENC = 2 << 3,
+	BCM2_CFG_PAD_MASK = 0xf0,
+	BCM2_CFG_PAD_ANSI_X9_23 = 1 << 4,
+	BCM2_CFG_PAD_PKCS7 = 1 << 5,
+	BCM2_CFG_PAD_ZEROBLK = 1 << 6,
 
-	BCM2_CFG_DATA_MASK = 0xff00,
-	BCM2_CFG_DATA_USERIF_ALT = 1 << 16,
+	BCM2_CFG_FMT_MASK = 0xf00,
+	BCM2_CFG_FMT_GWS_DYNNV = 1 << 8,
+	BCM2_CFG_FMT_GWS_FULL_ENC = 1 << 9,
+	// always add padding, even if data size is multiple of block size
+	BCM2_CFG_FMT_GWS_PAD_ALWAYS = 1 << 10,
+	// prepend data length
+	BCM2_CFG_FMT_GWS_LEN_PREFIX = 1 << 11,
+
+	BCM2_CFG_DATA_MASK = 0xf000,
+	BCM2_CFG_DATA_USERIF_ALT = 1 << 12,
 };
 
 enum bcm2_interface
@@ -488,6 +496,7 @@ class profile
 	virtual std::string md5_key() const = 0;
 
 	virtual uint32_t cfg_encryption() const = 0;
+	virtual uint32_t cfg_padding() const = 0;
 	virtual uint32_t cfg_flags() const = 0;
 
 	//virtual std::string encrypt(const std::string& buf, const std::string& key) = 0;

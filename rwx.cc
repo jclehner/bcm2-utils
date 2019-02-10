@@ -45,11 +45,6 @@ inline void patch32(string& buf, string::size_type offset, uint32_t n)
 	patch<uint32_t>(buf, offset, hton(n));
 }
 
-template<class T> string to_buf(const T& t)
-{
-	return string(reinterpret_cast<const char*>(&t), sizeof(T));
-}
-
 template<class T> T align_to(const T& num, const T& alignment)
 {
 	if (num % alignment) {

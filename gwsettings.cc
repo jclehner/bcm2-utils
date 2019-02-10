@@ -40,6 +40,8 @@ string gws_crypt(const string& buf, const string& key, int type, bool encrypt)
 {
 	if (type == BCM2_CFG_ENC_AES256_ECB) {
 		return crypt_aes_256_ecb(buf, key, encrypt);
+	} else if (type == BCM2_CFG_ENC_AES128_CBC) {
+		return crypt_aes_128_cbc(buf, key, encrypt);
 	} else if (type == BCM2_CFG_ENC_3DES_ECB) {
 		return crypt_3des_ecb(buf, key, encrypt);
 	} else if (type == BCM2_CFG_ENC_DES_ECB) {
@@ -53,10 +55,71 @@ string gws_crypt(const string& buf, const string& key, int type, bool encrypt)
 	}
 }
 
-string gws_decrypt(string buf, string& checksum, string& key, const csp<profile>& p)
+unsigned gws_enc_blksize(const csp<profile>& p)
+{
+	switch (p->cfg_encryption()) {
+		case BCM2_CFG_ENC_AES256_ECB:
+		case BCM2_CFG_ENC_AES128_CBC:
+		case BCM2_CFG_ENC_SUB_16x16:
+			return 16;
+		case BCM2_CFG_ENC_DES_ECB:
+		case BCM2_CFG_ENC_3DES_ECB:
+			return 8;
+
+		default:
+			return 1;
+	}
+}
+
+bool gws_unpad(string& buf, const csp<profile>& p)
+{
+	int pad = p->cfg_padding();
+	unsigned blksize = gws_enc_blksize(p);
+	bool pad_always = p->cfg_flags() & BCM2_CFG_FMT_GWS_PAD_ALWAYS;
+
+	if (pad == BCM2_CFG_PAD_PKCS7 || pad == BCM2_CFG_PAD_ANSI_X9_23) {
+		unsigned padnum = buf.back();
+		// add 16 to buf size to account for the checksum
+		unsigned expected = blksize - (((buf.size() + 16) - padnum) % blksize);
+
+		if (padnum == expected || (expected == 0 && padnum == blksize && pad_always)) {
+			buf.resize(buf.size() - padnum);
+			return true;
+		}
+	} else if (pad == BCM2_CFG_PAD_ZEROBLK) {
+		string zeroblk(blksize, '\0');
+
+		if (buf.substr(buf.size() - blksize) == zeroblk) {
+			buf.resize(buf.size() - blksize);
+			return true;
+		}
+
+		return false;
+	} else {
+		return false;
+	}
+
+	logger::v() << "failed to remove padding" << endl;
+	return false;
+}
+
+string gws_decrypt(string buf, string& checksum, string& key, const csp<profile>& p, bool& padded)
 {
 	int flags = p->cfg_flags();
 	int enc = p->cfg_encryption();
+
+	logger::d() << "decrypting with profile " << p->name() << endl;
+
+	if (flags & BCM2_CFG_FMT_GWS_LEN_PREFIX) {
+		auto len = ntoh(extract<uint32_t>(checksum));
+		if (len == (buf.size() + 12)) {
+			checksum.erase(0, 4);
+			checksum.append(buf.substr(0, 4));
+			buf.erase(0, 4);
+		} else {
+			logger::d() << "unexpected length prefix: " << len << endl;
+		}
+	}
 
 	if (flags & BCM2_CFG_FMT_GWS_FULL_ENC) {
 		buf = checksum + buf;
@@ -70,6 +133,8 @@ string gws_decrypt(string buf, string& checksum, string& key, const csp<profile>
 	} else {
 		buf = gws_crypt(buf, key, enc, false);
 	}
+
+	padded = gws_unpad(buf, p);
 
 	if (flags & BCM2_CFG_FMT_GWS_FULL_ENC) {
 		checksum = buf.substr(0, 16);
@@ -100,6 +165,9 @@ string gws_encrypt(string buf, const string& key, const csp<profile>& p, bool pa
 					buf += string(n - 1, '\0');
 					buf += char(n & 0xff);
 				}
+			} else if (enc == BCM2_CFG_ENC_AES128_CBC) {
+				unsigned n = 16 - (buf.size() % 16);
+				buf += string(n, char(n & 0xff));
 			}
 		}
 
@@ -110,6 +178,10 @@ string gws_encrypt(string buf, const string& key, const csp<profile>& p, bool pa
 
 	if (!(flags & BCM2_CFG_FMT_GWS_FULL_ENC)) {
 		buf = gws_checksum(buf, p) + buf;
+	}
+
+	if (flags & BCM2_CFG_FMT_GWS_LEN_PREFIX) {
+		buf.insert(0, to_buf(htonl(buf.size())));
 	}
 
 	return buf;
@@ -395,16 +467,9 @@ class gwsettings : public encryptable_settings
 
 		m_size_valid = m_size.num() == buf.size();
 
-		if (!m_size_valid) {
-			if (m_size.num() + 16 == buf.size()) {
-				m_padded = true;
-				m_size_valid = true;
-			} else {
-				if (buf.size() > m_size.num()) {
-					logger::v() << "data size exceeds reported file size" << endl;
-					m_size.num(buf.size());
-				}
-			}
+		if (!m_size_valid && buf.size() > m_size.num()) {
+			logger::v() << "data size exceeds reported file size" << endl;
+			m_size.num(buf.size());
 		}
 
 		settings::read(istr);
@@ -532,9 +597,10 @@ class gwsettings : public encryptable_settings
 		for (auto key : keys) {
 			string tmpsum = m_checksum;
 			string tmpbuf;
+			bool padded;
 
 			try {
-				tmpbuf = gws_decrypt(buf, tmpsum, key, p);
+				tmpbuf = gws_decrypt(buf, tmpsum, key, p, padded);
 			} catch (const invalid_argument& e) {
 				logger::t() << e.what() << endl;
 				continue;
@@ -543,6 +609,7 @@ class gwsettings : public encryptable_settings
 			if (validate_magic(tmpbuf)) {
 				m_key = key;
 				buf = tmpbuf;
+				m_padded = padded;
 
 				if (!m_checksum_valid) {
 					m_checksum = tmpsum;
