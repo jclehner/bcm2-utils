@@ -360,8 +360,12 @@ struct bcm2_profile bcm2_profiles[] = {
 		.name = "evw32c",
 		.pretty = "Ubee EVW32C",
 		.pssig = 0x1007,
+		.blsig = 0x3384,
 		.baudrate = 115200,
 		.kseg1mask = 0x20000000,
+		.magic = {
+			{ 0x83f8e8a8, "1.0.03" },
+		},
 		.cfg_flags =
 			BCM2_CFG_ENC_AES128_CBC | BCM2_CFG_FMT_GWS_FULL_ENC |
 			BCM2_CFG_FMT_GWS_LEN_PREFIX | BCM2_CFG_FMT_GWS_PAD_ALWAYS |
@@ -407,7 +411,7 @@ struct bcm2_profile bcm2_profiles[] = {
 					BCM2_VAL_STR("bfc:su_password", "ubeecable"),
 					BCM2_VAL_U32("bfc:conthread_priv_off", 0x74),
 					BCM2_VAL_U32("bfc:flash_reinit_on_retry", true),
-					BCM2_VAL_U32("bfc:flash_read_direct", true)
+					BCM2_VAL_U32("bfc:flash_read_direct", false)
 				},
 			},
 			{
