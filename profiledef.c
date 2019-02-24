@@ -655,6 +655,9 @@ struct bcm2_profile bcm2_profiles[] = {
 						{ "image2" },
 						{ "image3" },
 						{ "image3e" },
+						{ "linux" },
+						{ "linuxapps" },
+						{ "linuxkfs" },
 						{ "dhtml" }
 				},
 			}
