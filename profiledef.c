@@ -422,6 +422,41 @@ struct bcm2_profile bcm2_profiles[] = {
 		}
 	},
 	{
+		.name = "tc8715",
+		.pretty = "Technicolor TC8715",
+		.baudrate = 115200,
+		.pssig = 0xa8ef,
+		.kseg1mask = 0x20000000,
+		.spaces = {
+			{
+				.name = "ram",
+				.min = 0x80000000
+			},
+			{
+				.name = "nvram",
+				.size = 0x100000,
+				.parts = {
+					{ "bootloader", 0x00000, 0x10000 },
+					{ "permnv",     0x10000, 0x20000, "perm" },
+					{ "eripv2",     0x30000, 0x20000, "" },
+					{ "dynnv",      0xc0000, 0x40000, "dyn" }
+				},
+			},
+			{
+				.name = "flash",
+				.size = 128 * 1024 * 1024,
+				.parts = {
+					{ "linuxapps", 0x0000000, 0x50c0000 },
+					{ "image1",    0x50c0000, 0x0900000 },
+					{ "image2",    0x59c0000, 0x0900000 },
+					{ "linux",     0x62c0000, 0x0900000 },
+					{ "linuxkfs",  0x6bc0000, 0x1200000 },
+					{ "dhtml",     0x7dc0000, 0x0240000 },
+				}
+			},
+		}
+	},
+	{
 		.name = "tc7200",
 		.pretty = "Technicolor TC7200",
 		.baudrate = 115200,
