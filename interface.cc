@@ -431,7 +431,7 @@ void bfc_telnet::elevate_privileges()
 	bfc::elevate_privileges();
 }
 
-interface::sp detect_interface(const io::sp &io)
+interface::sp do_detect_interface(const io::sp &io)
 {
 	interface::sp intf = make_shared<bfc_telnet>();
 	if (intf->is_active(io)) {
@@ -450,6 +450,14 @@ interface::sp detect_interface(const io::sp &io)
 
 	throw runtime_error("interface auto-detection failed");
 }
+
+interface::sp detect_interface(const io::sp &io)
+{
+	auto intf = do_detect_interface(io);
+	logger::d() << "detected interface: " << intf->name() << endl;
+	return intf;
+}
+
 
 void detect_profile_if_not_set(const interface::sp& intf, const profile::sp& profile)
 {
