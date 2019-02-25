@@ -98,9 +98,7 @@ class bfc : public interface, public enable_shared_from_this<bfc>
 	virtual string name() const override
 	{ return "bfc"; }
 
-	virtual bool is_active() override;
-	virtual bool is_ready(bool passive) override
-	{ return is_ready(passive, nullptr); }
+	virtual bool is_ready(bool passive) override;
 
 	virtual bcm2_interface id() const override
 	{ return BCM2_INTF_BFC; }
@@ -117,60 +115,45 @@ class bfc : public interface, public enable_shared_from_this<bfc>
 	virtual bool check_privileged();
 
 	private:
-	bool is_ready(bool passive, bool* scanning);
 	void do_elevate_privileges();
 	bool m_privileged = false;
 	bool m_is_rg_prompt = false;
+	bool m_warn_ds_scan = true;
 };
 
-bool bfc::is_active()
-{
-	// if a downstream channel scan is still running, the interface
-	// may be considered active, but not ready (this is important
-	// for interface autodetection).
-	bool scanning;
-	return is_ready(true, &scanning) || scanning;
-}
-
-bool bfc::is_ready(bool passive, bool* scanning)
+bool bfc::is_ready(bool passive)
 {
 	if (!passive) {
 		writeln();
 	}
 
-	if (scanning) {
-		*scanning = false;
-	}
+	bool ready = false;
 
-	return foreach_line([this, scanning] (const string& line) {
-		if (contains(line, "Scanning") && contains(line, "DS channel at")) {
-			if (scanning && !*scanning) {
+	foreach_line([this, &ready] (const string& line) {
+		if (contains(line, "Scanning") && contains(line, "DS Channel at")) {
+			if (m_warn_ds_scan) {
 				// sadly we can't call /docsis_ctl/scan_stop here, since we might
 				// not have a root console just yet.
-				logger::d() << "downstream channel scan in progress" << endl;
-				*scanning = true;
+				logger::v() << "downstream channel scan in progress" << endl;
+				m_warn_ds_scan = false;
 			}
 		} else if (is_bfc_prompt(line)) {
 			m_privileged = is_bfc_prompt_privileged(line);
-			return true;
+			ready = true;
 		}
 
 		return false;
 	}, 2000);
+
+	return ready;
 }
 
 void bfc::elevate_privileges()
 {
 	do_elevate_privileges();
 
-	bool scanning;
-	is_ready(true, &scanning);
-
 	if (!m_privileged) {
 		logger::w() << "failed to switch to super-user; some functions might not work" << endl;
-	} else if (scanning) {
-		logger::v() << "forcibly stopping downstream channel scan" << endl;
-		runcmd("/docsis_ctl/scan_stop");
 	}
 }
 
