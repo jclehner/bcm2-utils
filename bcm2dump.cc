@@ -83,6 +83,10 @@ void usage(bool help = false)
 				"    the code. An <entry> argument may be supplied to start execution at a different address.\n\n";
 #endif
 	}
+	os << "  run   <interface> <command>" << endl;
+	if (help) {
+		os << "\n    Run command on the specified interface.\n\n";
+	}
 	os << "  info  <interface>" << endl;
 	if (help) {
 		os << "\n    Print information about a profile. In the absence of a -P flag, use\n"
@@ -312,6 +316,23 @@ int do_write_exec(int argc, char** argv, int opts, const string& profile)
 	return 0;
 }
 
+int do_run(int argc, char** argv, const string& profile)
+{
+	if (argc != 3) {
+		usage(false);
+		return 1;
+	}
+
+	auto intf = interface::create(argv[1], profile);
+	intf->runcmd(argv[2]);
+	intf->foreach_line([] (const string& l) {
+			cout << trim(l) << endl;
+			return false;
+	}, 1000, 5000);
+
+	return 0;
+}
+
 int do_info(int argc, char** argv, const string& profile)
 {
 	if (argc != 1 && argc != 2) {
@@ -452,8 +473,16 @@ int do_main(int argc, char** argv)
 	argv += optind;
 	argc -= optind;
 
+	if (cmd == "run") {
+		logger::no_stdout();
+	}
+
+	logger::d() << "bcm2dump " << VERSION << endl;
+
 	if (cmd == "info") {
 		return do_info(argc, argv, profile);
+	} else if (cmd == "run") {
+		return do_run(argc, argv, profile);
 	} else if (cmd == "dump") {
 		return do_dump(argc, argv, opts, profile);
 	} else if (cmd == "write" || cmd == "exec") {
