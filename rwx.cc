@@ -230,7 +230,7 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 
 	string line, linebuf, chunk, last;
 	uint32_t pos = offset;
-	clock_t start = clock();
+	mstimer t;
 	unsigned timeout = chunk_timeout(offset, length);
 
 	do {
@@ -267,7 +267,7 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 				}
 			}
 		}
-	} while (timeout && elapsed_millis(start) < timeout);
+	} while (timeout && t.elapsed() < timeout);
 
 	if (length && (chunk.size() != length)) {
 		string msg = "read incomplete chunk 0x" + to_hex(offset)

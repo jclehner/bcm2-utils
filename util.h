@@ -29,6 +29,7 @@
 #include <fstream>
 #include <sstream>
 #include <cstdarg>
+#include <chrono>
 #include <memory>
 #include <cerrno>
 #include <vector>
@@ -195,10 +196,28 @@ uint16_t crc16_ccitt(const void* buf, size_t size);
 inline uint16_t crc16_ccitt(const std::string& buf)
 { return crc16_ccitt(buf.data(), buf.size()); }
 
-inline unsigned elapsed_millis(std::clock_t start, std::clock_t now = std::clock())
+class mstimer
 {
-	return 1000 * (now - start) / CLOCKS_PER_SEC;
-}
+	public:
+	mstimer() { reset(); }
+
+	auto elapsed() const
+	{
+		return std::chrono::duration_cast<std::chrono::milliseconds>
+			(now() - m_start).count();
+	}
+
+	void reset()
+	{ m_start = now(); }
+	
+	private:
+	typedef std::chrono::time_point<std::chrono::steady_clock> tpt;
+
+	tpt now() const
+	{ return std::chrono::steady_clock::now(); }
+
+	tpt m_start;
+};
 
 std::string transform(const std::string& str, std::function<int(int)> f);
 

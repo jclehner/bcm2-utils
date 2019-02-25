@@ -572,9 +572,9 @@ bool interface::runcmd(const string& cmd, const string& expect, bool stop_on_mat
 
 bool interface::foreach_line(function<bool(const string&)> f, unsigned timeout, unsigned timeout_line) const
 {
-	clock_t start = clock();
+	mstimer t;
 
-	while (pending(timeout_line) && (!timeout || elapsed_millis(start) < timeout)) {
+	while (pending(timeout_line) && (!timeout || (t.elapsed() < timeout))) {
 		string line = readln();
 		if (line.empty()) {
 			break;
