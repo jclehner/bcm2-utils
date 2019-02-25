@@ -342,7 +342,7 @@ bool bfc_telnet::is_ready(bool passive)
 
 			return false;
 
-		}, 0, 1000);
+		}, 2000, 1000);
 
 		return m_status >= connected;
 	} else {
@@ -367,7 +367,7 @@ bool bfc_telnet::login(const string& user, const string& pass)
 	while (!have_prompt) {
 		have_prompt = foreach_line([] (const string& line) {
 			return is_login_prompt(line);
-		}, 0, 1000);
+		}, 2000, 1000);
 
 		if (!have_prompt) {
 			if (send_newline) {
@@ -388,7 +388,7 @@ bool bfc_telnet::login(const string& user, const string& pass)
 		}
 
 		return false;
-	}, 0, 1000);
+	}, 2000, 1000);
 
 	if (!have_prompt) {
 		logger::d() << "telnet: no password prompt" << endl;
@@ -407,7 +407,7 @@ bool bfc_telnet::login(const string& user, const string& pass)
 		}
 
 		return false;
-	}, 0, 1000);
+	}, 2000, 1000);
 
 	if (m_status == authenticated) {
 		// in some cases, the shell prompt is CM/Console>, but
