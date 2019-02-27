@@ -104,6 +104,19 @@ AES_KEY make_aes_key(const string& key, bool encrypt)
 #endif
 
 #ifdef BCM2UTILS_USE_WINCRYPT
+struct enctype
+{
+	const ALG_ID algo;
+	const size_t keysize;
+	const size_t blocksize;
+	const bool ecb;
+};
+
+const enctype et_aes_256_ecb = { CALG_AES_256, 32, 16, true };
+const enctype et_aes_128_cbc = { CALG_AES_128, 16, 16, false };
+const enctype et_3des_ecb = { CALG_3DES, 24, 16, true };
+const enctype et_des_ecb = { CALG_DES, 24, 16, true };
+
 class wincrypt_context
 {
 	public:
@@ -208,22 +221,35 @@ template<size_t KeySize> class wincrypt_key
 #endif
 
 #if defined(BCM2UTILS_USE_COMMON_CRYPTO)
-string crypt_generic_ecb(CCAlgorithm algo, size_t keysize, size_t blocksize, const string& ibuf, const string& key, bool encrypt)
+struct enctype
 {
-	if (key.size() != keysize) {
+	const CCAlgorithm algo;
+	const size_t keysize;
+	const size_t blocksize;
+	const bool ecb;
+};
+
+const enctype et_aes_256_ecb = { kCCAlgorithmAES128, 32, 16, true };
+const enctype et_aes_128_cbc = { kCCAlgorithmAES128, 16, 16, false };
+const enctype et_3des_ecb = { kCCAlgorithm3DES, 24, 16, true };
+const enctype et_des_ecb = { kCCAlgorithmDES, 16, 8, true };
+
+string crypt_generic(const enctype& et, const string& ibuf, const string& key, bool encrypt)
+{
+	if (key.size() != et.keysize) {
 		throw invalid_argument("invalid key size for algorithm");
 	}
 
 	size_t moved;
-	size_t len = align_left(ibuf.size(), blocksize);
+	size_t len = align_left(ibuf.size(), et.blocksize);
 	string obuf(len, '\0');
 
 	CCCryptorStatus ret = CCCrypt(
 			encrypt ? kCCEncrypt : kCCDecrypt,
-			algo,
-			kCCOptionECBMode,
-			key.data(), keysize,
-			nullptr,
+			et.algo,
+			et.ecb ? kCCOptionECBMode : 0,
+			key.data(), et.keysize,
+			et.ecb ? nullptr : key.data() + et.keysize,
 			ibuf.data(), len,
 			&obuf[0], len,
 			&moved);
@@ -327,7 +353,7 @@ string crypt_3des_ecb(const string& ibuf, const string& key, bool encrypt)
 					encrypt ? DES_ENCRYPT : DES_DECRYPT);
 	});
 #elif defined(BCM2UTILS_USE_COMMON_CRYPTO)
-	return crypt_generic_ecb(kCCAlgorithm3DES, kCCKeySize3DES, 8, ibuf, key, encrypt);
+	return crypt_generic(et_3des_ecb, ibuf, key, encrypt);
 #elif defined(BCM2UTILS_USE_WINCRYPT)
 	return crypt_generic_ecb<24>(CALG_3DES, 8, ibuf, key, encrypt);
 #else
@@ -348,7 +374,7 @@ string crypt_des_ecb(const string& ibuf, const string& key, bool encrypt)
 					encrypt ? DES_ENCRYPT : DES_DECRYPT);
 	});
 #elif defined(BCM2UTILS_USE_COMMON_CRYPTO)
-	return crypt_generic_ecb(kCCAlgorithmDES, kCCKeySizeDES, 8, ibuf, key, encrypt);
+	return crypt_generic(et_des_ecb, ibuf, key, encrypt);
 #elif defined(BCM2UTILS_USE_WINCRYPT)
 	return crypt_generic_ecb<8>(CALG_DES, 8, ibuf, key, encrypt);
 #else
@@ -371,7 +397,7 @@ string crypt_aes_256_ecb(const string& ibuf, const string& key, bool encrypt)
 			}
 	});
 #elif defined(BCM2UTILS_USE_COMMON_CRYPTO)
-	return crypt_generic_ecb(kCCAlgorithmAES128, kCCKeySizeAES256, 16, ibuf, key, encrypt);
+	return crypt_generic(et_aes_256_ecb, ibuf, key, encrypt);
 #elif defined(BCM2UTILS_USE_WINCRYPT)
 	return crypt_generic_ecb<32>(CALG_AES_256, 16, ibuf, key, encrypt);
 #else
