@@ -426,6 +426,10 @@ istream& nv_compound::read(istream& is)
 
 		m_bytes += v.val->bytes();
 		m_set = true;
+
+		if (m_width && (m_width == m_bytes)) {
+			break;
+		}
 	}
 
 	return is;
