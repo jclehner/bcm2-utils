@@ -306,7 +306,8 @@ int do_info(int argc, char** argv, const sp<settings>& settings)
 		string pretty = g->magic().to_pretty();
 		os << ugly << "  " << (ugly == pretty ? "    " : pretty) << "  ";
 		string version = g->is_versioned() ? g->version().to_pretty() : "";
-		logger::i("%-6s  %-12s  %5zu b\n", version.c_str(), g->name().c_str(), g->bytes());
+		logger::i("%-6s  %-12s  %5lu b\n", version.c_str(), g->name().c_str(),
+				(unsigned long) g->bytes());
 	}
 	os << endl;
 

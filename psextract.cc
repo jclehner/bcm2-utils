@@ -107,7 +107,7 @@ string read_hbuf(istream& in)
 
 void extract_ps(istream& in, const ps_header& ps)
 {
-	logger::i("0x%07lx  ", streamoff(in.tellg()) - sizeof(ps_header::raw));
+	logger::i("0x%07lx  ", long(in.tellg()) - sizeof(ps_header::raw));
 	logger::i() << "image: " << ps.filename() << ", " << ps.length() << " b";
 	logger::v(", %04x", ps.signature());
 	logger::i() << endl;
@@ -138,7 +138,7 @@ void extract_image(istream& in)
 	if (ps.parse(hbuf).hcs_valid()) {
 		extract_ps(in, ps);
 	} else {
-		logger::i("0x%07lx  ", beg & 0xffffffff);
+		logger::i("0x%07lx  ", long(beg & 0xffffffff));
 
 		if (mono.parse(hbuf).valid()) {
 			logger::i() << "monolithic, " << mono.length() << " b";

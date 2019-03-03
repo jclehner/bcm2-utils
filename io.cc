@@ -17,10 +17,6 @@
  *
  */
 
-#ifdef _WIN32
-#define _WIN32_WINNT _WIN32_WINNT_VISTA
-#endif
-
 #include <system_error>
 #include <sys/types.h>
 #include <stdexcept>
