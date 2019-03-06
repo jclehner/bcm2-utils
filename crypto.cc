@@ -114,8 +114,8 @@ struct enctype
 
 const enctype et_aes_256_ecb = { CALG_AES_256, 32, 16, true };
 const enctype et_aes_128_cbc = { CALG_AES_128, 16, 16, false };
-const enctype et_3des_ecb = { CALG_3DES, 24, 16, true };
-const enctype et_des_ecb = { CALG_DES, 24, 16, true };
+const enctype et_3des_ecb = { CALG_3DES, 24, 8, true };
+const enctype et_des_ecb = { CALG_DES, 8, 8, true };
 
 class wincrypt_context
 {
@@ -175,31 +175,39 @@ class wincrypt_hash
 	HCRYPTHASH m_hash;
 };
 
-template<size_t KeySize> class wincrypt_key
+class wincrypt_key
 {
 	public:
-	wincrypt_key(ALG_ID algo, const string& key)
+	wincrypt_key(const enctype& et, const string& key)
 	: m_key(0)
 	{
 		// THIS API IS LUDICROUS!!!
 
 		struct {
 			BLOBHEADER hdr;
-			const DWORD key_size = KeySize;
-			BYTE key[KeySize];
+			DWORD keysize;
+			BYTE key[32]; // max key size
 		} blob;
 
+		blob.keysize = et.keysize;
 		blob.hdr = {
 			.bType = PLAINTEXTKEYBLOB,
 			.bVersion = CUR_BLOB_VERSION,
 			.reserved = 0,
-			.aiKeyAlg = algo
+			.aiKeyAlg = et.algo
 		};
 
-		memcpy(blob.key, key.data(), KeySize);
+		memcpy(blob.key, key.data(), et.keysize);
 
 		if (!CryptImportKey(m_ctx.handle, reinterpret_cast<BYTE*>(&blob), sizeof(blob), 0, 0, &m_key)) {
 			throw winapi_error("CryptImportKey");
+		}
+
+		DWORD mode = et.ecb ? CRYPT_MODE_ECB : CRYPT_MODE_CBC;
+		set_param(KP_MODE, &mode);
+
+		if (!et.ecb) {
+			set_param(KP_IV, key.data() + et.keysize);
 		}
 	}
 
@@ -214,6 +222,15 @@ template<size_t KeySize> class wincrypt_key
 	{ return m_key; }
 
 	private:
+
+	template<class T> void set_param(DWORD param, const T* data)
+	{
+		if (!CryptSetKeyParam(m_key, param, reinterpret_cast<const BYTE*>(data), 0)) {
+			throw winapi_error("CryptSetKeyParam");
+		}
+
+	}
+
 	wincrypt_context m_ctx;
 	HCRYPTKEY m_key;
 };
@@ -232,7 +249,7 @@ struct enctype
 const enctype et_aes_256_ecb = { kCCAlgorithmAES128, 32, 16, true };
 const enctype et_aes_128_cbc = { kCCAlgorithmAES128, 16, 16, false };
 const enctype et_3des_ecb = { kCCAlgorithm3DES, 24, 16, true };
-const enctype et_des_ecb = { kCCAlgorithmDES, 16, 8, true };
+const enctype et_des_ecb = { kCCAlgorithmDES, 8, 8, true };
 
 string crypt_generic(const enctype& et, const string& ibuf, const string& key, bool encrypt)
 {
@@ -267,16 +284,11 @@ string crypt_generic(const enctype& et, const string& ibuf, const string& key, b
 	return obuf;
 }
 #elif defined(BCM2UTILS_USE_WINCRYPT)
-template<size_t KeySize> string crypt_generic_ecb(ALG_ID algo, size_t blocksize, const string& ibuf, const string& key, bool encrypt)
+string crypt_generic(const enctype& et, const string& ibuf, const string& key, bool encrypt)
 {
-	wincrypt_key<KeySize> ckey(algo, key);
+	wincrypt_key ckey(et, key);
 
-	DWORD mode = CRYPT_MODE_ECB;
-	if (!CryptSetKeyParam(ckey.get(), KP_MODE, reinterpret_cast<BYTE*>(&mode), 0)) {
-		throw winapi_error("CryptSetKeyParam");
-	}
-
-	DWORD len = align_left(ibuf.size(), blocksize);
+	DWORD len = align_left(ibuf.size(), et.blocksize);
 	string obuf = ibuf;
 
 	// since we want to avoid wincrypt's padding, pass FALSE to both
@@ -352,12 +364,8 @@ string crypt_3des_ecb(const string& ibuf, const string& key, bool encrypt)
 			DES_ecb3_encrypt(to_ccblock(iblock), to_cblock(oblock), &ks[0], &ks[1], &ks[2],
 					encrypt ? DES_ENCRYPT : DES_DECRYPT);
 	});
-#elif defined(BCM2UTILS_USE_COMMON_CRYPTO)
-	return crypt_generic(et_3des_ecb, ibuf, key, encrypt);
-#elif defined(BCM2UTILS_USE_WINCRYPT)
-	return crypt_generic_ecb<24>(CALG_3DES, 8, ibuf, key, encrypt);
 #else
-	throw runtime_error("encryption not supported on this platform");
+	return crypt_generic(et_3des_ecb, ibuf, key, encrypt);
 #endif
 }
 
@@ -373,12 +381,8 @@ string crypt_des_ecb(const string& ibuf, const string& key, bool encrypt)
 			DES_ecb_encrypt(to_ccblock(iblock), to_cblock(oblock), &ks,
 					encrypt ? DES_ENCRYPT : DES_DECRYPT);
 	});
-#elif defined(BCM2UTILS_USE_COMMON_CRYPTO)
-	return crypt_generic(et_des_ecb, ibuf, key, encrypt);
-#elif defined(BCM2UTILS_USE_WINCRYPT)
-	return crypt_generic_ecb<8>(CALG_DES, 8, ibuf, key, encrypt);
 #else
-	throw runtime_error("encryption not supported on this platform");
+	return crypt_generic(et_des_ecb, ibuf, key, encrypt);
 #endif
 }
 
@@ -396,15 +400,12 @@ string crypt_aes_256_ecb(const string& ibuf, const string& key, bool encrypt)
 				AES_decrypt(iblock, oblock, &aes);
 			}
 	});
-#elif defined(BCM2UTILS_USE_COMMON_CRYPTO)
-	return crypt_generic(et_aes_256_ecb, ibuf, key, encrypt);
-#elif defined(BCM2UTILS_USE_WINCRYPT)
-	return crypt_generic_ecb<32>(CALG_AES_256, 16, ibuf, key, encrypt);
 #else
-	throw runtime_error("encryption not supported on this platform");
+	return crypt_generic(et_aes_256_ecb, ibuf, key, encrypt);
 #endif
 }
 
+#ifdef BCM2UTILS_USE_OPENSSL
 namespace {
 template<size_t BITS> string crypt_aes_cbc(const string& ibuf, const string& key_and_iv, bool encrypt)
 {
@@ -430,6 +431,13 @@ string crypt_aes_128_cbc(const string& ibuf, const string& key_and_iv, bool encr
 {
 	return crypt_aes_cbc<128>(ibuf, key_and_iv, encrypt);
 }
+#else
+string crypt_aes_128_cbc(const string& ibuf, const string& key_and_iv, bool encrypt)
+{
+	return crypt_generic(et_aes_128_cbc, ibuf, key_and_iv, encrypt);
+}
+
+#endif
 
 namespace {
 uint32_t srand_motorola;
