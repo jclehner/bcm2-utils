@@ -415,15 +415,10 @@ template<size_t BITS> string crypt_aes_cbc(const string& ibuf, const string& key
 	string key = key_and_iv.substr(0, BITS / 8);
 	string iv = key_and_iv.substr(BITS / 8);
 
-#if defined(BCM2UTILS_USE_OPENSSL)
 	AES_KEY aes = make_aes_key(key, encrypt);
 	string obuf = ibuf;
 	AES_cbc_encrypt(data(ibuf), data(obuf), ibuf.size(), &aes, data(iv), encrypt);
 	return obuf;
-#else
-#warning "Not yet supported"
-	return ibuf;
-#endif
 }
 }
 
