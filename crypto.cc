@@ -429,9 +429,9 @@ string crypt_aes_128_cbc(const string& ibuf, const string& key_and_iv, bool encr
 #else
 string crypt_aes_128_cbc(const string& ibuf, const string& key_and_iv, bool encrypt)
 {
+	check_keysize(key_and_iv, 32, "aes-128-cbc");
 	return crypt_generic(et_aes_128_cbc, ibuf, key_and_iv, encrypt);
 }
-
 #endif
 
 namespace {
