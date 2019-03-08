@@ -281,7 +281,8 @@ struct bcm2_profile bcm2_profiles[] = {
 		.baudrate = 115200,
 		.pssig = 0xa81b,
 		.blsig = 0x3380,
-		.cfg_flags = BCM2_CFG_ENC_AES256_ECB | BCM2_CFG_PAD_ZEROBLK,
+		.cfg_flags = BCM2_CFG_ENC_AES256_ECB | BCM2_CFG_PAD_ZEROBLK |
+			BCM2_CFG_FMT_GWS_PAD_OPTIONAL,
 		.cfg_md5key = "544d4d5f545747383730000000000000",
 		.cfg_defkeys = {
 			"0001020304050607080910111213141516171819202122232425262728293031",
@@ -368,8 +369,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		},
 		.cfg_flags =
 			BCM2_CFG_ENC_AES128_CBC | BCM2_CFG_FMT_GWS_FULL_ENC |
-			BCM2_CFG_FMT_GWS_LEN_PREFIX | BCM2_CFG_FMT_GWS_PAD_ALWAYS |
-			BCM2_CFG_PAD_ANSI_X9_23,
+			BCM2_CFG_FMT_GWS_LEN_PREFIX | BCM2_CFG_PAD_ANSI_X9_23,
 		.cfg_md5key = "3250736c633b752865676d64302d2778",
 		.cfg_defkeys = {
 			// key, followed by initialization vector
@@ -463,7 +463,8 @@ struct bcm2_profile bcm2_profiles[] = {
 		.pssig = 0xa825,
 		.blsig = 0x3386,
 		.kseg1mask = 0x20000000,
-		.cfg_flags = BCM2_CFG_ENC_AES256_ECB | BCM2_CFG_PAD_ZEROBLK,
+		.cfg_flags = BCM2_CFG_ENC_AES256_ECB | BCM2_CFG_PAD_ZEROBLK |
+			BCM2_CFG_FMT_GWS_PAD_OPTIONAL,
 		.cfg_md5key = "544d4d5f544337323030000000000000",
 		.cfg_keyfun = &keyfun_tc7200,
 		.cfg_defkeys = {

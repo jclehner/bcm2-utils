@@ -75,14 +75,14 @@ bool gws_unpad(string& buf, const csp<profile>& p)
 {
 	int pad = p->cfg_padding();
 	unsigned blksize = gws_enc_blksize(p);
-	bool pad_always = p->cfg_flags() & BCM2_CFG_FMT_GWS_PAD_ALWAYS;
+	bool pad_optional = p->cfg_flags() & BCM2_CFG_FMT_GWS_PAD_OPTIONAL;
 
 	if (pad == BCM2_CFG_PAD_PKCS7 || pad == BCM2_CFG_PAD_ANSI_X9_23) {
 		unsigned padnum = buf.back();
 		// add 16 to buf size to account for the checksum
 		unsigned expected = blksize - (((buf.size() + 16) - padnum) % blksize);
 
-		if (padnum == expected || (expected == 0 && padnum == blksize && pad_always)) {
+		if (padnum == expected || (expected == 0 && padnum == blksize && !pad_optional)) {
 			buf.resize(buf.size() - padnum);
 			return true;
 		}
@@ -154,6 +154,11 @@ string gws_encrypt(string buf, const string& key, const csp<profile>& p, bool pa
 	}
 
 	// TODO move all padding stuff to crypto.cc
+
+	if (!(flags & BCM2_CFG_FMT_GWS_PAD_OPTIONAL) && !pad) {
+		pad = true;
+		logger::d() << "force-enabling padding" << endl;
+	}
 
 	if (enc == BCM2_CFG_ENC_MOTOROLA) {
 		return crypt_motorola(buf, key) + key;

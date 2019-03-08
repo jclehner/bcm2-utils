@@ -57,8 +57,7 @@ enum bcm2_cfg_flags
 	BCM2_CFG_FMT_MASK = 0xf00,
 	BCM2_CFG_FMT_GWS_DYNNV = 1 << 8,
 	BCM2_CFG_FMT_GWS_FULL_ENC = 1 << 9,
-	// always add padding, even if data size is multiple of block size
-	BCM2_CFG_FMT_GWS_PAD_ALWAYS = 1 << 10,
+	BCM2_CFG_FMT_GWS_PAD_OPTIONAL = 1 << 10,
 	// prepend data length
 	BCM2_CFG_FMT_GWS_LEN_PREFIX = 1 << 11,
 
