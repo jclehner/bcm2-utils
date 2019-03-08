@@ -153,6 +153,8 @@ string gws_encrypt(string buf, const string& key, const csp<profile>& p, bool pa
 		buf = gws_checksum(buf, p) + buf;
 	}
 
+	// TODO move all padding stuff to crypto.cc
+
 	if (enc == BCM2_CFG_ENC_MOTOROLA) {
 		return crypt_motorola(buf, key) + key;
 	} else if (enc != BCM2_CFG_ENC_NONE) {
@@ -161,10 +163,8 @@ string gws_encrypt(string buf, const string& key, const csp<profile>& p, bool pa
 				buf += string(16, '\0');
 			} else if (enc == BCM2_CFG_ENC_3DES_ECB) {
 				unsigned n = 8 - (buf.size() % 8);
-				if (n < 8) {
-					buf += string(n - 1, '\0');
-					buf += char(n & 0xff);
-				}
+				buf += string(n - 1, '\0');
+				buf += char(n & 0xff);
 			} else if (enc == BCM2_CFG_ENC_AES128_CBC) {
 				unsigned n = 16 - (buf.size() % 16);
 				buf += string(n, char(n & 0xff));
