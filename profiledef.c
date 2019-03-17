@@ -134,6 +134,44 @@ struct bcm2_profile bcm2_profiles[] = {
 		},
 	},
 	{
+		.name = "ch7485e",
+		.pretty = "Compal CH7485E",
+		.baudrate = 115200,
+		.pssig = 0xa923,
+		.kseg1mask = 0x20000000,
+		.spaces = {
+			{
+				.name = "ram",
+				.min = 0x80000000,
+				.size = 256 * 1024 * 1024,
+				.parts = {
+					{ "bootloader", 0x83f80000, 0x020000 },
+				}
+			},
+			{
+				.name = "nvram",
+				.size = 512 * 1024,
+				.parts = {
+					{ "bootloader", 0x00000, 0x10000 },
+					{ "dynnv",      0x10000, 0x20000, "dyn" },
+					{ "permnv",     0x40000, 0x40000, "perm" },
+				},
+			},
+			{
+				.name = "flash",
+				.size = 128 * 1024 * 1024,
+				.parts = {
+					{ "linuxapps", 0x0000000, 0x4c40000, "image3e" },
+					{ "image1",    0x4c40000, 0x0d80000 },
+					{ "image2",    0x59c0000, 0x0d80000 },
+					{ "linux",     0x6740000, 0x0480000, "image3" },
+					{ "linuxkfs",  0x6bc0000, 0x1200000, "" },
+					{ "dhtml",     0x7dc0000, 0x0240000 },
+				}
+			},
+		}
+	},
+	{
 		.name = "sbg6580",
 		.pretty = "Motorola Surfboard SBG6580",
 		.pssig = 0xc055,
