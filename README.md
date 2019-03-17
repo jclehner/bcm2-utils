@@ -371,7 +371,7 @@ very small, around 64k. To be safe, we'll dump 128k before and after
 `0x83f80000`:
 
 ```
-$ bcm2dump -P generic dump dev/ttyUSB0 0x83f60000,256k bootloader.bin
+$ bcm2dump -P generic dump /dev/ttyUSB0 ram 0x83f60000,256k bootloader.bin
 ```
 
 ####### Flash read functions
