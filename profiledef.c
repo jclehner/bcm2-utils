@@ -139,6 +139,9 @@ struct bcm2_profile bcm2_profiles[] = {
 		.baudrate = 115200,
 		.pssig = 0xa923,
 		.kseg1mask = 0x20000000,
+		.magic = {
+			{ 0x83f8ea40, "2.5.0beta1" },
+		},
 		.spaces = {
 			{
 				.name = "ram",
@@ -169,7 +172,30 @@ struct bcm2_profile bcm2_profiles[] = {
 					{ "dhtml",     0x7dc0000, 0x0240000 },
 				}
 			},
-		}
+		},
+		.versions = {
+			{
+				.intf = BCM2_INTF_BLDR,
+				.rwcode = 0x84010000,
+				.buffer = 0x85f00000
+			},
+			{
+				.version = "2.5.0beta1",
+				.intf = BCM2_INTF_BLDR,
+				.magic = { 0x83f8ea40, "2.5.0beta1" },
+				.printf = 0x83f8b3ec,
+				.spaces = {
+					{
+						.name = "flash",
+						.read = { 0x83f83b38, BCM2_READ_FUNC_BOL },
+					},
+					{
+						.name = "nvram",
+						.read = { 0x83f811bc, BCM2_READ_FUNC_OBL },
+					}
+				}
+			},
+		},
 	},
 	{
 		.name = "sbg6580",
