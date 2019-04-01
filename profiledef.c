@@ -187,7 +187,11 @@ struct bcm2_profile bcm2_profiles[] = {
 				.spaces = {
 					{
 						.name = "flash",
-						.read = { 0x83f83b38, BCM2_READ_FUNC_BOL },
+						.read = {
+							.addr = 0x83f83b38,
+							.mode = BCM2_READ_FUNC_BOL,
+							.patch = {{ 0x83f83cdc, 0x10000018 }}
+						},
 					},
 					{
 						.name = "nvram",
