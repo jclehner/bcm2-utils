@@ -67,6 +67,7 @@ Currently known magic values:
 |---------------------------|-----------------------------------------------------------------------------:|
 | Technicolor/Thomson       | `6u9E9eWF0bt9Y8Rw690Le4669JYe4d-056T9p4ijm4EA6u9ee659jn9E-54e4j6rPj069K-670` |
 | Netgear, Motorola, Ubee   | `6u9e9ewf0jt9y85w690je4669jye4d-056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056` |
+| Sagem 3284                | `6u9e9ewf0jt9y85w690je4669jye4d-056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-057` |
 | Sagem 3686 AC (DNA)       | `FAST3686DNA056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056`                     |
 | Sagem 3686 AC (SFR)       | `FAST3686SFR-PC20056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056`                |
 
