@@ -447,7 +447,6 @@ void detect_profile_if_not_set(const interface::sp& intf, const profile::sp& pro
 	if (profile) {
 		// TODO allow manually specifying a version, auto-detect otherwise
 		intf->set_profile(profile);
-		return;
 	}
 
 	rwx::sp ram = rwx::create(intf, "ram", true);
@@ -492,6 +491,10 @@ void detect_profile_if_not_set(const interface::sp& intf, const profile::sp& pro
 	set<helper, comp> magics;
 
 	for (auto p : profile::list()) {
+		if (profile && profile->name() != p->name()) {
+			continue;
+		}
+
 		uint32_t x = get_max_magic_addr(p, intf->id());
 
 		for (auto v : p->versions()) {
@@ -524,7 +527,9 @@ void detect_profile_if_not_set(const interface::sp& intf, const profile::sp& pro
 		}
 	}
 
-	logger::i() << "profile auto-detection failed" << endl;
+	if (!profile) {
+		logger::i() << "profile auto-detection failed" << endl;
+	}
 }
 }
 
