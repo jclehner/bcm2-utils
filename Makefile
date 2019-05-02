@@ -15,6 +15,7 @@ ifeq ($(UNAME),Darwin)
 else ifneq (,$(findstring MINGW,$(MSYSTEM)))
 	CFLAGS += -D_WIN32_WINNT=_WIN32_WINNT_VISTA
 	LDFLAGS += -lws2_32 -static
+	BINEXT = .exe
 else
 	bcm2cfg_LIBS += -lssl -lcrypto
 endif
@@ -28,14 +29,18 @@ bcm2cfg_OBJ = util.o nonvol2.o bcm2cfg.o nonvoldef.o \
 psextract_OBJ = util.o ps.o psextract.o
 t_nonvol_OBJ = util.o nonvol2.o t_nonvol.o $(profile_OBJ)
 
+bcm2dump = bcm2dump$(BINEXT)
+bcm2cfg = bcm2cfg$(BINEXT)
+psextract = psextract$(BINEXT)
+
 define PackageRelease
 	$(STRIP) bcm2cfg$(2) bcm2dump$(2) psextract$(2)
 	zip bcm2utils-$(VERSION)-$(1).zip README.md bcm2cfg$(2) bcm2dump$(2) psextract$(2)
 endef
 
-.PHONY: all clean bcm2cfg.exe
+.PHONY: all clean
 
-all: bcm2dump bcm2cfg psextract
+all: $(bcm2dump) $(bcm2cfg) $(psextract)
 
 release: clean all
 
@@ -52,13 +57,13 @@ ifeq ($(MSYSTEM), MINGW32)
 release-mingw32: release release-win32-extbuild
 endif
 
-bcm2cfg: $(bcm2cfg_OBJ)
+$(bcm2cfg): $(bcm2cfg_OBJ)
 	$(CXX) $(CXXFLAGS) $(bcm2cfg_OBJ) -o $@ $(bcm2cfg_LIBS) $(LDFLAGS)
 
-bcm2dump: $(bcm2dump_OBJ)
+$(bcm2dump): $(bcm2dump_OBJ)
 	$(CXX) $(CXXFLAGS) $(bcm2dump_OBJ) -o $@ $(LDFLAGS)
 
-psextract: $(psextract_OBJ)
+$(psextract): $(psextract_OBJ)
 	$(CXX) $(CXXFLAGS) $(psextract_OBJ) -o $@ $(LDFLAGS)
 
 t_nonvol: $(t_nonvol_OBJ)
@@ -84,8 +89,9 @@ check: t_nonvol
 	./t_nonvol
 
 clean:
-	rm -f bcm2cfg bcm2cfg.exe bcm2dump t_nonvol psextract *.o
+	rm -f t_nonvol $(bcm2cfg) $(bcm2dump) $(psextract) *.o
 
 install: all
-	install -m 755 bcm2cfg $(PREFIX)/bin
-	install -m 755 bcm2dump $(PREFIX)/bin
+	install -m 755 $(bcm2cfg) $(PREFIX)/bin
+	install -m 755 $(bcm2dump) $(PREFIX)/bin
+	install -m 755 $(psextract) $(PREFIX)/bin
