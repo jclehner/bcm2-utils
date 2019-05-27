@@ -189,7 +189,7 @@ class wincrypt_key
 			BYTE key[32]; // max key size
 		} blob;
 
-		if (et.keysize > sizeof(key)) {
+		if (et.keysize > sizeof(blob.key)) {
 			throw runtime_error("key size out of range");
 		}
 
