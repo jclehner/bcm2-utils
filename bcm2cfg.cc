@@ -189,8 +189,16 @@ int do_list_get_dump_type(int argc, char** argv, const sp<settings>& settings)
 		}
 	} else if (argv[0] == "dump"s) {
 		ostringstream ostr;
-		if (!val->write(ostr)) {
-			throw runtime_error("failed to write data");
+		if (val != settings) {
+			if (!val->write(ostr)) {
+				throw runtime_error("failed to write data");
+			}
+		} else {
+			for (const nv_val::named& n : settings->parts()) {
+				if (!n.val->write(ostr)) {
+					throw runtime_error("failed to write data (" + n.name + ")");
+				}
+			}
 		}
 
 		cout << ostr.str() << flush;
