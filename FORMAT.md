@@ -59,7 +59,7 @@ it would be `~(0xaaaaaaaa + 0x0000bb00)` (assuming `uint32_t` rollover on overfl
 |   `90`  | `byte[2]`   | ?          | Assumed to be a version (always `0.0`) |
 |   `92`  | `u32`       | `size`     ||
 |   `96`  | `byte[size]`| `data`     ||
-|`96+size`| `byte[16]`  | `padding`  | Found in some encrypted files (all `\x00`) |
+|`96+size`| `byte[]`  | `padding`  | For encrypted files only. |
 
 Currently known magic values:
 
@@ -78,36 +78,43 @@ Techicolor TC7200: `TMM_TC7200\x00\x00\x00\x00\x00\x00`), for others, it must be
 (e.g. Netgear CG3000: `\x32\x50\x73\x6c\x63\x3b\x75\x28\x65\x67\x6d\x64\x30\x2d\x27\x78`).
 
 
-###### Encryption (Thomson, Technicolor)
-On some devices, all data *after* the checksum is encrypted using AES-256 in ECB mode. This means that the
-checksum can be validated even if the encryption key is not known.
+#### Encryption
 
-All currently known devices have a default encryption key, and some allow specifying a backup password. If the
-final block is less than 16 bytes, the data is copied verbatim, thus leaking some information:
+Some device firmwares encrypt their GatewaySettings.bin files. However, as this doesn't seem to be a feature
+of the Broadcom firmware itself, implementations vary greatly among different vendors, and sometimes even
+different devices. All currently known encryption schemes are listed below:
 
-```
-...
-000041a0  80 d3 e4 8a 71 51 f2 64  81 e4 31 4a 64 a9 5d 74  |....qQ.d..1Jd.]t|
-000041b0  69 6e 00 05 61 64 6d 69  6e                       |in..admin|
-```
 
-Some firmware versions append a 16-byte block of all `\x00` before encrypting, so as to "leak" only
-zeroes:
+| Vendor              | Model       | Cipher      | Padding    | Extent           | Features    |
+|---------------------|-------------|-------------|------------|------------------|-------------|
+| Thomson/Technicolor |             | AES-256-ECB | custom     | header, settings | `password`  |
+| Ubee                |             | AES-128-CBC | ANSI-X9.23 | full             | `lenprefix` |
+| Netgear, Asus       |             | 3DES-ECB    | PKCS#7     | full             |             |
+| Motorola/Arris      |             | custom      | N/A        | full             |             |     
+| NetMASTER           | CBW-383ZN   | DES-ECB     | ?          | full             |             |
+| Sagem               | F@st3686 AC | XOR 0x80    | N/A        | full             | `circumfix` |
+|                     | F@st3284    | ?           | ?          | settings         | ?           | 
 
-```
-...
-000041a0  80 d3 e4 8a 71 51 f2 64  81 e4 31 4a 64 a9 5d 74  |....qQ.d..1Jd.]t|
-000041b0  b3 65 87 cd ad 42 6c d1  af 3c 63 a9 20 b1 b9 6c  |.e...Bl..<c. ..l|
-000041c0  00 00 00 00 00 00 00 00  00                       |.........|
-```
 
-###### Encryption (Motorola, Arris (?))
+The "extent" column indicates which portions of the file are encrypted. If we think of a file
+as being composed of prefix, checksum, header, settings, and suffix (in this order). "Full" in this
+context means the file data without pre- and suffixes.
 
-Some of these devices use an XOR pad. The pad is generated using the result of a custom `rand()` implementation,
-multiplied by two constants. The seed used is the current time `& 0xff`. As a result, there are 256 possible
-encrypted files for the same data, depending on when it has been created. On these devices, the "encryption" is
-applied *after* generating the checksum. The seed itself is then appended to the encrypted data. An implementation
-is shown below:
+
+The following special features are currently known:
+
+* `password`: aside from a default key, the firmware allows specifying a backup password
+* `lenprefix`: encrypted data is preceeded by a 32-bit length prefix
+* `circfix`: encrypted data is preceeded and followed by a static 12-byte sequence. the actual
+             meaning is unknown, but remains the same on one device.
+
+Custom ciphers and padding schemes are explained in the following paragraphs.
+
+###### Motorola/Arris custom encryption
+A XOR pad. The pad is generated using the result of a custom `rand()` implementation and floating point math.
+The seed used is the current time `& 0xff`. As a result, there are 256 possible encrypted files for the same data,
+depending on the time at the point of creation. The actual seed used is appended to the encrypted data. An
+implementation is shown below:
 
 ```
 uint32_t srand;
@@ -137,36 +144,30 @@ void encrypt(char* buf, size_t size, uint8_t seed)
 	srand = seed;
 
 	for (size_t i = 0; i < size; ++i) {
-		buf[i] ^= 1 + ((rand() * 4.656612873077393e-10) * 255.0);
+		buf[i] ^= (((float)rand() / 0x7fffffff) * 255) + 1;
 	}
 }
 ```
 
-###### Encryption (Netgear, Asus (?))
-Some Netgear and possibly Asus devices encrypt the *whole* file using 3DES in ECB mode. In contrast to
-the other encryption method described above, the checksum of these files can only be validated *after*
-decryption.
+###### Thomson/Technicolor custom padding
 
-If the final block is less than 16 (or 8?) bytes, the data is padded to 15 (or 7?) bytes using zeroes.
-The last byte contains the number of zero bytes used for padding. For example, the block
+If the final block is less than 16 bytes, the data is copied verbatim, thus leaking some information:
+
 ```
+...
+000041a0  80 d3 e4 8a 71 51 f2 64  81 e4 31 4a 64 a9 5d 74  |....qQ.d..1Jd.]t|
 000041b0  69 6e 00 05 61 64 6d 69  6e                       |in..admin|
 ```
-would be padded to
+
+Some firmware versions append a 16-byte block of all `\x00` before encrypting, so as to "leak" only
+zeroes:
+
 ```
-000041b0  69 6e 00 05 61 64 6d 69  6e 00 00 00 00 00 00 06  |in..admin.......|
+...
+000041a0  80 d3 e4 8a 71 51 f2 64  81 e4 31 4a 64 a9 5d 74  |....qQ.d..1Jd.]t|
+000041b0  b3 65 87 cd ad 42 6c d1  af 3c 63 a9 20 b1 b9 6c  |.e...Bl..<c. ..l|
+000041c0  00 00 00 00 00 00 00 00  00                       |.........|
 ```
-
-###### Encryption (Sagem)
-The Sagem F@ST 3686 AC uses a simple XOR `0x80` pad. The GatewatSettings.bin header is preceeded by a
-12 byte data blob, which is also appended to the end of the data. 
-
-###### Encryption (Ubee)
-
-Some ubee modems encrypt the config file using AES-128-CBC with a static key and IV. The whole file
-is encrypted, similar to the Netgear method described above. Additionally, the encrypted data is
-preceeded by a 4-byte value encoding the length. PKCS#7-style padding is used.
-
 
 ### GatewaySettings.bin (dynnv)
 
@@ -287,18 +288,3 @@ Sample encodings for integer arrays/lists:
 | `array<u32>`           | `\x00\x00\xaa\xaa\x00\x00\x00\x00\xbb\xbb` |`\x00\x00\x00\xaa\x00\x00\x00\x00`| N/A     |
 | `p8list<u16>`          | `\x03\xaa\xaa\x00\x00\xbb\xbb`             | N/A                            | `\x00`    |
 | `p16list<u16>`         | `\x00\x03\xaa\xaa\x00\x00\xbb\xbb`         | N/A                            | `\x00\x00`|
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
