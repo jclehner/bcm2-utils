@@ -87,10 +87,10 @@ different devices. All currently known encryption schemes are listed below:
 
 | Vendor              | Model       | Cipher      | Padding    | Extent           | Features    |
 |---------------------|-------------|-------------|------------|------------------|-------------|
-| Thomson/Technicolor |             | AES-256-ECB | custom     | header, settings | `password`  |
+| Thomson/Technicolor |             | AES-256-ECB | [custom](#motorolaarris-custom-encryption)     | header, settings | `password`  |
 | Ubee                |             | AES-128-CBC | ANSI-X9.23 | full             | `lenprefix` |
 | Netgear, Asus       |             | 3DES-ECB    | PKCS#7     | full             |             |
-| Motorola/Arris      |             | custom      | N/A        | full             |             |     
+| Motorola/Arris      |             | [custom](#thomsontechnicolor-custom-padding)      | N/A        | full             |             |     
 | NetMASTER           | CBW-383ZN   | DES-ECB     | ?          | full             |             |
 | Sagem               | F@st3686 AC | XOR 0x80    | N/A        | full             | `circumfix` |
 |                     | F@st3284    | ?           | ?          | settings         | ?           | 
