@@ -61,9 +61,10 @@ enum bcm2_cfg_flags
 	BCM2_CFG_FMT_GWS_PAD_OPTIONAL = 1 << 10,
 	// prepend data length
 	BCM2_CFG_FMT_GWS_LEN_PREFIX = 1 << 11,
+	BCM2_CFG_FMT_GWS_CLEN_PREFIX = 1 << 12,
 
-	BCM2_CFG_DATA_MASK = 0xf000,
-	BCM2_CFG_DATA_USERIF_ALT = 1 << 12,
+	BCM2_CFG_DATA_MASK = 0xf0000,
+	BCM2_CFG_DATA_USERIF_ALT = 1 << 16,
 };
 
 enum bcm2_interface

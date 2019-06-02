@@ -119,6 +119,21 @@ string gws_decrypt(string buf, string& checksum, string& key, const csp<profile>
 		} else {
 			logger::d() << "unexpected length prefix: " << len << endl;
 		}
+	} else if (flags & BCM2_CFG_FMT_GWS_CLEN_PREFIX) {
+		if (checksum == "Content-Length: ") {
+			auto pos = buf.find("\r\n\r\n");
+			auto len = lexical_cast<uint32_t>(buf.substr(0, pos));
+			auto beg = pos + 4;
+
+			if (len != (buf.size() - beg)) {
+				logger::d() << "unexpected length prefix: " << len << endl;
+			}
+
+			checksum = buf.substr(beg, 16);
+			buf = buf.substr(beg + 16);
+		} else {
+			logger::d() << "length prefix is missing" << endl;
+		}
 	}
 
 	if (flags & BCM2_CFG_FMT_GWS_FULL_ENC) {
@@ -196,6 +211,8 @@ string gws_encrypt(string buf, const string& key, const csp<profile>& p, bool pa
 
 	if (flags & BCM2_CFG_FMT_GWS_LEN_PREFIX) {
 		buf.insert(0, to_buf(htonl(buf.size())));
+	} else if (flags & BCM2_CFG_FMT_GWS_CLEN_PREFIX) {
+		buf.insert(0, "Content-Length: " + to_string(buf.size()) + "\r\n\r\n");
 	}
 
 	return buf;

@@ -51,7 +51,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "vmdg280",
 		.pretty = "Netgear VMDG280",
-		.cfg_flags = BCM2_CFG_FMT_GWS_FULL_ENC | BCM2_CFG_ENC_SUB_16x16,
+		.cfg_flags = BCM2_CFG_FMT_GWS_FULL_ENC | BCM2_CFG_ENC_SUB_16x16 | BCM2_CFG_FMT_GWS_CLEN_PREFIX,
 		.spaces = {
 				{ .name = "ram" },
 		},
