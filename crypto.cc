@@ -486,17 +486,22 @@ string crypt_sub_16x16(string buf, bool encrypt)
 	for (int i = 0; i < 16; ++i) {
 		for (int k = 0; k < 16; k += 2) {
 			key[i][k] = (i * 16) + k;
+			key[i][k + 1] = 0;
 		}
 	}
 
 	for (size_t i = 0; i < (buf.size() / 16) * 16; ++i) {
-		int k = key[i / 16][i % 16];
+		int k = key[(i & 0xf0) >> 4][i & 0xf];
 
 		if (encrypt) {
-			buf[i] = (buf[i] - k) & 0xff;
-		} else {
 			buf[i] = (buf[i] + k) & 0xff;
+		} else {
+			buf[i] = (buf[i] - k) & 0xff;
 		}
+	}
+
+	for (size_t i = 0; (i + 1) < buf.size(); i += 2) {
+		swap(buf[i], buf[i + 1]);
 	}
 
 	return buf;
