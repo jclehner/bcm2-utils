@@ -77,8 +77,8 @@ bool gws_unpad(string& buf, const csp<profile>& p)
 	unsigned blksize = gws_enc_blksize(p);
 	bool pad_optional = p->cfg_flags() & BCM2_CFG_FMT_GWS_PAD_OPTIONAL;
 
-	if (pad == BCM2_CFG_PAD_PKCS7 || pad == BCM2_CFG_PAD_ANSI_X9_23) {
-		unsigned padnum = buf.back();
+	if (pad == BCM2_CFG_PAD_PKCS7 || pad == BCM2_CFG_PAD_ANSI_X9_23 || pad == BCM2_CFG_PAD_ANSI_ISH) {
+		unsigned padnum = buf.back() + (pad == BCM2_CFG_PAD_ANSI_ISH ? 1 : 0);
 		// add 16 to buf size to account for the checksum
 		unsigned expected = blksize - (((buf.size() + 16) - padnum) % blksize);
 
@@ -164,15 +164,24 @@ string gws_encrypt(string buf, const string& key, const csp<profile>& p, bool pa
 		return crypt_motorola(buf, key) + key;
 	} else if (enc != BCM2_CFG_ENC_NONE) {
 		if (pad) {
-			if (enc == BCM2_CFG_ENC_AES256_ECB) {
+			int padding = p->cfg_padding();
+			if (padding == BCM2_CFG_PAD_ZEROBLK) {
 				buf += string(16, '\0');
-			} else if (enc == BCM2_CFG_ENC_3DES_ECB) {
-				unsigned n = 8 - (buf.size() % 8);
-				buf += string(n - 1, '\0');
-				buf += char(n & 0xff);
-			} else if (enc == BCM2_CFG_ENC_AES128_CBC) {
-				unsigned n = 16 - (buf.size() % 16);
-				buf += string(n, char(n & 0xff));
+			} else {
+				unsigned blksize = gws_enc_blksize(p);
+				unsigned padnum = blksize - (buf.size() % blksize);
+
+				if (padding == BCM2_CFG_PAD_ANSI_X9_23) {
+					buf += string(padnum - 1, '\0');
+					buf += char(padnum & 0xff);
+				} else if (padding == BCM2_CFG_PAD_ANSI_ISH) {
+					buf += string(padnum - 1, '\0');
+					buf += char((padnum - 1) & 0xff);
+				} else if (padding == BCM2_CFG_PAD_PKCS7) {
+					buf += string(padnum, char(padnum & 0xff));
+				} else {
+					throw runtime_error("unhandled padding type " + padding);
+				}
 			}
 		}
 

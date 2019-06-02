@@ -53,6 +53,7 @@ enum bcm2_cfg_flags
 	BCM2_CFG_PAD_ANSI_X9_23 = 1 << 4,
 	BCM2_CFG_PAD_PKCS7 = 1 << 5,
 	BCM2_CFG_PAD_ZEROBLK = 1 << 6,
+	BCM2_CFG_PAD_ANSI_ISH = 1 << 7,
 
 	BCM2_CFG_FMT_MASK = 0xf00,
 	BCM2_CFG_FMT_GWS_DYNNV = 1 << 8,
