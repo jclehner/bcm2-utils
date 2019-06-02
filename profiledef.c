@@ -48,6 +48,7 @@ struct bcm2_profile bcm2_profiles[] = {
 				{ .name = "ram" },
 		},
 	},
+#if 0
 	{
 		.name = "vmdg280",
 		.pretty = "Netgear VMDG280",
@@ -56,6 +57,7 @@ struct bcm2_profile bcm2_profiles[] = {
 				{ .name = "ram" },
 		},
 	},
+#endif
 	{
 		.name = "cg3000",
 		.pretty = "Netgear CG3000",
