@@ -21,7 +21,7 @@ Header
 To calculate the checksum, `checksum` is first set to zero,
 then, starting at `size`, the following algorithm is employed:
 
-```
+```c
 uint32_t checksum(const char* buf)
 {
 	uint32_t checksum = 0;
@@ -116,7 +116,7 @@ The seed used is the current time `& 0xff`. As a result, there are 256 possible 
 depending on the time at the point of creation. The actual seed used is appended to the encrypted data. An
 implementation is shown below:
 
-```
+```c
 uint32_t srand;
 
 int32_t rand()
