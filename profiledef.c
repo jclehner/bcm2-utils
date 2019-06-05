@@ -232,6 +232,39 @@ struct bcm2_profile bcm2_profiles[] = {
 		},
 	},
 	{
+		.name = "fast3890",
+		.pretty = "Sagemcom F@ST 3890",
+		.pssig = 0x3390,
+		.kseg1mask = 0x20000000,
+		.magic = {
+			{ 0x83e05bb8, "2.7.0alpha4" }
+		},
+		.spaces = {
+			{
+				.name = "ram",
+				.min = 0x80000000
+			},
+		},
+		.versions = {
+			{
+				.intf = BCM2_INTF_BFC,
+				.rwcode = 0x80002000,
+				.options = {
+					BCM2_VAL_STR("bfc:su_password", "sagem"),
+					BCM2_VAL_U32("bfc:conthread_priv_off", 0x74),
+				},
+			},
+			{
+				.version = "50.10.11.T1",
+				.intf = BCM2_INTF_BFC,
+				.magic = { 0x809864d9, "50.10.11.T1" },
+				.options = {
+					{ "bfc:conthread_instance", { 0x80c2a68c }},
+				}
+			}
+		},
+	},
+	{
 		.name = "mg7550",
 		.pretty = "Motorola MG7550",
 		.pssig = 0x7550,
