@@ -816,6 +816,26 @@ bool bootloader_ram::exec_impl(uint32_t offset)
 	return true;
 }
 
+/**
+ * TODO
+ *
+ * bootloader2 interface:
+ * > r hexAddr [width]			Display memory location (1/2/4 bytes)
+ * > w hexAddr hexVal [width]	Write memory location (1/2/4 bytes)
+ * > d hexAddr length [width]	Dump memory
+ *
+ * There's no command to execute code, so we have to hijack the function
+ * of another command, updating its code to
+ *
+ *		li $at, [jump address]
+ *		jr $at
+ *		nop
+ *
+ * A good candidate would be 'z' (Cause exception).
+ */
+
+
+
 // this defines uint32 dumpcode[] and writecode[]
 #include "rwcode.c"
 

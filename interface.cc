@@ -265,6 +265,36 @@ void bootloader::runcmd(const string& cmd)
 	m_io->write(cmd);
 }
 
+class bootloader2 : public interface
+{
+	public:
+	virtual string name() const override
+	{ return "bootloader2"; }
+
+	virtual bool is_ready(bool passive) override;
+
+	virtual bcm2_interface id() const override
+	{ return BCM2_INTF_BLDR; }
+
+	virtual void runcmd(const string& cmd) override;
+};
+
+bool bootloader2::is_ready(bool passive)
+{
+	if (!passive) {
+		writeln();
+	}
+
+	return foreach_line([] (const string& line) {
+		return line.find("> ") == 0;
+	}, 2000);
+}
+
+void bootloader2::runcmd(const string& cmd)
+{
+	m_io->write(cmd);
+}
+
 class bfc_telnet : public bfc, public telnet
 {
 	public:
