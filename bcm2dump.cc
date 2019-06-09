@@ -145,7 +145,7 @@ void handle_sigint()
 
 void image_listener(uint32_t offset, const ps_header& hdr)
 {
-	printf("  %s (0x%04x, %d b)\n", hdr.filename().c_str(), hdr.signature(), hdr.length());
+	logger::i("  %s (0x%04x, %d b)\n", hdr.filename().c_str(), hdr.signature(), hdr.length());
 }
 
 class progress_listener
@@ -168,13 +168,13 @@ class progress_listener
 
 			progress_init(&m_pg, offset, length);
 			if (m_argv[2] != "special"s) {
-				printf("%s %s:0x%08x-0x%08x (%d b)\n", m_prefix.c_str(), m_argv[2], m_pg.min, m_pg.max, m_pg.max + 1 - m_pg.min);
+				logger::i("%s %s:0x%08x-0x%08x (%d b)\n", m_prefix.c_str(), m_argv[2], m_pg.min, m_pg.max, m_pg.max + 1 - m_pg.min);
 			} else {
-				printf("%s %s\n", m_prefix.c_str(), m_argv[3]);
+				logger::i("%s %s\n", m_prefix.c_str(), m_argv[3]);
 			}
 		}
 
-		printf("\r ");
+		logger::i("\r ");
 
 		if (offset != UINT32_MAX) {
 			progress_set(&m_pg, offset);
@@ -183,10 +183,10 @@ class progress_listener
 		progress_print(&m_pg, stdout);
 
 		if (is_end(offset, length)) {
-			printf("\n");
+			logger::i("\n");
 		}
 
-		//printf("o=0x%08x, l=%u, mo=0x%08x, ml=%u %s\n", offset, length, m_offset, m_length, init ? "init" : "");
+		//logger::i("o=0x%08x, l=%u, mo=0x%08x, ml=%u %s\n", offset, length, m_offset, m_length, init ? "init" : "");
 	}
 
 	private:
@@ -293,10 +293,10 @@ int do_write_exec(int argc, char** argv, int opts, const string& profile)
 		rwx->set_progress_listener([&pg, &argv] (uint32_t offset, uint32_t length, bool write, bool init) {
 			if (init) {
 				progress_init(&pg, offset, length);
-				printf("%s %s:0x%08x-0x%08x (%d b)\n", write ? "writing" : "reading", argv[2], pg.min, pg.max, pg.max + 1 - pg.min);
+				logger::i("%s %s:0x%08x-0x%08x (%d b)\n", write ? "writing" : "reading", argv[2], pg.min, pg.max, pg.max + 1 - pg.min);
 			}
 
-			printf("\r ");
+			logger::i("\r ");
 			progress_set(&pg, offset);
 			progress_print(&pg, stdout);
 		});
@@ -304,13 +304,13 @@ int do_write_exec(int argc, char** argv, int opts, const string& profile)
 
 	if (exec) {
 		rwx->write(loadaddr, in);
-		printf("\n");
+		logger::i("\n");
 		logger::i("executing code at %08x\n", entry);
 		rwx->exec(entry);
 		// TODO print all subsequent output ?
 	} else {
 		rwx->write(argv[3], in);
-		printf("\n");
+		logger::i("\n");
 	}
 
 	return 0;
@@ -397,11 +397,11 @@ int do_scan(int argc, char** argv, int opts, const string& profile)
 	}
 
 	if (!imgs.empty()) {
-		printf("\n\ndetected %zu image(s) in range %s:0x%08x-0x%08x:\n", imgs.size(), argv[2], start, start + length);
+		logger::i("\n\ndetected %zu image(s) in range %s:0x%08x-0x%08x:\n", imgs.size(), argv[2], start, start + length);
 	}
 
 	for (auto img : imgs) {
-		printf("  0x%08x-0x%08x  %s\n", img.first, img.first + img.second.length() + 92,
+		logger::i("  0x%08x-0x%08x  %s\n", img.first, img.first + img.second.length() + 92,
 				img.second.filename().c_str());
 	}
 
