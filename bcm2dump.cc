@@ -55,32 +55,34 @@ void usage(bool help = false)
 	os << "  -v               Increase verbosity" << endl;
 	os << endl;
 	os << "Commands: " << endl;
-	os << "  dump  <interface> <addrspace> {<partition>[+<offset>],<offset>}[,<size>] <out>" << endl;
+	os << "  dump  <interface> <addrspace> {<partition>[+<off>],<off>}[,<size>] <out>" << endl;
 	if (help) {
-		os << "\n    Dump data from given address space, starting at either an explicit offset or\n"
-				"    alternately a partition name. If a partition name is used, the <size>\n"
-				"    argument may be omitted. Data is stored in file <out>.\n\n";
+		os << "\n    Dump data from given address space, starting at an explicit offset\n"
+				"    or alternately a partition name. If a partition name is used, the\n"
+				"    <size> argument may be omitted. Data is stored in file <out>.\n\n";
 	}
 	os << "  scan  <interface> <addrspace> <step> [<start> <size>]" << endl;
 	if (help) {
-		os << "\n    Scan given address space for image headers, in steps of <step> bytes. For unknown\n"
-				"    profiles or address spaces, <start> and <size> must be specified.\n\n";
+		os << "\n    Scan given address space for image headers, in steps of <step> bytes.\n"
+				"    For unknown profiles or address spaces, <start> and <size> must be\n"
+				"    specified.\n\n";
 	}
-	os << "  write <interface> <addrspace> {<partition>[+<offset>],<offset>}[,<size>] <in>" << endl;
+	os << "  write <interface> <addrspace> {<partition>[+<off>],<off>}[,<size>] <in>" << endl;
 	if (help) {
-		os << "\n    Write data to the specified address space, starting at either an explicit\n"
-				"    offset or alternately a partition name. The <size> argument may be used to\n"
-				"    use only parts of file <in>.\n\n";
+		os << "\n    Write data to the specified address space, starting at an explicit\n"
+				"    offset or alternately a partition name. The <size> argument may be\n"
+				"    specified to use only that number of bytes of file <in>.\n\n";
 	}
-	os << "  exec  <interface> <offset>[,<entry>] <in>" << endl;
+	os << "  exec  <interface> <off>[,<entry>] <in>" << endl;
 	if (help) {
 #if 0
 		os << "\n    Write data to ram at the specified offset. After the data has been written,\n"
 				"    execute the code and print all subsequently generated output to standard output.\n"
 				"    An <entry> argument may be supplied to start execution at a different address.\n\n";
 #else
-		os << "\n    Write data to ram at the specified offset. After the data has been written, execute\n"
-				"    the code. An <entry> argument may be supplied to start execution at a different address.\n\n";
+		os << "\n    Write data to ram at the specified offset. After the data has been\n"
+				"    written, execute the code. An <entry> argument may be supplied to\n"
+				"    start execution at a different address.\n\n";
 #endif
 	}
 	os << "  run   <interface> <command>" << endl;
@@ -111,7 +113,7 @@ void usage(bool help = false)
 	os << "  192.168.0.1,foo,bar,233  Same as above, port 233" << endl;
 	os << endl;
 	os << "Profiles:" << endl;
-	os << get_profile_names(60, 2) << endl;
+	os << get_profile_names(70, 2) << endl;
 	os << endl;
 	os << "bcm2dump " << VERSION <<" Copyright (C) 2016-2018 Joseph C. Lehner" << endl;
 	os << "Licensed under the GNU GPLv3; source code is available at" << endl;
