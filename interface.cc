@@ -342,7 +342,7 @@ bool bfc_telnet::is_ready(bool passive)
 		}
 
 		foreach_line([this] (const string& line) {
-			if (contains(line, "BFC Telnet")) {
+			if (contains(line, "Telnet Server")) {
 				m_status = connected;
 			} else if (m_status == connected) {
 				if (contains(line, "refused") || contains(line, "logged and reported")) {
