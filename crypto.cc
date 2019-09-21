@@ -470,7 +470,7 @@ string crypt_motorola(string buf, const string& key)
 	srand_motorola = key[0] & 0xff;
 
 	for (size_t i = 0; i < buf.size(); ++i) {
-		float r = rand_motorola();
+		double r = rand_motorola();
 		int x = ((r / 0x7fffffff) * 255) + 1;
 		buf[i] ^= x;
 	}
