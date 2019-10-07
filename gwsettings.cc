@@ -492,17 +492,7 @@ class gwsettings : public encryptable_settings
 		}
 
 		istringstream istr(buf.substr(m_magic.size()));
-		if (!m_version.read(istr) || !m_size.read(istr)) {
-			throw runtime_error("error while reading header");
-		}
-
-		m_size_valid = m_size.num() == buf.size();
-
-		if (!m_size_valid && buf.size() > m_size.num()) {
-			logger::v() << "data size exceeds reported file size" << endl;
-			m_size.num(buf.size());
-		}
-
+		read_header(istr, buf.size());
 		settings::read(istr);
 		return is;
 	}
@@ -569,8 +559,8 @@ class gwsettings : public encryptable_settings
 	void validate_checksum_and_detect_profile(const string& buf)
 	{
 
-		if (profile()) {
-			validate_checksum(buf, profile());
+		if (this->profile()) {
+			validate_checksum(buf, this->profile());
 		} else {
 			for (auto p : profile::list()) {
 				if (validate_checksum(buf, p)) {
@@ -590,7 +580,7 @@ class gwsettings : public encryptable_settings
 
 	bool validate_magic(const string& buf)
 	{
-		for (int n : { 74, 59, 54 }) {
+		for (int n : { 74, 59, 58, 54 }) {
 			if (do_validate_magic(buf.substr(0, n))) {
 				return true;
 			}
@@ -607,9 +597,30 @@ class gwsettings : public encryptable_settings
 		return m_magic_valid;
 	}
 
+	void read_header(istringstream& istr, size_t bufsize)
+	{
+		m_size.num(0);
+
+		if (!m_version.read(istr) || !m_size.read(istr)) {
+			throw runtime_error("error while reading header");
+		}
+
+		logger::t("magic=%s\n", m_magic.c_str());
+
+		auto v = m_version.num();
+		logger::t("version=%d.%d, size=%d\n", v >> 8, v & 0xff, m_size.num());
+
+		m_size_valid = m_size.num() == bufsize;
+
+		if (!m_size_valid && bufsize > m_size.num()) {
+			logger::v() << "data size exceeds reported file size" << endl;
+			m_size.num(bufsize);
+		}
+	}
+
 	bool decrypt_with_profile(string& buf, const csp<bcm2dump::profile>& p)
 	{
-		if (!p->cfg_encryption()) {
+		if (!p || !p->cfg_encryption()) {
 			return false;
 		}
 
