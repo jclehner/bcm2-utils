@@ -195,7 +195,7 @@ string gws_encrypt(string buf, const string& key, const csp<profile>& p, bool pa
 				} else if (padding == BCM2_CFG_PAD_PKCS7) {
 					buf += string(padnum, char(padnum & 0xff));
 				} else {
-					throw runtime_error("unhandled padding type " + padding);
+					// no padding
 				}
 			}
 		}
