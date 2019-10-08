@@ -307,7 +307,7 @@ class permdyn : public settings
 				throw runtime_error("failed to read header");
 			}
 
-			logger::d() << "m_size=" << m_size.num() << ", m_checksum=" << m_checksum.num() << endl;
+			logger::t() << "m_size=" << m_size.num() << ", m_checksum=" << m_checksum.num() << endl;
 		}
 
 		m_magic_valid = true;
@@ -322,7 +322,7 @@ class permdyn : public settings
 		m_checksum_valid = checksum == m_checksum.num();
 
 		if (!m_checksum_valid) {
-			logger::v() << type() << ": checksum mismatch: " << to_hex(checksum) << " / " << to_hex(m_checksum.num()) << endl;
+			logger::t() << type() << ": checksum mismatch: " << to_hex(checksum) << " / " << to_hex(m_checksum.num()) << endl;
 		}
 
 		m_footer = m_size.num() < buf.size() ? buf.substr(m_size.num()) : "";
@@ -339,7 +339,7 @@ class permdyn : public settings
 				} else if ((a == 0x10000 && b == 0xfffffffe) || (a == 0x8000 && b == 0xfffffffc)) {
 					m_format = nv_group::fmt_dyn;
 				} else {
-					logger::d() << "a=0x" << to_hex(a) << ", b=0x" << to_hex(b) << endl;
+					logger::t() << "a=0x" << to_hex(a) << ", b=0x" << to_hex(b) << endl;
 				}
 			}
 

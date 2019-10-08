@@ -306,11 +306,11 @@ void nv_compound::set(const string& name, const string& val)
 	}
 
 	ssize_t diff = v->is_set() ? v->bytes() : 0;
-	logger::d() << type() << ": set " << name << ": size change " << diff << " -> ";
+	logger::t() << type() << ": set " << name << ": size change " << diff << " -> ";
 	diff -= v->parse_checked(val).bytes();
-	logger::d() << v->bytes();
+	logger::t() << v->bytes();
 	v->parent(this);
-	logger::d() << ", group size " << m_bytes << " -> " << (m_bytes - diff) << " (" << diff << ")" << endl;
+	logger::t() << ", group size " << m_bytes << " -> " << (m_bytes - diff) << " (" << diff << ")" << endl;
 	m_bytes -= diff;
 }
 
@@ -389,6 +389,7 @@ istream& nv_compound::read(istream& is)
 
 		if (!end) {
 			v.val->read(is);
+			logger::t() << " = " << v.val->to_string(0, false) << endl;
 		}
 
 		if (!is) {
