@@ -223,12 +223,38 @@ struct bcm2_profile bcm2_profiles[] = {
 	},
 	{
 		.name = "fast3686",
-		.pretty = "Sagemcom F@ST 3686 AC",
+		.pretty = "Sagemcom F@ST 3686",
 		.cfg_flags = BCM2_CFG_ENC_XOR | BCM2_CFG_FMT_GWS_FULL_ENC | BCM2_CFG_DATA_USERIF_ALT,
 		.cfg_md5key = "3250736c633b752865676d64302d2778",
 		.cfg_defkeys = { "80" },
+		.pssig = 0xd06e,
+		.kseg1mask = 0x20000000,
+		.magic = {
+			// TODO
+		},
 		.spaces = {
-			{ .name = "ram" },
+			{
+				.name = "ram",
+				.min = 0x80000000
+			},
+		},
+		.versions = {
+			{
+				.intf = BCM2_INTF_BFC,
+				.rwcode = 0x80002000,
+				.options = {
+					BCM2_VAL_STR("bfc:su_password", "$agem001"),
+					BCM2_VAL_U32("bfc:conthread_priv_off", 0x74),
+				},
+			},
+			{
+				.version = "CVA-SIP_3.601.0",
+				.intf = BCM2_INTF_BFC,
+				.magic = { 0x812df0dc, "CVA-SIP_3.601.0-20190521" },
+				.options = {
+					{ "bfc:conthread_instance", { 0x818dd3c0 }},
+				}
+			}
 		},
 	},
 	{
