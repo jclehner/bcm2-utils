@@ -476,7 +476,9 @@ void detect_profile_if_not_set(const interface::sp& intf, const profile::sp& pro
 {
 	if (profile) {
 		// TODO allow manually specifying a version, auto-detect otherwise
-		intf->set_profile(profile);
+		auto v = profile->default_version(intf->id());
+		intf->set_profile(profile, v);
+		return;
 	}
 
 	rwx::sp ram = rwx::create(intf, "ram", true);
