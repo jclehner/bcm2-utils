@@ -237,6 +237,12 @@ struct bcm2_profile bcm2_profiles[] = {
 				.name = "ram",
 				.min = 0x80000000
 			},
+			{
+				.name = "flash",
+				.parts = {
+						{ "bootloader" },
+				}
+			},
 		},
 		.versions = {
 			{
