@@ -416,7 +416,7 @@ class bfc_flash2 : public bfc_ram
 		}
 
 		auto funcs = ver.functions(space);
-		if (!funcs["read"].addr() && !funcs["write"].addr()) {
+		if (!funcs["read"].addr() /*&& !funcs["write"].addr()*/) {
 			return false;
 		}
 
