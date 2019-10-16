@@ -238,9 +238,25 @@ struct bcm2_profile bcm2_profiles[] = {
 				.min = 0x80000000
 			},
 			{
-				.name = "flash",
+				.name = "nvram",
+				.size = 0x100000,
 				.parts = {
-						{ "bootloader" },
+					{ "bootloader", 0x00000, 0x10000 },
+					{ "permnv",     0x10000, 0x20000, "perm" },
+					{ "unknown",	0x30000, 0x90000 },
+					{ "dynnv",      0xc0000, 0x40000, "dyn" },
+				}
+			},
+			{
+				.name = "flash",
+				.size = 128 * 1024 * 1024,
+				.parts = {
+					{ "linuxapps", 0x0000000, 0x4c40000, "image3e" },
+					{ "image1",    0x4c40000, 0x0d80000 },
+					{ "image2",    0x59c0000, 0x0d80000 },
+					{ "linux",     0x6740000, 0x0480000, "image3" },
+					{ "linuxkfs",  0x6bc0000, 0x1200000, "" },
+					{ "dhtml",     0x7dc0000, 0x0240000 },
 				}
 			},
 		},
