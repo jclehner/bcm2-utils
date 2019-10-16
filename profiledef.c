@@ -228,9 +228,10 @@ struct bcm2_profile bcm2_profiles[] = {
 		.cfg_md5key = "3250736c633b752865676d64302d2778",
 		.cfg_defkeys = { "80" },
 		.pssig = 0xd06e,
+		.blsig = 0x3384,
 		.kseg1mask = 0x20000000,
 		.magic = {
-			// TODO
+			{ 0x83f8f188, "2.5.0beta8" },
 		},
 		.spaces = {
 			{
@@ -264,6 +265,7 @@ struct bcm2_profile bcm2_profiles[] = {
 			{
 				.intf = BCM2_INTF_BFC,
 				.rwcode = 0x80002000,
+				.buffer = 0x85f00000
 				.options = {
 					BCM2_VAL_STR("bfc:su_password", "$agem001"),
 					BCM2_VAL_U32("bfc:conthread_priv_off", 0x74),
@@ -275,6 +277,15 @@ struct bcm2_profile bcm2_profiles[] = {
 				.magic = { 0x812df0dc, "CVA-SIP_3.601.0-20190521" },
 				.options = {
 					{ "bfc:conthread_instance", { 0x818dd3c0 }},
+				}
+				.spaces = {
+						{
+							.name = "flash",
+							.open = { 0x80438e6c, BCM2_ARGS_OE },
+							.read = { 0x80438934, BCM2_READ_FUNC_BOL,
+									.patch = {{ 0x80438ac4, 0x10000018 }},
+							}
+						},
 				}
 			}
 		},
