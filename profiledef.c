@@ -265,7 +265,7 @@ struct bcm2_profile bcm2_profiles[] = {
 			{
 				.intf = BCM2_INTF_BFC,
 				.rwcode = 0x80002000,
-				.buffer = 0x85f00000
+				.buffer = 0x85f00000,
 				.options = {
 					BCM2_VAL_STR("bfc:su_password", "$agem001"),
 					BCM2_VAL_U32("bfc:conthread_priv_off", 0x74),
@@ -277,7 +277,7 @@ struct bcm2_profile bcm2_profiles[] = {
 				.magic = { 0x812df0dc, "CVA-SIP_3.601.0-20190521" },
 				.options = {
 					{ "bfc:conthread_instance", { 0x818dd3c0 }},
-				}
+				},
 				.spaces = {
 						{
 							.name = "flash",
