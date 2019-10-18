@@ -274,7 +274,7 @@ struct bcm2_profile bcm2_profiles[] = {
 			{
 				.version = "CVA-SIP_3.601.0",
 				.intf = BCM2_INTF_BFC,
-				.magic = { 0x812df0dc, "CVA-SIP_3.601.0-20190521" },
+				.magic = { 0x812df0e5, "CVA-SIP_3.601.0-20190521" },
 				.options = {
 					{ "bfc:conthread_instance", { 0x818dd3c0 }},
 				},
