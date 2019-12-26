@@ -514,6 +514,18 @@ istream& nv_data::read(istream& is)
 	return is;
 }
 
+bool nv_data::parse(const string& str)
+{
+	string buf = from_hex(str);
+	if (buf.size() != m_buf.size()) {
+		return false;
+	}
+
+	m_buf = move(buf);
+	m_set = true;
+	return true;
+}
+
 bool nv_mac::parse(const string& str)
 {
 	auto tok = split(str, ':');
