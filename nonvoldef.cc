@@ -1275,7 +1275,7 @@ class nv_group_wigu : public nv_group
 {
 	public:
 	nv_group_wigu(bool u)
-	: nv_group(u ? "WiGu" : "WiGv", "guestwifi"s + (u ? "1" : "2"))
+	: nv_group(u ? "WiGu" : "WiGv", "guestwifi"s + (u ? "" : "2"))
 	{}
 
 	NV_GROUP_DEF_CLONE(nv_group_wigu);
