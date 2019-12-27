@@ -330,7 +330,7 @@ int do_run(int argc, char** argv, const string& profile)
 	intf->foreach_line([] (const string& l) {
 			cout << trim(l) << endl;
 			return false;
-	}, 1000, 5000);
+	}, 0, 5000);
 
 	return 0;
 }
