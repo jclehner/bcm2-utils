@@ -166,7 +166,7 @@ void bfc::do_elevate_privileges()
 	if (m_is_rg_prompt) {
 		if (m_privileged) {
 			// switchCpuConsole isn't available in the root shell!
-			runcmd("exit");
+			runcmd("/exit");
 			m_privileged = false;
 		}
 
@@ -305,7 +305,7 @@ class bfc_telnet : public bfc, public telnet
 	virtual ~bfc_telnet()
 	{
 		try {
-			runcmd("exit");
+			runcmd("/exit");
 		} catch (...) {
 
 		}
