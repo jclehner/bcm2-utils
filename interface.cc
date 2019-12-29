@@ -355,7 +355,7 @@ bool bfc_telnet::is_ready(bool passive)
 
 			return false;
 
-		}, 2000, 1000);
+		}, 3000);
 
 		return m_status >= connected;
 	} else {
@@ -380,7 +380,7 @@ bool bfc_telnet::login(const string& user, const string& pass)
 	while (!have_prompt) {
 		have_prompt = foreach_line([] (const string& line) {
 			return is_login_prompt(line);
-		}, 2000, 1000);
+		}, 3000);
 
 		if (!have_prompt) {
 			if (send_newline) {
@@ -401,7 +401,7 @@ bool bfc_telnet::login(const string& user, const string& pass)
 		}
 
 		return false;
-	}, 2000, 1000);
+	}, 3000);
 
 	if (!have_prompt) {
 		logger::d() << "telnet: no password prompt" << endl;
@@ -420,7 +420,7 @@ bool bfc_telnet::login(const string& user, const string& pass)
 		}
 
 		return false;
-	}, 2000, 1000);
+	}, 3000);
 
 	if (m_status == authenticated) {
 		// in some cases, the shell prompt is CM/Console>, but
@@ -602,14 +602,18 @@ bool interface::foreach_line(function<bool(const string&)> f, unsigned timeout, 
 {
 	mstimer t;
 
-	while (pending(timeout_line) && (!timeout || (t.elapsed() < timeout))) {
-		string line = readln();
-		if (line.empty()) {
+	while (true) {
+		if (pending(timeout_line)) {
+			string line = readln();
+			if (line.empty()) {
+				logger::d() << "line was empty, but pending() returned true" << endl;
+				break;
+			}
+			if (f(line)) {
+				return true;
+			}
+		} else if (!timeout || t.elapsed() >= timeout) {
 			break;
-		}
-
-		if (f(line)) {
-			return true;
 		}
 	}
 
