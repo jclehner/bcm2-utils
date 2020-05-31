@@ -188,7 +188,7 @@ class nv_group_mlog : public nv_group
 				NV_VAR(nv_p16string, "http_seed"),
 				NV_VAR(nv_p16data, "http_acl_hosts"),
 				NV_VAR(nv_u32, "http_idle_timeout"),
-				NV_VAR(nv_bool, "log_exceptions"),
+				NV_VAR3(ver.num() >= 0x0006, nv_bool, "log_exceptions"),
 				NV_VAR(nv_u32, "ssh_inactivity_timeout"),
 			};
 		}
@@ -1307,8 +1307,8 @@ class nv_group_wigu : public nv_group
 				NV_VAR(NV_ARRAY(nv_cdata<5>, 4), "wep64_keys"),
 				NV_VAR(nv_u8, "wep_key_num"),
 				NV_VAR(NV_ARRAY(nv_cdata<13>, 4), "wep128_keys"),
-				//NV_VAR(nv_p8string, "wep_key_passphrase"),
-				NV_VAR(nv_data, "", 33),
+				NV_VAR(nv_fzstring<27>, "wep_key_passphrase"),
+				NV_VAR(nv_data, "", 6),
 				NV_VAR(nv_p8string, "wpa_psk"),
 				NV_VAR(nv_u32_m<0xfffff>, "wpa_rekey_interval"),
 				NV_VAR(nv_ip4, "radius_ip"),
@@ -1343,6 +1343,7 @@ class nv_group_wigu : public nv_group
 
 		return {
 			NV_VAR(nv_guest_wifi, "net1"),
+			NV_VAR(nv_guest_wifi, "net2"),
 		};
 	}
 };
