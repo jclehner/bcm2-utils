@@ -484,6 +484,8 @@ class bfc_flash2 : public bfc_ram
 	void call(const string& cmd, const string& name, unsigned timeout = 5)
 	{
 		m_intf->runcmd(cmd);
+		// consume lines
+		m_intf->foreach_line([] (const string&) { return true; }, timeout * 1000, 0);
 
 #if 0
 		if (!m_intf->wait_ready(timeout)) {
