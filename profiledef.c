@@ -212,6 +212,75 @@ struct bcm2_profile bcm2_profiles[] = {
 		},
 	},
 	{
+		.name = "c6300bd",
+		.pretty = "Netgear C6300BD",
+		.baudrate = 115200,
+		.pssig = 0xa0eb,
+		.kseg1mask = 0x20000000,
+		.magic = {
+			{ 0x83f8ecc8, "2.5.0alpha8R2" },
+		},
+		.spaces = {
+			{
+				.name = "ram",
+				.min = 0x80000000,
+				.size = 256 * 1024 * 1024,
+				.parts = {
+					{ "bootloader", 0x83f80000, 0x020000 },
+				}
+			},
+			{
+				.name = "nvram",
+				.size = 512 * 1024,
+				.parts = {
+					{ "bootloader", 0x00000, 0x10000 },
+					{ "permnv",     0x10000, 0x20000, "perm" },
+					{ "vennv",      0x30000, 0x10000, "ven" },
+					{ "dynnv",      0x40000, 0x40000, "dyn" },
+				},
+			},
+			{
+				.name = "flash",
+				.size = 128 * 1024 * 1024,
+				.parts = {
+					{ "linuxapps", 0x0000000, 0x23c0000, "image3e" },
+					{ "image1",    0x23c0000, 0x0900000 },
+					{ "image2",    0x2cc0000, 0x0900000 },
+					{ "linux",     0x35c0000, 0x2400000, "image3" },
+					{ "linuxkfs",  0x59c0000, 0x2400000, "" },
+					{ "dhtml",     0x7dc0000, 0x0240000 },
+				}
+			},
+		},
+		.versions = {
+			{
+				.intf = BCM2_INTF_BLDR,
+				.rwcode = 0x84010000,
+				.buffer = 0x85f00000
+			},
+			{
+				.version = "2.5.0alpha8R2",
+				.intf = BCM2_INTF_BLDR,
+				.magic = { 0x83f8ecc8, "2.5.0alpha8R2" },
+				.printf = 0x83f8b670,
+				.spaces = {
+					{
+						.name = "flash",
+						.read = {
+							.addr = 0x83f83740,
+							.mode = BCM2_READ_FUNC_BOL,
+							.patch = {{ 0x83f838e4, 0x10000018 }}
+						},
+					},
+					{
+						.name = "nvram",
+						.read = { 0x83f81328, BCM2_READ_FUNC_OBL },
+					}
+				}
+			},
+		},
+	},
+	{
 		.name = "sbg6580",
 		.pretty = "Motorola Surfboard SBG6580",
 		.pssig = 0xc055,
