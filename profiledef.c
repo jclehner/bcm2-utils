@@ -737,7 +737,10 @@ struct bcm2_profile bcm2_profiles[] = {
 				.intf = BCM2_INTF_BFC,
 				.rwcode = 0x80002000,
 				.buffer = 0x85f00000,
-				.buflen = 0x19c0000
+				.buflen = 0x19c0000,
+				.options = {
+					{ "bfc:conthread_priv_off", { 0x74 }},
+				},
 			},
 			{
 				.version = "STD6.02.42",
@@ -796,7 +799,6 @@ struct bcm2_profile bcm2_profiles[] = {
 				},
 				.options = {
 					{ "bfc:conthread_instance", { 0x81315c24 }},
-					{ "bfc:conthread_priv_off", { 0x74 }},
 				},
 			},
 		},
