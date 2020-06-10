@@ -276,7 +276,14 @@ void nv_compound::set(const string& name, const string& val)
 {
 	auto parts = split(name, '.', false, 2);
 	if (parts.size() == 2) {
+#if 1
+		auto v = const_pointer_cast<nv_val>(get(parts[0]));
+		size_t oldsize = v->bytes();
+		v->set(parts[1], val);
+		m_bytes -= (oldsize - v->bytes());
+#else
 		const_pointer_cast<nv_val>(get(parts[0]))->set(parts[1], val);
+#endif
 		return;
 	}
 
@@ -305,13 +312,9 @@ void nv_compound::set(const string& name, const string& val)
 		}
 	}
 
-	ssize_t diff = v->is_set() ? v->bytes() : 0;
-	logger::t() << type() << ": set " << name << ": size change " << diff << " -> ";
-	diff -= v->parse_checked(val).bytes();
-	logger::t() << v->bytes();
-	v->parent(this);
-	logger::t() << ", group size " << m_bytes << " -> " << (m_bytes - diff) << " (" << diff << ")" << endl;
-	m_bytes -= diff;
+	size_t oldsize = v->is_set() ? v->bytes() : 0;
+	v->parse_checked(val);
+	m_bytes -= (oldsize - v->bytes());
 }
 
 csp<nv_val> nv_compound::find(const string& name) const
@@ -512,6 +515,18 @@ istream& nv_data::read(istream& is)
 	}
 
 	return is;
+}
+
+bool nv_data::parse(const string& str)
+{
+	string buf = from_hex(str);
+	if (buf.size() != m_buf.size()) {
+		return false;
+	}
+
+	m_buf = move(buf);
+	m_set = true;
+	return true;
 }
 
 bool nv_mac::parse(const string& str)

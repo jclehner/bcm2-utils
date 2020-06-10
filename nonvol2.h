@@ -383,8 +383,7 @@ class nv_data : public nv_val
 
 	virtual std::string to_string(unsigned level, bool pretty) const override;
 
-	virtual bool parse(const std::string& str) override
-	{ return false; }
+	virtual bool parse(const std::string& str) override;
 
 	virtual std::istream& read(std::istream& is) override;
 	virtual std::ostream& write(std::ostream& os) const override

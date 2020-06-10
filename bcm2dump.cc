@@ -85,9 +85,9 @@ void usage(bool help = false)
 				"    start execution at a different address.\n\n";
 #endif
 	}
-	os << "  run   <interface> <command>" << endl;
+	os << "  run   <interface> <command 1> [<command 2> ...]" << endl;
 	if (help) {
-		os << "\n    Run command on the specified interface.\n\n";
+		os << "\n    Run command(s) on the specified interface.\n\n";
 	}
 	os << "  info  <interface>" << endl;
 	if (help) {
@@ -115,7 +115,7 @@ void usage(bool help = false)
 	os << "Profiles:" << endl;
 	os << get_profile_names(70, 2) << endl;
 	os << endl;
-	os << "bcm2dump " << VERSION <<" Copyright (C) 2016-2018 Joseph C. Lehner" << endl;
+	os << "bcm2dump " << VERSION <<" Copyright (C) 2016-2019 Joseph C. Lehner" << endl;
 	os << "Licensed under the GNU GPLv3; source code is available at" << endl;
 	os << "https://github.com/jclehner/bcm2-utils" << endl;
 	os << endl;
@@ -320,17 +320,20 @@ int do_write_exec(int argc, char** argv, int opts, const string& profile)
 
 int do_run(int argc, char** argv, const string& profile)
 {
-	if (argc != 3) {
+	if (argc < 3) {
 		usage(false);
 		return 1;
 	}
 
 	auto intf = interface::create(argv[1], profile);
-	intf->runcmd(argv[2]);
-	intf->foreach_line([] (const string& l) {
-			cout << trim(l) << endl;
-			return false;
-	}, 1000, 5000);
+
+	for (int i = 2; i < argc; ++i) {
+		intf->runcmd(argv[i]);
+		intf->foreach_line([] (const string& l) {
+				cout << trim(l) << endl;
+				return false;
+		}, 0, 1000);
+	}
 
 	return 0;
 }

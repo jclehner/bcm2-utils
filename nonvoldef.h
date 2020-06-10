@@ -26,6 +26,9 @@
 #define NV_VAR3(cond, type, name, ...) { name, nv_val_disable<type>(shared_ptr<type>(new type(__VA_ARGS__)), !(cond)) }
 #define NV_VARN3(cond, type, name, ...) { name, nv_compound_rename(nv_val_disable<type>(shared_ptr<type>(new type(__VA_ARGS__)), !(cond)), name) }
 
+
+#define NV_ARRAY(type, count) nv_array<type, count>
+
 #define COMMA() ,
 
 #define NV_GROUP(group, ...) make_shared<group>(__VA_ARGS__)

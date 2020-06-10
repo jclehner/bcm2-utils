@@ -212,6 +212,75 @@ struct bcm2_profile bcm2_profiles[] = {
 		},
 	},
 	{
+		.name = "c6300bd",
+		.pretty = "Netgear C6300BD",
+		.baudrate = 115200,
+		.pssig = 0xa0eb,
+		.kseg1mask = 0x20000000,
+		.magic = {
+			{ 0x83f8ecc8, "2.5.0alpha8R2" },
+		},
+		.spaces = {
+			{
+				.name = "ram",
+				.min = 0x80000000,
+				.size = 256 * 1024 * 1024,
+				.parts = {
+					{ "bootloader", 0x83f80000, 0x020000 },
+				}
+			},
+			{
+				.name = "nvram",
+				.size = 512 * 1024,
+				.parts = {
+					{ "bootloader", 0x00000, 0x10000 },
+					{ "permnv",     0x10000, 0x20000, "perm" },
+					{ "vennv",      0x30000, 0x10000, "ven" },
+					{ "dynnv",      0x40000, 0x40000, "dyn" },
+				},
+			},
+			{
+				.name = "flash",
+				.size = 128 * 1024 * 1024,
+				.parts = {
+					{ "linuxapps", 0x0000000, 0x23c0000, "image3e" },
+					{ "image1",    0x23c0000, 0x0900000 },
+					{ "image2",    0x2cc0000, 0x0900000 },
+					{ "linux",     0x35c0000, 0x2400000, "image3" },
+					{ "linuxkfs",  0x59c0000, 0x2400000, "" },
+					{ "dhtml",     0x7dc0000, 0x0240000 },
+				}
+			},
+		},
+		.versions = {
+			{
+				.intf = BCM2_INTF_BLDR,
+				.rwcode = 0x84010000,
+				.buffer = 0x85f00000
+			},
+			{
+				.version = "2.5.0alpha8R2",
+				.intf = BCM2_INTF_BLDR,
+				.magic = { 0x83f8ecc8, "2.5.0alpha8R2" },
+				.printf = 0x83f8b670,
+				.spaces = {
+					{
+						.name = "flash",
+						.read = {
+							.addr = 0x83f83740,
+							.mode = BCM2_READ_FUNC_BOL,
+							.patch = {{ 0x83f838e4, 0x10000018 }}
+						},
+					},
+					{
+						.name = "nvram",
+						.read = { 0x83f81328, BCM2_READ_FUNC_OBL },
+					}
+				}
+			},
+		},
+	},
+	{
 		.name = "sbg6580",
 		.pretty = "Motorola Surfboard SBG6580",
 		.pssig = 0xc055,
@@ -228,9 +297,10 @@ struct bcm2_profile bcm2_profiles[] = {
 		.cfg_md5key = "3250736c633b752865676d64302d2778",
 		.cfg_defkeys = { "80" },
 		.pssig = 0xd06e,
+		.blsig = 0x3384,
 		.kseg1mask = 0x20000000,
 		.magic = {
-			// TODO
+			{ 0x83f8f188, "2.5.0beta8" },
 		},
 		.spaces = {
 			{
@@ -264,6 +334,7 @@ struct bcm2_profile bcm2_profiles[] = {
 			{
 				.intf = BCM2_INTF_BFC,
 				.rwcode = 0x80002000,
+				.buffer = 0x85f00000,
 				.options = {
 					BCM2_VAL_STR("bfc:su_password", "$agem001"),
 					BCM2_VAL_U32("bfc:conthread_priv_off", 0x74),
@@ -272,9 +343,18 @@ struct bcm2_profile bcm2_profiles[] = {
 			{
 				.version = "CVA-SIP_3.601.0",
 				.intf = BCM2_INTF_BFC,
-				.magic = { 0x812df0dc, "CVA-SIP_3.601.0-20190521" },
+				.magic = { 0x812df0e5, "CVA-SIP_3.601.0-20190521" },
 				.options = {
 					{ "bfc:conthread_instance", { 0x818dd3c0 }},
+				},
+				.spaces = {
+						{
+							.name = "flash",
+							.open = { 0x80438e6c, BCM2_ARGS_OE },
+							.read = { 0x80438934, BCM2_READ_FUNC_BOL,
+									.patch = {{ 0x80438ac4, 0x10000018 }},
+							}
+						},
 				}
 			}
 		},
@@ -726,7 +806,10 @@ struct bcm2_profile bcm2_profiles[] = {
 				.intf = BCM2_INTF_BFC,
 				.rwcode = 0x80002000,
 				.buffer = 0x85f00000,
-				.buflen = 0x19c0000
+				.buflen = 0x19c0000,
+				.options = {
+					{ "bfc:conthread_priv_off", { 0x74 }},
+				},
 			},
 			{
 				.version = "STD6.02.42",
@@ -785,7 +868,6 @@ struct bcm2_profile bcm2_profiles[] = {
 				},
 				.options = {
 					{ "bfc:conthread_instance", { 0x81315c24 }},
-					{ "bfc:conthread_priv_off", { 0x74 }},
 				},
 			},
 		},

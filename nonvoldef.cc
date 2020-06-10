@@ -24,6 +24,12 @@ using namespace std;
 namespace bcm2cfg {
 namespace {
 
+template<size_t N> class nv_cdata : public nv_data
+{
+	public:
+	nv_cdata() : nv_data(N) {}
+};
+
 template<class T> const sp<T>& nv_val_disable(const sp<T>& val, bool disable)
 {
 	val->disable(disable);
@@ -182,7 +188,7 @@ class nv_group_mlog : public nv_group
 				NV_VAR(nv_p16string, "http_seed"),
 				NV_VAR(nv_p16data, "http_acl_hosts"),
 				NV_VAR(nv_u32, "http_idle_timeout"),
-				NV_VAR(nv_bool, "log_exceptions"),
+				NV_VAR3(ver.num() >= 0x0006, nv_bool, "log_exceptions"),
 				NV_VAR(nv_u32, "ssh_inactivity_timeout"),
 			};
 		}
@@ -265,12 +271,27 @@ class nv_group_8021 : public nv_group
 
 	NV_GROUP_DEF_CLONE(nv_group_8021);
 
-	protected:
-	template<size_t N> class nv_cdata : public nv_data
+	class nv_wifi_encmode : public nv_enum<nv_u8>
 	{
 		public:
-		nv_cdata() : nv_data(N) {}
+		nv_wifi_encmode() : nv_enum<nv_u8>("encryption", {
+				"none", "wep64", "wep128", "tkip", "aes", "tkip_aes",
+				"tkip_wep64", "aes_wep64", "tkip_aes_wep64", "tkip_wep128",
+				"aes_wep128", "tkip_aes_wep128"
+		})
+		{}
 	};
+
+	class nv_wpa_auth : public nv_bitmask<nv_u8>
+	{
+		public:
+		nv_wpa_auth() : nv_bitmask<nv_u8>("wpa-auth",
+				{ "802.1x", "wpa1", "psk1", "wpa2", "psk2"
+		})
+		{}
+	};
+
+	protected:
 
 	class nv_wmm : public nv_compound
 	{
@@ -385,11 +406,7 @@ class nv_group_8021 : public nv_group
 				NV_VAR(nv_data, "", 1),
 				NV_VAR(nv_u8, "supported_rates", true), // 0x03 = min, 0x0f = all (1..11Mbps)
 				NV_VAR(nv_data, "", 1),
-				NV_VAR2(nv_enum<nv_u8>, "encryption", "encryption", {
-						"none", "wep64", "wep128", "tkip", "aes", "tkip_aes",
-						"tkip_wep64", "aes_wep64", "tkip_aes_wep64", "tkip_wep128",
-						"aes_wep128", "tkip_aes_wep128"
-				}),
+				NV_VAR(nv_wifi_encmode, "encryption"),
 				NV_VAR(nv_data, "", 1),
 				NV_VAR(nv_u8_r<1 COMMA() 3>, "authentication"), // 1 = open, 2 = shared key, 3 = both
 				NV_VAR(nv_array<nv_cdata<5>>, "wep64_keys", 4),
@@ -1254,6 +1271,83 @@ class nv_group_msc : public nv_group
 	}
 };
 
+class nv_group_wigu : public nv_group
+{
+	public:
+	nv_group_wigu(bool u)
+	: nv_group(u ? "WiGu" : "WiGv", "guestwifi"s + (u ? "" : "2"))
+	{}
+
+	NV_GROUP_DEF_CLONE(nv_group_wigu);
+
+	protected:
+	// stuff NOT in first group:
+	// ap_isolate
+	// upnp_igdb
+	// closed_network
+	//
+	// bss_maxassoc (not even in second group!)
+
+
+	class nv_guest_wifi : public nv_compound
+	{
+		public:
+		NV_COMPOUND_DEF_CTOR_AND_TYPE(nv_guest_wifi, "guest-wifi");
+
+		virtual list definition() const override
+		{
+			return {
+				NV_VAR(nv_u8, ""),
+				NV_VAR(nv_u8, ""),
+				NV_VAR(nv_bool, "enabled"),
+				NV_VAR(nv_fzstring<33>, "ssid"),
+				NV_VAR(nv_u8, ""),
+				NV_VAR(nv_u8, ""),
+				NV_VAR(nv_group_8021::nv_wifi_encmode, "encryption"),
+				NV_VAR(NV_ARRAY(nv_cdata<5>, 4), "wep64_keys"),
+				NV_VAR(nv_u8, "wep_key_num"),
+				NV_VAR(NV_ARRAY(nv_cdata<13>, 4), "wep128_keys"),
+				NV_VAR(nv_fzstring<27>, "wep_key_passphrase"),
+				NV_VAR(nv_data, "", 6),
+				NV_VAR(nv_p8string, "wpa_psk"),
+				NV_VAR(nv_u32_m<0xfffff>, "wpa_rekey_interval"),
+				NV_VAR(nv_ip4, "radius_ip"),
+				NV_VAR(nv_u16, "radius_port"),
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_p8string, "radius_key"),
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_bool, "shared_key_auth_required"),
+				NV_VAR(nv_u8, "", true),
+				NV_VAR(nv_group_8021::nv_wpa_auth, "wpa_auth"),
+				NV_VAR(nv_data, "", 2),
+				NV_VAR(nv_u16, "wpa_reauth_interval"),
+				NV_VAR(nv_bool, "wpa2_preauth_enabled"),
+				NV_VAR(nv_bool, "dhcp_enabled"),
+				NV_VAR(nv_ip4, "dhcp_ip_address"),
+				NV_VAR(nv_ip4, "dhcp_subnet_mask"),
+				NV_VAR(nv_ip4, "dhcp_pool_start"),
+				NV_VAR(nv_ip4, "dhcp_pool_end"),
+				NV_VAR(nv_u32, "dhcp_lease_time"),
+				NV_VAR(nv_u8, "network_bridge"),
+				NV_VAR2(nv_enum<nv_u8>, "mac_policy", "mac_policy", { "disabled", "allow", "deny" }),
+				NV_VAR(NV_ARRAY(nv_mac, 32), "mac_table"),
+			};
+		}
+	};
+
+	virtual list definition(int format, const nv_version& ver) const override
+	{
+		if (format == fmt_perm) {
+			return nv_group::definition(format, ver);
+		}
+
+		return {
+			NV_VAR(nv_guest_wifi, "net1"),
+			NV_VAR(nv_guest_wifi, "net2"),
+		};
+	}
+};
+
 struct registrar {
 	registrar()
 	{
@@ -1277,6 +1371,8 @@ struct registrar {
 			NV_GROUP(nv_group_halif),
 			NV_GROUP(nv_group_rca),
 			NV_GROUP(nv_group_msc),
+			NV_GROUP(nv_group_wigu, false),
+			NV_GROUP(nv_group_wigu, true),
 		};
 
 		for (auto g : groups) {

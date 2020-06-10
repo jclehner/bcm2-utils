@@ -716,7 +716,7 @@ string io::readln(unsigned timeout)
 	string line;
 	bool lf = false, cr = false;
 
-	while (pending()) {
+	while (pending(timeout)) {
 		int c = getc();
 		if (c == '\n') {
 			lf = true;
