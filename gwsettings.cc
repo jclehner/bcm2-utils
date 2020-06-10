@@ -580,7 +580,15 @@ class gwsettings : public encryptable_settings
 
 	bool validate_magic(const string& buf)
 	{
-		for (int n : { 74, 59, 58, 54 }) {
+		// Currently known magic values:
+		// 6u9E9eWF0bt9Y8Rw690Le4669JYe4d-056T9p4ijm4EA6u9ee659jn9E-54e4j6rPj069K-670 (Technicolor, Thomson)
+		// 6u9e9ewf0jt9y85w690je4669jye4d-056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056 (Netgear, Motorola)
+		// FAST3686DNA056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056 (Sagemcom F@ST 3686 AC from DNA Oyj (ISP))
+		// FAST3686CLAROP056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056
+
+		// TODO smart magic value detection
+
+		for (int n : { 74, 59, 58, 57, 54 }) {
 			if (do_validate_magic(buf.substr(0, n))) {
 				return true;
 			}
@@ -699,11 +707,6 @@ class gwsettings : public encryptable_settings
 	string m_circumfix;
 	bool m_padded = false;
 };
-
-// Currently known magic values:
-// 6u9E9eWF0bt9Y8Rw690Le4669JYe4d-056T9p4ijm4EA6u9ee659jn9E-54e4j6rPj069K-670 (Technicolor, Thomson)
-// 6u9e9ewf0jt9y85w690je4669jye4d-056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056 (Netgear, Motorola)
-// FAST3686DNA056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056 (Sagemcom F@ST 3686 AC from DNA Oyj (ISP))
 }
 
 istream& settings::read(istream& is)
