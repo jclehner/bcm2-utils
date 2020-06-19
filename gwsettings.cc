@@ -580,28 +580,59 @@ class gwsettings : public encryptable_settings
 
 	bool validate_magic(const string& buf)
 	{
-		// Currently known magic values:
-		// 6u9E9eWF0bt9Y8Rw690Le4669JYe4d-056T9p4ijm4EA6u9ee659jn9E-54e4j6rPj069K-670 (Technicolor, Thomson)
-		// 6u9e9ewf0jt9y85w690je4669jye4d-056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056 (Netgear, Motorola)
-		// FAST3686DNA056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056 (Sagemcom F@ST 3686 AC from DNA Oyj (ISP))
-		// FAST3686CLAROP056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056
+		// The magic values on Sagem 3686 modems (and possibly others) are ISP-dependent:
+		//
+		// FAST3686<isp>056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056
+		//
+		// Currently known values for <isp>
+		// DNA
+		// CLARO
+		// SFR-PC20
+		const string magic2_part2 = "056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056";
 
-		// TODO smart magic value detection
+		const vector<string> magics {
+				"6u9E9eWF0bt9Y8Rw690Le4669JYe4d-056T9p4ijm4EA6u9ee659jn9E-54e4j6rPj069K-670",
+				"6u9e9ewf0jt9y85w690je4669jye4d-" + magic2_part2,
+				"6u9e9ewf0jt9y85w690je4669jye4d-056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-057",
+		};
 
-		for (int n : { 74, 59, 58, 57, 54 }) {
-			if (do_validate_magic(buf.substr(0, n))) {
-				return true;
+		for (const string& magic : magics) {
+			if (starts_with(buf, magic)) {
+				m_magic_valid = true;
+				m_magic = magic;
+				break;
 			}
 		}
 
-		return false;
-	}
+		if (!m_magic_valid) {
+			auto pos = buf.find(magic2_part2);
+			if (pos != string::npos) {
+				m_magic_valid = true;
+				m_magic = buf.substr(0, pos + magic2_part2.size());
+			} else {
+				auto it = find_if(buf.begin(), buf.end(), [] (char c) {
+						return c != '-' && !isalnum(c);
+				});
 
-	bool do_validate_magic(const string& magic)
-	{
-		m_magic = magic;
-		m_magic_valid = (magic.end() == std::find_if(magic.begin(), magic.end(),
-				[](char c) -> bool { return c != '-' && !isalnum(c); }));
+				if (it != buf.end()) {
+					const auto longest = max_element(magics.begin(), magics.end(), [] (auto a, auto b) {
+							return a.size() < b.size();
+					});
+
+					string magic(buf.begin(), it);
+					if (magic.size() >= magic2_part2.size() && magic.size() <= longest->size()) {
+						logger::v() << "magic detected by brute force" << endl;
+						m_magic_valid = true;
+						m_magic = magic;
+					}
+				}
+			}
+		}
+
+		if (m_magic_valid) {
+			logger::d() << "magic: " << m_magic << endl;
+		}
+
 		return m_magic_valid;
 	}
 
