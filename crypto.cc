@@ -481,17 +481,8 @@ string crypt_motorola(string buf, const string& key)
 // ditto!
 string crypt_sub_16x16(string buf, bool encrypt)
 {
-	char key[16][16];
-
-	for (int i = 0; i < 16; ++i) {
-		for (int k = 0; k < 16; k += 2) {
-			key[i][k] = (i * 16) + k;
-			key[i][k + 1] = 0;
-		}
-	}
-
-	for (size_t i = 0; i < (buf.size() / 16) * 16; ++i) {
-		int k = key[(i & 0xf0) >> 4][i & 0xf];
+	for (size_t i = 0; i < (buf.size() / 16) * 16; i += 2) {
+		unsigned k = i & 0xff;
 
 		if (encrypt) {
 			buf[i] = (buf[i] + k) & 0xff;
