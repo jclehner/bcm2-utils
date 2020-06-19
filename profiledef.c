@@ -49,6 +49,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		},
 	},
 #if 0
+	// this is a 'gwsdyn' format!
 	{
 		.name = "vmdg280",
 		.pretty = "Netgear VMDG280",
