@@ -629,10 +629,6 @@ class gwsettings : public encryptable_settings
 			}
 		}
 
-		if (m_magic_valid) {
-			logger::d() << "magic: " << m_magic << endl;
-		}
-
 		return m_magic_valid;
 	}
 
