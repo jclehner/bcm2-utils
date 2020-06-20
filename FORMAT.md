@@ -52,31 +52,54 @@ it would be `~(0xaaaaaaaa + 0x0000bb00)` (assuming `uint32_t` rollover on overfl
 
 ### GatewaySettings.bin (standard)
 
-| Offset  | Type        | Name       | Comment              |
-|--------:|-------------|------------|----------------------|
-|    `0`  | `byte[16]`  | `checksum` ||
-|   `16`  | `string[74]`| `magic`    | Vendor specific (?)  |
-|   `90`  | `byte[2]`   | ?          | Assumed to be a version (always `0.0`) |
+| Offset  | Type        | Name       | Comment                  |
+|--------:|-------------|------------|--------------------------|
+|    `0`  | `byte[16]`  | `checksum` |                          |
+|   `16`  | `string[74]`| `magic`    | See below                |
+|   `90`  | `byte[2]`   | ?          | Version? Usually `0.0`   |
 |   `92`  | `u32`       | `size`     ||
 |   `96`  | `byte[size]`| `data`     ||
-|`96+size`| `byte[]`  | `padding`  | For encrypted files only. |
+|`96+size`| `byte[]`    | `padding`  | For encrypted files      |
 
-Currently known magic values:
+The above offsets assume a "normal" 74-character magic value. 
+
+#### Magic
+
+At 74 characters, the magic string is unusually long. It's composed of
+alphanumeric characters, separated by dashes, and is usually the same
+for one manufacturer. Currently known magic values:
 
 | Vendor                    | Magic                                                                        |
 |---------------------------|-----------------------------------------------------------------------------:|
 | Technicolor/Thomson       | `6u9E9eWF0bt9Y8Rw690Le4669JYe4d-056T9p4ijm4EA6u9ee659jn9E-54e4j6rPj069K-670` |
 | Netgear, Motorola, Ubee   | `6u9e9ewf0jt9y85w690je4669jye4d-056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056` |
-| Sagem 3284                | `6u9e9ewf0jt9y85w690je4669jye4d-056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-057` |
-| Sagem 3686 AC (DNA)       | `FAST3686DNA056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056`                     |
-| Sagem 3686 AC (SFR)       | `FAST3686SFR-PC20056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056`                |
+| Sagem (3284?)             | `6u9e9ewf0jt9y85w690je4669jye4d-056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-057` |
+| Sagem 3686 AC             | `FAST3686<isp>056t9p48jp4ee6u9ee659jy9e-54e4j6r0j069k-056`                   |
 
-The checksum is an MD5 hash, calculated from the file contents immediately after the checksum (i.e.
-*everything* but the first 16 bytes). To calculate the checksum, a 16-byte device-specific key is added
-to the data; for some devices, this is easily guessed (Thomson TWG850-4: `TMM_TWG850-4\x00\x00\x00\x00`,
-Techicolor TC7200: `TMM_TC7200\x00\x00\x00\x00\x00\x00`), for others, it must be extracted from a firmware dump
-(e.g. Netgear CG3000: `\x32\x50\x73\x6c\x63\x3b\x75\x28\x65\x67\x6d\x64\x30\x2d\x27\x78`).
+The Sagem 3686 uses device- *and* ISP-dependent magic values, denoted as
+`<isp>` in the list above. Currently known ISP values are:
 
+| ISP            | Magic         |
+|----------------|---------------|
+| DNA Oyj (FI)   | `DNA`         |
+| Claro (BR)     | `CLARO`       |
+| SFR (FR)       | `SFR-PC20`    |
+
+#### Checksum
+
+The checksum is an MD5 hash, calculated from a device-specific salt, plus the file contents immediately
+following the checksum (i.e. everything but the first 16 bytes).
+
+The salt is a 16-byte string that is the same across most vendors and devices. Thomson/Technicolor however
+use device-specific salts, that can be easily guessed however:
+
+| Vendor      | Device       | Salt                                                               |
+|-------------|--------------|--------------------------------------------------------------------|
+| Generic     | Generic      | `\x32\x50\x73\x6c\x63\x3b\x75\x28\x65\x67\x6d\x64\x30\x2d\x27\x78` |
+| Thomson     | TWG850-4     | `TMM_TWG850-4\x00\x00\x00\x00` |
+|             | TWG870       | `TMM_TWG870\x00\x00\x00\x00\x00\x00` |
+|             | TCW770       | `TMM_TCW770\x00\x00\x00\x00\x00\x00` |
+| Technicolor | TC7200       | `TMM_TC7200\x00\x00\x00\x00\x00\x00` |
 
 #### Encryption
 
@@ -117,9 +140,9 @@ depending on the time at the point of creation. The actual seed used is appended
 implementation is shown below:
 
 ```c
-uint32_t srand;
+uint32_t my_srand;
 
-int32_t rand()
+int32_t my_rand()
 {
 	uint32_t result, next = srand;
 
@@ -144,7 +167,7 @@ void encrypt(char* buf, size_t size, uint8_t seed)
 	srand = seed;
 
 	for (size_t i = 0; i < size; ++i) {
-		buf[i] ^= (((float)rand() / 0x7fffffff) * 255) + 1;
+		buf[i] ^= (((double)rand() / 0x7fffffff) * 255) + 1;
 	}
 }
 ```
@@ -192,18 +215,16 @@ A primitive (and obvious) subtraction cipher with 16 keys is sometimes used. The
 f0 00 f2 00 f4 00 f6 00 f8 00 fa 00 fc 00 fe 00
 ```
 For the first 16-byte block, the first key is used, the second key for the second block,
-and so forth. For the 17th block, the first key is used again. After decryption,
-bytes `n` and `n+1` (`n` being an even number, including zero) are swapped in each
-16-byte block.
-
-If the last block is less than 16 bytes, it is copied verbatim. A 36 byte all-zero file
-would thus be encrypted as
+and so forth. For the 17th block, the first key is used again. If the last block is less
+than 16 bytes, it is copied verbatim. A 36 byte all-zero file would thus be encrypted as
 
 ```
 00 00 02 00 04 00 06 00 08 00 0a 00 0c 00 0e 00
 10 00 12 00 14 00 16 00 18 00 1a 00 1c 00 1e 00
 00 00 00 00
 ```
+
+After applying the subtraction cipher, bytes `n` and `n+1` are swapped.
 
 Configuration data
 ------------------
