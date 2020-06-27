@@ -188,8 +188,10 @@ class nv_group_mlog : public nv_group
 				NV_VAR(nv_p16string, "http_seed"),
 				NV_VAR(nv_p16data, "http_acl_hosts"),
 				NV_VAR(nv_u32, "http_idle_timeout"),
+#if 0
 				NV_VAR3(ver.num() >= 0x0006, nv_bool, "log_exceptions"),
 				NV_VAR(nv_u32, "ssh_inactivity_timeout"),
+#endif
 			};
 		}
 	}
