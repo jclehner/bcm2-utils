@@ -103,6 +103,7 @@ AES_KEY make_aes_key(const string& key, bool encrypt)
 }
 #endif
 
+#if defined(BCM2UTILS_USE_WINCRYPT) || defined(BCM2UTILS_USE_COMMON_CRYPTO)
 #ifdef BCM2UTILS_USE_WINCRYPT
 struct enctype
 {
@@ -116,7 +117,30 @@ const enctype et_aes_256_ecb = { CALG_AES_256, 32, 16, true };
 const enctype et_aes_128_cbc = { CALG_AES_128, 16, 16, false };
 const enctype et_3des_ecb = { CALG_3DES, 24, 8, true };
 const enctype et_des_ecb = { CALG_DES, 8, 8, true };
+#else
+struct enctype
+{
+	const CCAlgorithm algo;
+	const size_t keysize;
+	const size_t blocksize;
+	const bool ecb;
+};
 
+const enctype et_aes_256_ecb = { kCCAlgorithmAES128, 32, 16, true };
+const enctype et_aes_128_cbc = { kCCAlgorithmAES128, 16, 16, false };
+const enctype et_3des_ecb = { kCCAlgorithm3DES, 24, 16, true };
+const enctype et_des_ecb = { kCCAlgorithmDES, 8, 8, true };
+#endif
+
+void check_keysize(const string& key, const enctype& et)
+{
+	if (key.size() != et.keysize + (et.ecb ? 0 : et.blocksize)) {
+		throw invalid_argument("invalid key size for algorithm");
+	}
+}
+#endif
+
+#ifdef BCM2UTILS_USE_WINCRYPT
 class wincrypt_context
 {
 	public:
@@ -193,6 +217,8 @@ class wincrypt_key
 			throw runtime_error("key size out of range");
 		}
 
+		check_keysize(key, et);
+
 		blob.keysize = et.keysize;
 		blob.hdr = {
 			.bType = PLAINTEXTKEYBLOB,
@@ -242,24 +268,10 @@ class wincrypt_key
 #endif
 
 #if defined(BCM2UTILS_USE_COMMON_CRYPTO)
-struct enctype
-{
-	const CCAlgorithm algo;
-	const size_t keysize;
-	const size_t blocksize;
-	const bool ecb;
-};
-
-const enctype et_aes_256_ecb = { kCCAlgorithmAES128, 32, 16, true };
-const enctype et_aes_128_cbc = { kCCAlgorithmAES128, 16, 16, false };
-const enctype et_3des_ecb = { kCCAlgorithm3DES, 24, 16, true };
-const enctype et_des_ecb = { kCCAlgorithmDES, 8, 8, true };
 
 string crypt_generic(const enctype& et, const string& ibuf, const string& key, bool encrypt)
 {
-	if (key.size() != et.keysize) {
-		throw invalid_argument("invalid key size for algorithm");
-	}
+	check_keysize(key, et);
 
 	size_t moved;
 	size_t len = align_left(ibuf.size(), et.blocksize);
