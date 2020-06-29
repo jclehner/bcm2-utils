@@ -609,7 +609,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		},
 		.cfg_flags =
 			BCM2_CFG_ENC_AES128_CBC | BCM2_CFG_FMT_GWS_FULL_ENC |
-			BCM2_CFG_FMT_GWS_LEN_PREFIX | BCM2_CFG_PAD_ANSI_X9_23,
+			BCM2_CFG_FMT_GWS_LEN_PREFIX | BCM2_CFG_PAD_PKCS7,
 		.cfg_md5key = "3250736c633b752865676d64302d2778",
 		.cfg_defkeys = {
 			// key, followed by initialization vector
