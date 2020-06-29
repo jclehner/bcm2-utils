@@ -367,9 +367,8 @@ string hash_md5(const string& buf)
 
 string crypt_3des_ecb(const string& ibuf, const string& key, bool encrypt)
 {
-	check_keysize(key, 24, "3des-ecb");
-
 #if defined(BCM2UTILS_USE_OPENSSL)
+	check_keysize(key, 24, "3des-ecb");
 	DES_key_schedule ks[3];
 
 	for (int i = 0; i < 3; ++i) {
@@ -387,9 +386,8 @@ string crypt_3des_ecb(const string& ibuf, const string& key, bool encrypt)
 
 string crypt_des_ecb(const string& ibuf, const string& key, bool encrypt)
 {
-	check_keysize(key, 8, "des-ecb");
-
 #if defined(BCM2UTILS_USE_OPENSSL)
+	check_keysize(key, 8, "des-ecb");
 	DES_key_schedule ks;
 	DES_set_key_unchecked(to_ccblock(key, 0), &ks);
 
@@ -404,9 +402,8 @@ string crypt_des_ecb(const string& ibuf, const string& key, bool encrypt)
 
 string crypt_aes_256_ecb(const string& ibuf, const string& key, bool encrypt)
 {
-	check_keysize(key, 32, "aes-256-ecb");
-
 #if defined(BCM2UTILS_USE_OPENSSL)
+	check_keysize(key, 32, "aes-256-ecb");
 	AES_KEY aes = make_aes_key(key, encrypt);
 
 	return crypt_generic_ecb<16>(ibuf, [&aes, &encrypt](const uint8_t *iblock, uint8_t *oblock) {
@@ -445,7 +442,6 @@ string crypt_aes_128_cbc(const string& ibuf, const string& key_and_iv, bool encr
 #else
 string crypt_aes_128_cbc(const string& ibuf, const string& key_and_iv, bool encrypt)
 {
-	check_keysize(key_and_iv, 32, "aes-128-cbc");
 	return crypt_generic(et_aes_128_cbc, ibuf, key_and_iv, encrypt);
 }
 #endif
