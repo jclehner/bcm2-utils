@@ -467,7 +467,6 @@ class nv_string : public nv_val
 	int m_flags;
 	size_t m_width;
 	std::string m_val;
-	std::string m_junk;
 
 	//{ return m_val.empty() ? 1 : 2 + m_val.size(); }
 };

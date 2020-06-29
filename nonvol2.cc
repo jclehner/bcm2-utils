@@ -652,12 +652,7 @@ istream& nv_string::read(istream& is)
 		if (val.back() != '\0' && !((m_flags & flag_fixed_width) && val.find('\0') != string::npos)) {
 			throw runtime_error("expected terminating nul byte in " + data_to_string(val, 0, false) + ", " + std::to_string(val.find('\0')));
 		}
-
-		size_t zlen = strlen(val.c_str());
-		if (zlen < val.size()) {
-			m_junk = val.substr(zlen + 1);
-			val.resize(zlen);
-		}
+		val = val.c_str();
 	}
 
 	parse_checked(val);
@@ -669,12 +664,7 @@ ostream& nv_string::write(ostream& os) const
 	string val = m_val;
 	if ((m_flags & flag_fixed_width) && (val.size() < m_width)) {
 		val.resize(val.size() + 1);
-		size_t diff = m_width - val.size();
-		if (diff && m_junk.size() >= diff) {
-			val += m_junk.substr(m_junk.size() - diff, diff);
-		} else {
-			val.resize(m_width, '\xff');
-		}
+		val.resize(m_width, '\xff');
 	} else if (m_flags & flag_require_nul) {
 		val.resize(val.size() + 1);
 	}
