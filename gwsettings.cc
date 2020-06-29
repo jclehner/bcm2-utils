@@ -83,6 +83,7 @@ bool gws_unpad(string& buf, const csp<profile>& p)
 		unsigned expected = blksize - (((buf.size() + 16) - padnum) % blksize);
 
 		if (padnum == expected || (expected == 0 && padnum == blksize && !pad_optional)) {
+			logger::d() << "padding=" << to_hex(buf.substr(buf.size() - padnum)) << endl;
 			buf.resize(buf.size() - padnum);
 			return true;
 		}
