@@ -72,6 +72,7 @@ enum bcm2_cfg_flags
 
 	BCM2_CFG_DATA_MASK = 0xf0000,
 	BCM2_CFG_DATA_USERIF_ALT = 1 << 16,
+	BCM2_CFG_DATA_USERIF_ALT_SHORT = 1 << 17,
 };
 
 enum bcm2_interface
