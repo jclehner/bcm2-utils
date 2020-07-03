@@ -37,14 +37,16 @@ Options:
   -R               Resume dump
   -F               Force operation
   -P <profile>     Force profile
+  -L <filename>    I/O log file
   -q               Decrease verbosity
   -v               Increase verbosity
 
 Commands: 
-  dump  <interface> <addrspace> {<partition>[+<offset>],<offset>}[,<size>] <out>
+  dump  <interface> <addrspace> {<partition>[+<off>],<off>}[,<size>] <out>
   scan  <interface> <addrspace> <step> [<start> <size>]
-  write <interface> <addrspace> {<partition>[+<offset>],<offset>}[,<size>] <in>
-  exec  <interface> <offset>[,<entry>] <in>
+  write <interface> <addrspace> {<partition>[+<off>],<off>}[,<size>] <in>
+  exec  <interface> <off>[,<entry>] <in>
+  run   <interface> <command 1> [<command 2> ...]
   info  <interface>
   help
 
@@ -57,12 +59,13 @@ Interfaces:
   192.168.0.1,foo,bar,233  Same as above, port 233
 
 Profiles:
-  gen2pslc, cg3000, sbg6580, fast3686dna, twg850, tcw770, 
-  twg870, evm3236, tc7200, generic
+  gen2pslc, cg3000, cg3101, cbw383zn, ch7485e, c6300bd, sbg6580, 
+  fast3686, fast3890, fast3286, mg7550, mb7420, twg850, tcw770, 
+  twg870, evm3236, evw32c, tc8715, tc7200, generic
 
-bcm2dump v0.9.1 Copyright (C) 2016-2018 Joseph C. Lehner
+bcm2dump v0.9.4 Copyright (C) 2016-2020 Joseph C. Lehner
 Licensed under the GNU GPLv3; source code is available at
-https://github.com/jclehner/bcm2utils
+https://github.com/jclehner/bcm2-utils
 ```
 
 This utility can be used to dump firmware or other flash contents.
@@ -188,12 +191,14 @@ Commands:
   help
 
 Profiles:
-  gen2pslc, cg3000, sbg6580, fast3686dna, twg850, tcw770, 
-  twg870, evm3236, tc7200, generic
+  gen2pslc, cg3000, cg3101, cbw383zn, ch7485e, c6300bd, 
+  sbg6580, fast3686, fast3890, fast3286, mg7550, mb7420, 
+  twg850, tcw770, twg870, evm3236, evw32c, tc8715, tc7200, 
+  generic
 
-bcm2cfg v0.9.1 Copyright (C) 2016-2018 Joseph C. Lehner
+bcm2cfg v0.9.4 Copyright (C) 2016-2020 Joseph C. Lehner
 Licensed under the GNU GPLv3; source code is available at
-https://github.com/jclehner/bcm2utils
+https://github.com/jclehner/bcm2-utils
 ```
 
 `bcm2cfg` can be used to inspect and modify device configuration data. Currently supported formats are the
