@@ -1,6 +1,6 @@
 /**
  * bcm2-utils
- * Copyright (C) 2016 Joseph Lehner <joseph.c.lehner@gmail.com>
+ * Copyright (C) 2016-2020 Joseph Lehner <joseph.c.lehner@gmail.com>
  *
  * bcm2-utils is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -109,7 +109,7 @@ int usage(bool help = false)
 	os << get_profile_names(60, 2) << endl;
 	os << endl;
 	os <<
-			"bcm2cfg " VERSION " Copyright (C) 2016-2018 Joseph C. Lehner\n"
+			"bcm2cfg " VERSION " Copyright (C) 2016-2020 Joseph C. Lehner\n"
 			"Licensed under the GNU GPLv3; source code is available at\n"
 			"https://github.com/jclehner/bcm2-utils\n"
 			"\n";
