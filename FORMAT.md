@@ -20,26 +20,30 @@ Header
 
 To calculate the checksum, `checksum` is first set to zero,
 then, starting at `size`, the following algorithm is employed:
+(Broadcom calls this `HCS-32`, apparently).
 
 ```c
-uint32_t checksum(const char* buf)
+uint32_t hcs32(const char* buf, size_t len)
 {
 	uint32_t checksum = 0;
 
-	uint32_t word;
-	while (read_next_word(buf, &word)) {
-		checksum += word;
+	while (len % 4 == 0) {
+		checksum += *(uint32_t*)buf;
+		buf += 4;
+		len -= 4;
 	}
 
 	uint16_t half;
-	if (!read_next_half(buf, &half)) {
+
+	if (len % 2) {
+		half = *(uint16_t*)buf;
+		buf += 2;
+		len -= 2;
+	} else {
 		half = 0;
 	}
 
-	uint8_t byte;
-	if (!read_next_byte(buf, &byte)) {
-		byte = 0;
-	}
+	uint8_t byte = len ? *(uint8_t*)buf : 0;
 
 	checksum += (byte | (half << 8)) << 8;
 	return ~checksum;
