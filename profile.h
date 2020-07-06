@@ -262,9 +262,8 @@ struct bcm2_profile {
 	// default encryption keys for backups without a password
 	char cfg_defkeys[8][65];
 	// key derivation function for encrypted configuration files.
-	// key is a 32 byte buffer (256 bit RSA). return false if
-	// key derivation failed.
-	bool (*cfg_keyfun)(const char *password, unsigned char *key);
+	// return false if key derivation failed.
+	bool (*cfg_keyfun)(const char *password, unsigned char *key, size_t size);
 	// address spaces that can be dumped
 	struct bcm2_typed_val options[8];
 	struct bcm2_addrspace spaces[8];

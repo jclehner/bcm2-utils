@@ -19,17 +19,17 @@
 
 #include "profile.h"
 
-static bool keyfun_tc7200(const char *password, unsigned char *key)
+static bool keyfun_tc7200(const char *password, unsigned char *key, size_t size)
 {
 	unsigned i = 0;
-	for (; i < 32; ++i) {
+	for (; i < size; ++i) {
 		key[i] = i & 0xff;
 	}
 
 	if (password && *password) {
 		size_t len = strlen(password);
-		if (len > 32) {
-			len = 32;
+		if (len > size) {
+			len = size;
 		}
 		memcpy(key, password, len);
 	}

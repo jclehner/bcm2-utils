@@ -199,11 +199,11 @@ class profile_wrapper : public profile
 		}
 
 		unsigned char key[32];
-		if (!m_p->cfg_keyfun(pw.c_str(), key)) {
+		if (!m_p->cfg_keyfun(pw.c_str(), key, sizeof(key))) {
 			throw runtime_error(name() + ": key derivation failed");
 		}
 
-		return string(reinterpret_cast<char*>(key), 32);
+		return string(reinterpret_cast<char*>(key), sizeof(key));
 	}
 
 	private:
