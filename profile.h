@@ -241,7 +241,7 @@ struct bcm2_profile {
 	// little endian MIPS (not supported at the moment)
 	bool mipsel;
 	// architecture
-	bcm2_arch arch;
+	enum bcm2_arch arch;
 	// signature for ProgramStore images
 	uint16_t pssig;
 	// signature for compressed bootloader images
