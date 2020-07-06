@@ -56,10 +56,12 @@ inline const unsigned char* data(const string& buf)
 	return reinterpret_cast<const unsigned char*>(buf.data());
 }
 
+#ifndef BCM2UTILS_USE_COMMON_CRYPTO
 inline unsigned char* data(string& buf)
 {
 	return reinterpret_cast<unsigned char*>(&buf[0]);
 }
+#endif
 
 void check_keysize(const string& key, size_t size, const string& name)
 {

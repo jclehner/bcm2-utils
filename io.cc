@@ -295,14 +295,16 @@ class telnet : public tcp
 	void handle_op_opt(int op, int opt);
 	void send_op_opt(int op, int opt);
 
+#if 0
 	static int constexpr opt_binary = 0;
 	static int constexpr opt_echo = 1;
 	static int constexpr opt_suppres_ga = 3;
 	static int constexpr opt_remote_flow_ctrl = 33;
 
-	static int constexpr op_will = 251;
 	static int constexpr op_do = 252;
 	static int constexpr op_wont = 253;
+#endif
+	static int constexpr op_will = 251;
 	static int constexpr op_dont = 254;
 };
 

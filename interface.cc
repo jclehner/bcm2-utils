@@ -412,7 +412,7 @@ bool bfc_telnet::login(const string& user, const string& pass)
 	writeln(pass);
 	writeln();
 
-	foreach_line([this, &send_newline] (const string& line) {
+	foreach_line([this] (const string& line) {
 		if (contains(line, "Invalid login")) {
 			return true;
 		} else if (is_bfc_prompt(line)) {
