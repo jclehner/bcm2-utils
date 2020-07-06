@@ -403,6 +403,23 @@ struct bcm2_profile bcm2_profiles[] = {
 			{
 				.name = "ram",
 			},
+			{
+				// FIXME
+				.name = "flash",
+				.parts = {
+						{ "bootloader" },
+						{ "dynnv", 0, 0, "dyn" },
+						{ "permnv", 0, 0, "perm" },
+						{ "image1" },
+						{ "image2" },
+						{ "image3" },
+						{ "image3e" },
+						{ "linux" },
+						{ "linuxapps" },
+						{ "linuxkfs" },
+						{ "dhtml" }
+				},
+			}
 		},
 		.versions = {
 			{
