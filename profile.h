@@ -94,6 +94,7 @@ enum bcm2_arch
 {
 	BCM2_UNKNOWN = 0,
 	BCM2_3345,
+	BCM2_3368,
 	BCM2_3380,
 	BCM2_3383,
 	BCM2_3384,

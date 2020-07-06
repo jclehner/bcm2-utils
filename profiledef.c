@@ -527,7 +527,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "twg850",
 		.pretty = "Thomson TWG850-4",
-		.arch = BCM2_3345,
+		.arch = BCM2_3368,
 		.baudrate = 115200,
 		.pssig = 0xa815,
 		.blsig = 0x3345,
