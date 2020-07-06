@@ -606,8 +606,8 @@ bool interface::foreach_line(function<bool(const string&)> f, unsigned timeout, 
 		if (pending(timeout_line)) {
 			string line = readln();
 			if (line.empty()) {
-				logger::d() << "line was empty, but pending() returned true" << endl;
-				break;
+				//logger::d() << "line was empty, but pending() returned true" << endl;
+				//break;
 			}
 			if (f(line)) {
 				return true;

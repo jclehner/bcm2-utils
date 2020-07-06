@@ -161,7 +161,6 @@ class nv_group_mlog : public nv_group
 				NV_VAR(nv_p16string, "http_erouter_pass"),
 				NV_VAR2(nv_remote_acc_methods, "remote_acc_methods"),
 				NV_VAR(nv_fzstring<16>, "remote_acc_user"),
-				NV_VAR(nv_fzstring<16>, "remote_acc_pass"),
 				NV_VAR3(flags & BCM2_CFG_DATA_USERIF_ALT, nv_data, "", 112),
 				NV_VAR2(nv_ipstacks, "telnet_ipstacks"),
 				NV_VAR2(nv_ipstacks, "ssh_ipstacks"),
