@@ -44,7 +44,8 @@ all: $(bcm2dump) $(bcm2cfg) $(psextract)
 
 release: clean all
 
-release-linux: release
+release-linux:
+	LDFLAGS="-static-libstdc++ -static-libgcc" make release
 	$(call PackageRelease,linux)
 
 release-macos: release

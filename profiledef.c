@@ -19,17 +19,17 @@
 
 #include "profile.h"
 
-static bool keyfun_tc7200(const char *password, unsigned char *key)
+static bool keyfun_tc7200(const char *password, unsigned char *key, size_t size)
 {
 	unsigned i = 0;
-	for (; i < 32; ++i) {
+	for (; i < size; ++i) {
 		key[i] = i & 0xff;
 	}
 
 	if (password && *password) {
 		size_t len = strlen(password);
-		if (len > 32) {
-			len = 32;
+		if (len > size) {
+			len = size;
 		}
 		memcpy(key, password, len);
 	}
@@ -38,14 +38,39 @@ static bool keyfun_tc7200(const char *password, unsigned char *key)
 }
 
 struct bcm2_profile bcm2_profiles[] = {
-	// because we don't want all unencrypted files with this md5 key
-	// to show up as "cg3000"
 	{
-		.name = "gen2pslc",
-		.pretty = "Generic Profile (MD5 2Pslc...)",
+		.name = "generic",
+		.pretty = "Generic Profile",
+		.baudrate = 115200,
 		.cfg_md5key = "3250736c633b752865676d64302d2778",
+		.cfg_defkeys = {
+			"0000000000000000000000000000000000000000000000000000000000000000",
+			"0001020304050607080910111213141516171819202122232425262728293031",
+			"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+		},
 		.spaces = {
-				{ .name = "ram" },
+			{
+				.name = "ram",
+			},
+			// this hack enables us to use the bfc_flash dumper on
+			// any device (provided you specify a dump size).
+			{
+				.name = "flash",
+				.parts = {
+						{ "bootloader" },
+						{ "dynnv", 0, 0, "dyn" },
+						{ "vennv", 0, 0, "ven" },
+						{ "permnv", 0, 0, "perm" },
+						{ "image1" },
+						{ "image2" },
+						{ "image3" },
+						{ "image3e" },
+						{ "linux" },
+						{ "linuxapps" },
+						{ "linuxkfs" },
+						{ "dhtml" }
+				},
+			}
 		},
 	},
 #if 0
@@ -85,6 +110,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "cbw383zn",
 		.pretty = "NetMASTER CBW-383ZN",
+		.arch = BCM2_3383,
 		.pssig = 0x8364,
 		.blsig = 0x3383,
 		.cfg_flags = BCM2_CFG_ENC_DES_ECB | BCM2_CFG_FMT_GWS_FULL_ENC,
@@ -215,6 +241,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "c6300bd",
 		.pretty = "Netgear C6300BD",
+		.arch = BCM2_3384,
 		.baudrate = 115200,
 		.pssig = 0xa0eb,
 		.kseg1mask = 0x20000000,
@@ -294,6 +321,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "fast3686",
 		.pretty = "Sagemcom F@ST 3686",
+		.arch = BCM2_3384,
 		.cfg_flags = BCM2_CFG_ENC_XOR | BCM2_CFG_FMT_GWS_FULL_ENC | BCM2_CFG_DATA_USERIF_ALT,
 		.cfg_md5key = "3250736c633b752865676d64302d2778",
 		.cfg_defkeys = { "80" },
@@ -363,6 +391,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "fast3890",
 		.pretty = "Sagemcom F@ST 3890",
+		.arch = BCM2_3390,
 		.pssig = 0x3390,
 		.kseg1mask = 0x20000000,
 		.magic = {
@@ -402,6 +431,31 @@ struct bcm2_profile bcm2_profiles[] = {
 		.spaces = {
 			{
 				.name = "ram",
+			},
+			{
+				// FIXME
+				.name = "flash",
+				.parts = {
+						{ "bootloader" },
+						{ "dynnv", 0, 0, "dyn" },
+						{ "permnv", 0, 0, "perm" },
+						{ "image1" },
+						{ "image2" },
+						{ "image3" },
+						{ "image3e" },
+						{ "linux" },
+						{ "linuxapps" },
+						{ "linuxkfs" },
+						{ "dhtml" }
+				},
+			}
+		},
+		.versions = {
+			{
+				.intf = BCM2_INTF_BFC,
+				.options = {
+					BCM2_VAL_STR("bfc:su_password", "$agem001"),
+				},
 			},
 		},
 	},
@@ -473,6 +527,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "twg850",
 		.pretty = "Thomson TWG850-4",
+		.arch = BCM2_3368,
 		.baudrate = 115200,
 		.pssig = 0xa815,
 		.blsig = 0x3345,
@@ -530,6 +585,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "twg870",
 		.pretty = "Thomson TWG870",
+		.arch = BCM2_3380,
 		.baudrate = 115200,
 		.pssig = 0xa81b,
 		.blsig = 0x3380,
@@ -711,6 +767,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "tc7200",
 		.pretty = "Technicolor TC7200",
+		.arch = BCM2_3383,
 		.baudrate = 115200,
 		.pssig = 0xa825,
 		.blsig = 0x3386,
@@ -883,39 +940,6 @@ struct bcm2_profile bcm2_profiles[] = {
 					{ "bfc:conthread_instance", { 0x81315c24 }},
 				},
 			},
-		},
-	},
-	{
-		.name = "generic",
-		.pretty = "Generic Profile",
-		.baudrate = 115200,
-		.cfg_defkeys = {
-			"0000000000000000000000000000000000000000000000000000000000000000",
-			"0001020304050607080910111213141516171819202122232425262728293031",
-			"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
-		},
-		.spaces = {
-			{
-				.name = "ram",
-			},
-			// this hack enables us to use the bfc_flash dumper on
-			// any device (provided you specify a dump size).
-			{
-				.name = "flash",
-				.parts = {
-						{ "bootloader" },
-						{ "dynnv", 0, 0, "dyn" },
-						{ "permnv", 0, 0, "perm" },
-						{ "image1" },
-						{ "image2" },
-						{ "image3" },
-						{ "image3e" },
-						{ "linux" },
-						{ "linuxapps" },
-						{ "linuxkfs" },
-						{ "dhtml" }
-				},
-			}
 		},
 	},
 	// end marker

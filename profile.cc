@@ -19,6 +19,7 @@
 
 #include <iostream>
 #include <cstring>
+#include <cctype>
 #include <set>
 #include "profile.h"
 #include "util.h"
@@ -70,6 +71,17 @@ string lpad(string str, size_t padding)
 string row(const string& name, size_t padding, const string& value)
 {
 	return rpad(name, padding) + "  " + value;
+}
+
+bool check(const string& str, int (*func)(int))
+{
+	bool isnt = false;
+
+	for (char c : str) {
+		isnt |= !func(c);
+	}
+
+	return !isnt;
 }
 
 template<class T> string row(const string& name, size_t padding, const T& value)
@@ -187,11 +199,11 @@ class profile_wrapper : public profile
 		}
 
 		unsigned char key[32];
-		if (!m_p->cfg_keyfun(pw.c_str(), key)) {
+		if (!m_p->cfg_keyfun(pw.c_str(), key, sizeof(key))) {
 			throw runtime_error(name() + ": key derivation failed");
 		}
 
-		return string(reinterpret_cast<char*>(key), 32);
+		return string(reinterpret_cast<char*>(key), sizeof(key));
 	}
 
 	private:
@@ -398,7 +410,15 @@ do { \
 
 const bcm2_typed_val* version::get_opt(const string& name, bcm2_type type) const
 {
-	auto ret = get_version_opt(m_p, name, BCM2_TYPE_NIL);
+	const bcm2_typed_val* ret = nullptr;
+
+	auto it = profile::s_overrides.find(name);
+	if (it != profile::s_overrides.end()) {
+		ret = &(it->second);
+	} else {
+		ret = get_version_opt(m_p, name, BCM2_TYPE_NIL);
+	}
+
 	if (ret && (ret->type == type || type == BCM2_TYPE_NIL)) {
 		return ret;
 	}
@@ -508,6 +528,7 @@ func addrspace::get_erase_func(bcm2_interface intf) const
 { return get_func(m_erase_funcs, intf); }
 
 vector<profile::sp> profile::s_profiles;
+map<string, bcm2_typed_val> profile::s_overrides;
 
 const profile::sp& profile::get(const string& name)
 {
@@ -571,6 +592,66 @@ void profile::print_to_stdout(bool verbose) const
 		}
 	}
 }
+
+void profile::parse_opt_override(const string& str)
+{
+	auto tok = split(str, '=', true, 2);
+	bcm2_typed_val val = { .type = BCM2_TYPE_NIL };
+
+	if (tok.size() != 2) {
+		throw user_error("invalid override: '" + str + "'");
+	}
+
+	size_t offset = 0;
+	bool hex = false;
+
+	if (tok[1].empty()) {
+		val.type = BCM2_TYPE_STR;
+	} else if (tok[1].size() > 2 && tok[1][1] == ':') {
+		switch (tok[1][0]) {
+			case 'n':
+				val.type = BCM2_TYPE_U32;
+				break;
+			case 'x':
+				hex = true;
+				// fall through
+			case 's':
+				val.type = BCM2_TYPE_STR;
+				break;
+		}
+
+		if (val.type != BCM2_TYPE_NIL) {
+			offset = 2;
+		} else {
+			throw user_error("invalid type prefix: '" + tok[1] + "'");
+		}
+	} else if (check(tok[1], &isdigit)) {
+		val.type = BCM2_TYPE_U32;
+	} else if (tok[1].size() > 2 && tok[1].substr(0, 2) == "0x") {
+		if (check(tok[1].substr(2), &isxdigit)) {
+			val.type = BCM2_TYPE_U32;
+			offset = 2;
+			hex = true;
+		}
+	} else {
+		val.type = BCM2_TYPE_STR;
+	}
+
+	string valstr = tok[1].substr(offset);
+
+	if (val.type == BCM2_TYPE_U32) {
+		val.val.n = lexical_cast<uint32_t>(valstr, hex ? 16 : 10);
+	} else {
+		if (valstr.size() >= sizeof(val.val.s)) {
+			throw user_error("value exceeds maximum length: '" + valstr + "'");
+		}
+
+		memcpy(val.val.s, valstr.data(), valstr.size());
+	}
+
+	profile::s_overrides[tok[0]] = val;
+}
+
 
 uint32_t magic_size(const bcm2_magic* magic)
 {

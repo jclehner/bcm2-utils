@@ -74,7 +74,6 @@ class settings : public nv_compound
 	private:
 	std::string m_raw_data;
 	bool m_is_raw = false;
-	bool m_permissive = false;
 	list m_groups;
 };
 

@@ -51,6 +51,7 @@ void usage(bool help = false)
 	os << "  -F               Force operation" << endl;
 	os << "  -P <profile>     Force profile" << endl;
 	os << "  -L <filename>    I/O log file" << endl;
+	os << "  -O <opt>=<val>   Override option value" << endl;
 	os << "  -q               Decrease verbosity" << endl;
 	os << "  -v               Increase verbosity" << endl;
 	os << endl;
@@ -432,7 +433,7 @@ int do_main(int argc, char** argv)
 
 	opterr = 0;
 
-	while ((opt = getopt(argc, argv, "hsARFqvP:L:")) != -1) {
+	while ((opt = getopt(argc, argv, "hsARFqvP:L:O:")) != -1) {
 		switch (opt) {
 		case 's':
 			opts |= opt_safe;
@@ -455,6 +456,9 @@ int do_main(int argc, char** argv)
 			break;
 		case 'P':
 			profile = optarg;
+			break;
+		case 'O':
+			profile::parse_opt_override(optarg);
 			break;
 		case 'L':
 			io::set_logfile(optarg);

@@ -165,6 +165,7 @@ string magic_to_string(const string& buf, bool pretty, char filler)
 	return to_hex(buf);
 }
 
+#if 0
 size_t compound_size(const nv_compound& c)
 {
 	size_t size = 0;
@@ -179,6 +180,7 @@ size_t compound_size(const nv_compound& c)
 
 	return size;
 }
+#endif
 
 size_t str_prefix_max(int flags)
 {

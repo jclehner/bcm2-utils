@@ -58,7 +58,7 @@ enum bcm2_cfg_flags
 	// a block size of 8 bytes, and data length of
 	// 9 bytes, the 7 padding bytes would be
 	//
-	// 00 00 00 00 00 00 07
+	// 00 00 00 00 00 00 06
 	//
 	BCM2_CFG_PAD_ANSI_ISH = 1 << 7,
 
@@ -88,6 +88,17 @@ enum bcm2_mem
 	BCM2_MEM_NONE = 0,
 	BCM2_MEM_R = 1,
 	BCM2_MEM_RW = 2
+};
+
+enum bcm2_arch
+{
+	BCM2_UNKNOWN = 0,
+	BCM2_3345,
+	BCM2_3368,
+	BCM2_3380,
+	BCM2_3383,
+	BCM2_3384,
+	BCM2_3390,
 };
 
 struct bcm2_partition {
@@ -230,6 +241,8 @@ struct bcm2_profile {
 	char pretty[64];
 	// little endian MIPS (not supported at the moment)
 	bool mipsel;
+	// architecture
+	enum bcm2_arch arch;
 	// signature for ProgramStore images
 	uint16_t pssig;
 	// signature for compressed bootloader images
@@ -250,10 +263,10 @@ struct bcm2_profile {
 	// default encryption keys for backups without a password
 	char cfg_defkeys[8][65];
 	// key derivation function for encrypted configuration files.
-	// key is a 32 byte buffer (256 bit RSA). return false if
-	// key derivation failed.
-	bool (*cfg_keyfun)(const char *password, unsigned char *key);
+	// return false if key derivation failed.
+	bool (*cfg_keyfun)(const char *password, unsigned char *key, size_t size);
 	// address spaces that can be dumped
+	struct bcm2_typed_val options[8];
 	struct bcm2_addrspace spaces[8];
 	struct bcm2_version versions[8];
 };
@@ -519,9 +532,13 @@ class profile
 	static const sp& get(const std::string& name);
 	static const std::vector<profile::sp>& list();
 
+	static void parse_opt_override(const std::string& str);
+
+	friend class version;
 
 	private:
 	static std::vector<profile::sp> s_profiles;
+	static std::map<std::string, bcm2_typed_val> s_overrides;
 };
 
 uint32_t magic_size(const bcm2_magic* magic);
