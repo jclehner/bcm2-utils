@@ -404,6 +404,14 @@ struct bcm2_profile bcm2_profiles[] = {
 				.name = "ram",
 			},
 		},
+		.versions = {
+			{
+				.intf = BCM2_INTF_BFC,
+				.options = {
+					BCM2_VAL_STR("bfc:su_password", "$agem001"),
+				},
+			},
+		},
 	},
 	{
 		.name = "mg7550",
