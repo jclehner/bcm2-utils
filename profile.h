@@ -254,6 +254,7 @@ struct bcm2_profile {
 	// key derivation failed.
 	bool (*cfg_keyfun)(const char *password, unsigned char *key);
 	// address spaces that can be dumped
+	struct bcm2_typed_val options[8];
 	struct bcm2_addrspace spaces[8];
 	struct bcm2_version versions[8];
 };
@@ -519,9 +520,13 @@ class profile
 	static const sp& get(const std::string& name);
 	static const std::vector<profile::sp>& list();
 
+	static void parse_opt_override(const std::string& str);
+
+	friend class version;
 
 	private:
 	static std::vector<profile::sp> s_profiles;
+	static std::map<std::string, bcm2_typed_val> s_overrides;
 };
 
 uint32_t magic_size(const bcm2_magic* magic);
