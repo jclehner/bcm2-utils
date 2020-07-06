@@ -90,6 +90,16 @@ enum bcm2_mem
 	BCM2_MEM_RW = 2
 };
 
+enum bcm2_arch
+{
+	BCM2_UNKNOWN = 0,
+	BCM2_3345,
+	BCM2_3380,
+	BCM2_3383,
+	BCM2_3384,
+	BCM2_3390,
+};
+
 struct bcm2_partition {
 	// partition name
 	char name[32];
@@ -230,6 +240,8 @@ struct bcm2_profile {
 	char pretty[64];
 	// little endian MIPS (not supported at the moment)
 	bool mipsel;
+	// architecture
+	bcm2_arch arch;
 	// signature for ProgramStore images
 	uint16_t pssig;
 	// signature for compressed bootloader images

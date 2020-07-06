@@ -85,6 +85,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "cbw383zn",
 		.pretty = "NetMASTER CBW-383ZN",
+		.arch = BCM2_3383,
 		.pssig = 0x8364,
 		.blsig = 0x3383,
 		.cfg_flags = BCM2_CFG_ENC_DES_ECB | BCM2_CFG_FMT_GWS_FULL_ENC,
@@ -215,6 +216,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "c6300bd",
 		.pretty = "Netgear C6300BD",
+		.arch = BCM2_3384,
 		.baudrate = 115200,
 		.pssig = 0xa0eb,
 		.kseg1mask = 0x20000000,
@@ -294,6 +296,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "fast3686",
 		.pretty = "Sagemcom F@ST 3686",
+		.arch = BCM2_3384,
 		.cfg_flags = BCM2_CFG_ENC_XOR | BCM2_CFG_FMT_GWS_FULL_ENC | BCM2_CFG_DATA_USERIF_ALT,
 		.cfg_md5key = "3250736c633b752865676d64302d2778",
 		.cfg_defkeys = { "80" },
@@ -363,6 +366,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "fast3890",
 		.pretty = "Sagemcom F@ST 3890",
+		.arch = BCM2_3390,
 		.pssig = 0x3390,
 		.kseg1mask = 0x20000000,
 		.magic = {
@@ -498,6 +502,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "twg850",
 		.pretty = "Thomson TWG850-4",
+		.arch = BCM2_3345,
 		.baudrate = 115200,
 		.pssig = 0xa815,
 		.blsig = 0x3345,
@@ -555,6 +560,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "twg870",
 		.pretty = "Thomson TWG870",
+		.arch = BCM2_3380,
 		.baudrate = 115200,
 		.pssig = 0xa81b,
 		.blsig = 0x3380,
@@ -736,6 +742,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "tc7200",
 		.pretty = "Technicolor TC7200",
+		.arch = BCM2_3383,
 		.baudrate = 115200,
 		.pssig = 0xa825,
 		.blsig = 0x3386,
