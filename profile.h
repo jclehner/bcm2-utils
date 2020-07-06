@@ -58,7 +58,7 @@ enum bcm2_cfg_flags
 	// a block size of 8 bytes, and data length of
 	// 9 bytes, the 7 padding bytes would be
 	//
-	// 00 00 00 00 00 00 07
+	// 00 00 00 00 00 00 06
 	//
 	BCM2_CFG_PAD_ANSI_ISH = 1 << 7,
 
