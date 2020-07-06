@@ -38,14 +38,39 @@ static bool keyfun_tc7200(const char *password, unsigned char *key)
 }
 
 struct bcm2_profile bcm2_profiles[] = {
-	// because we don't want all unencrypted files with this md5 key
-	// to show up as "cg3000"
 	{
-		.name = "gen2pslc",
-		.pretty = "Generic Profile (MD5 2Pslc...)",
+		.name = "generic",
+		.pretty = "Generic Profile",
+		.baudrate = 115200,
 		.cfg_md5key = "3250736c633b752865676d64302d2778",
+		.cfg_defkeys = {
+			"0000000000000000000000000000000000000000000000000000000000000000",
+			"0001020304050607080910111213141516171819202122232425262728293031",
+			"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+		},
 		.spaces = {
-				{ .name = "ram" },
+			{
+				.name = "ram",
+			},
+			// this hack enables us to use the bfc_flash dumper on
+			// any device (provided you specify a dump size).
+			{
+				.name = "flash",
+				.parts = {
+						{ "bootloader" },
+						{ "dynnv", 0, 0, "dyn" },
+						{ "vennv", 0, 0, "ven" },
+						{ "permnv", 0, 0, "perm" },
+						{ "image1" },
+						{ "image2" },
+						{ "image3" },
+						{ "image3e" },
+						{ "linux" },
+						{ "linuxapps" },
+						{ "linuxkfs" },
+						{ "dhtml" }
+				},
+			}
 		},
 	},
 #if 0
@@ -915,39 +940,6 @@ struct bcm2_profile bcm2_profiles[] = {
 					{ "bfc:conthread_instance", { 0x81315c24 }},
 				},
 			},
-		},
-	},
-	{
-		.name = "generic",
-		.pretty = "Generic Profile",
-		.baudrate = 115200,
-		.cfg_defkeys = {
-			"0000000000000000000000000000000000000000000000000000000000000000",
-			"0001020304050607080910111213141516171819202122232425262728293031",
-			"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
-		},
-		.spaces = {
-			{
-				.name = "ram",
-			},
-			// this hack enables us to use the bfc_flash dumper on
-			// any device (provided you specify a dump size).
-			{
-				.name = "flash",
-				.parts = {
-						{ "bootloader" },
-						{ "dynnv", 0, 0, "dyn" },
-						{ "permnv", 0, 0, "perm" },
-						{ "image1" },
-						{ "image2" },
-						{ "image3" },
-						{ "image3e" },
-						{ "linux" },
-						{ "linuxapps" },
-						{ "linuxkfs" },
-						{ "dhtml" }
-				},
-			}
 		},
 	},
 	// end marker
