@@ -17,7 +17,7 @@ else ifneq (,$(findstring MINGW,$(MSYSTEM)))
 	LDFLAGS += -lws2_32 -static
 	BINEXT = .exe
 else
-	bcm2cfg_LIBS += -lssl -lcrypto
+	bcm2cfg_LIBS += -lcrypto
 endif
 
 profile_OBJ = profile.o profiledef.o
