@@ -51,6 +51,9 @@ struct bcm2_profile bcm2_profiles[] = {
 		.spaces = {
 			{
 				.name = "ram",
+				.parts = {
+						{ "bootloader", 0xbfc00000, 0 }
+				},
 			},
 			// this hack enables us to use the bfc_flash dumper on
 			// any device (provided you specify a dump size).
