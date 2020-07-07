@@ -85,6 +85,21 @@ uint32_t get_max_magic_addr(const profile::sp& p, int intf_id)
 	return ret;
 }
 
+set<string> get_all_su_passwords()
+{
+	set<string> ret;
+
+	for (auto p : profile::list()) {
+		for (auto v : p->versions()) {
+			if (v.has_opt("bfc:su_password")) {
+				ret.insert(v.get_opt_str("bfc:su_password"));
+			}
+		}
+	}
+
+	return ret;
+}
+
 class telnet
 {
 	public:
@@ -180,13 +195,27 @@ void bfc::do_elevate_privileges()
 		return;
 	}
 
-	runcmd("su");
-	usleep(200000);
-	writeln(m_version.get_opt_str("bfc:su_password", "brcm"));
-	writeln();
+	set<string> passwords;
 
-	if (check_privileged()) {
-		return;
+	if (m_version.has_opt("bfc:su_password")) {
+		passwords.insert(m_version.get_opt_str("bfc:su_password"));
+	} else {
+		passwords = get_all_su_passwords();
+	}
+
+	for (auto pw : passwords) {
+		runcmd("su");
+		usleep(200000);
+		writeln(pw);
+		writeln();
+
+		if (check_privileged()) {
+			if (passwords.size() > 1) {
+				logger::v() << "su password is '" << pw << "'" << endl;
+			}
+
+			return;
+		}
 	}
 
 	uint32_t ct_instance = m_version.get_opt_num("bfc:conthread_instance", 0);
