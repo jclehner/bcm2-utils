@@ -127,12 +127,12 @@ void handle_exception(const exception& e, bool io_log = true)
 	logger::e() << endl << "error: " << e.what() << endl;
 
 	if (io_log) {
-		auto lines = io::get_last_lines();
+		auto lines = logger::get_last_io_lines();
 		if (!lines.empty()) {
 			logger::d() << endl;
 			logger::d() << "context:" << endl;
 
-			for (string line : io::get_last_lines()) {
+			for (string line : lines) {
 				logger::d() << "  " << line << endl;
 			}
 
@@ -461,7 +461,7 @@ int do_main(int argc, char** argv)
 			profile::parse_opt_override(optarg);
 			break;
 		case 'L':
-			io::set_logfile(optarg);
+			logger::set_logfile(optarg);
 			break;
 		case 'h':
 		default:

@@ -70,6 +70,41 @@ bool is_unescaped(const string& str, string::size_type pos)
 	return ret;
 }
 
+// inspired by http://wordaligned.org/articles/cpp-streambufs
+//
+// we don't care if the operations on the ofstream's buffer fail,
+// as this is expected if we're not using a logfile!
+
+class logbuf : public streambuf
+{
+	public:
+	logbuf(ostream& os)
+	: m_os(os)
+	{}
+
+	static ofstream file;
+
+	protected:
+	virtual int overflow(int c) override
+	{
+		file.rdbuf()->sputc(c);
+		return m_os.rdbuf()->sputc(c);
+	}
+
+	virtual int sync() override
+	{
+		file.rdbuf()->pubsync();
+		return m_os.rdbuf()->pubsync();
+	}
+
+	private:
+	ostream& m_os;
+};
+
+ofstream logbuf::file;
+
+ostream log_cout(new logbuf(cout));
+ostream log_cerr(new logbuf(cerr));
 }
 
 string trim(string str)
@@ -189,6 +224,7 @@ std::string transform(const std::string& str, std::function<int(int)> f)
 ofstream logger::s_bucket;
 int logger::s_loglevel = logger::info;
 bool logger::s_no_stdout = false;
+list<string> logger::s_lines;
 
 constexpr int logger::trace;
 constexpr int logger::debug;
@@ -202,9 +238,9 @@ ostream& logger::log(int severity)
 	if (severity < s_loglevel) {
 		return s_bucket;
 	} else if (s_no_stdout || severity >= warn) {
-		return cerr;
+		return log_cerr;
 	} else {
-		return cout;
+		return log_cout;
 	}
 }
 
@@ -214,7 +250,27 @@ void logger::log(int severity, const char* format, va_list args)
 		return;
 	}
 
-	vfprintf((s_no_stdout || severity >= warn) ? stderr : stdout, format, args);
+	char buf[256];
+	vsnprintf(buf, sizeof(buf), format, args);
+	log(severity) << buf;
+}
+
+void logger::log_io(const string& line, bool in)
+{
+	if (s_lines.size() == 50) {
+		s_lines.pop_front();
+	}
+
+	s_lines.push_back((in ? "==> " : "<== ") + (line.empty() ?
+				"(empty)"s : ("'" + trim(line.c_str()) + "'")));
+
+	ostream& os = logbuf::file ? logbuf::file : log(trace);
+	os << s_lines.back() << endl;
+}
+
+void logger::set_logfile(const string& filename)
+{
+	logbuf::file.open(filename.c_str());
 }
 
 string getaddrinfo_category::message(int condition) const

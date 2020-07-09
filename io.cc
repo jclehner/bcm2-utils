@@ -767,17 +767,4 @@ shared_ptr<io> io::open_serial(const char* tty, unsigned speed)
 {
 	return make_shared<serial>(tty, speed);
 }
-
-list<string> io::get_last_lines()
-{
-	return lines;
-}
-
-void io::set_logfile(const char* filename)
-{
-	logfile.open(filename);
-	if (!logfile) {
-		logger::w() << "failed to open io logfile" << endl;
-	}
-}
 }

@@ -34,6 +34,7 @@
 #include <cerrno>
 #include <vector>
 #include <string>
+#include <list>
 #include <ios>
 
 #ifdef _WIN32
@@ -314,6 +315,7 @@ class logger
 	static std::ostream& log(int severity);
 
 	static void log(int severity, const char* format, va_list args);
+	static void log_io(const std::string& line, bool in);
 
 	static std::ostream& t()
 	{ return log(trace); }
@@ -347,7 +349,13 @@ class logger
 	static void no_stdout(bool no_stdout = true)
 	{ s_no_stdout = no_stdout; }
 
+	static void set_logfile(const std::string& filename);
+
+	static std::list<std::string> get_last_io_lines()
+	{ return s_lines; }
+
 	private:
+	static std::list<std::string> s_lines;
 	static std::ofstream s_bucket;
 	static int s_loglevel;
 	static bool s_no_stdout;

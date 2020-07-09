@@ -47,9 +47,6 @@ class io
 	static sp open_serial(const char* tty, unsigned speed);
 	static sp open_telnet(const std::string& address, uint16_t port);
 	static sp open_tcp(const std::string& address, uint16_t port);
-
-	static std::list<std::string> get_last_lines();
-	static void set_logfile(const char* filename);
 };
 }
 
