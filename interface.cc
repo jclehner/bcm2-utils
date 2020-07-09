@@ -57,6 +57,12 @@ bool is_bfc_prompt(const string& str)
 	return is_bfc_prompt_privileged(str) || is_bfc_prompt_unprivileged(str);
 }
 
+bool is_bfc_login_prompt(const string& line)
+{
+	return contains(line, "Login:") || contains(line, "login:")
+		|| contains(line, "Username:") || contains(line, "username:");
+}
+
 bool is_char_device(const string& filename)
 {
 	struct stat st;
@@ -356,11 +362,6 @@ class bfc_telnet : public bfc, public telnet
 	private:
 	unsigned m_status = invalid;
 	bool m_have_login_prompt = false;
-
-	static bool is_login_prompt(const string& line)
-	{
-		return contains(line, "Login:") || contains(line, "login:");
-	}
 };
 
 bool bfc_telnet::is_ready(bool passive)
@@ -376,7 +377,7 @@ bool bfc_telnet::is_ready(bool passive)
 			} else if (m_status == connected) {
 				if (contains(line, "refused") || contains(line, "logged and reported")) {
 					throw user_error("ip is blocked by server");
-				} else if (is_login_prompt(line)) {
+				} else if (is_bfc_login_prompt(line)) {
 					m_have_login_prompt = true;
 					return true;
 				}
@@ -408,7 +409,7 @@ bool bfc_telnet::login(const string& user, const string& pass)
 
 	while (!have_prompt) {
 		have_prompt = foreach_line([] (const string& line) {
-			return is_login_prompt(line);
+			return is_bfc_login_prompt(line);
 		}, 3000);
 
 		if (!have_prompt) {
