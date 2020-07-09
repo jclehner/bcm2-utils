@@ -1,5 +1,5 @@
-CC = $(CROSS)gcc
-CXX = $(CROSS)g++
+CC ?= $(CROSS)gcc
+CXX ?= $(CROSS)g++
 STRIP = $(CROSS)strip
 LIBS ?=
 VERSION = $(shell git describe --always)
