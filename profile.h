@@ -51,8 +51,8 @@ enum bcm2_cfg_flags
 
 	BCM2_CFG_PAD_MASK = 0xf0,
 	BCM2_CFG_PAD_ANSI_X9_23 = 1 << 4,
-	BCM2_CFG_PAD_PKCS7 = 1 << 5,
-	BCM2_CFG_PAD_ZEROBLK = 1 << 6,
+	BCM2_CFG_PAD_PKCS7 = 2 << 4,
+	BCM2_CFG_PAD_ZEROBLK = 3 << 4,
 	// similar to ANSI X9.23, but the last byte
 	// is the padding length, minus one. assuming
 	// a block size of 8 bytes, and data length of
@@ -60,7 +60,8 @@ enum bcm2_cfg_flags
 	//
 	// 00 00 00 00 00 00 06
 	//
-	BCM2_CFG_PAD_ANSI_ISH = 1 << 7,
+	BCM2_CFG_PAD_ANSI_ISH = 4 << 4,
+	BCM2_CFG_PAD_ZERO = 5 << 4,
 
 	BCM2_CFG_FMT_MASK = 0xf00,
 	BCM2_CFG_FMT_GWS_DYNNV = 1 << 8,
