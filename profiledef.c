@@ -251,6 +251,9 @@ struct bcm2_profile bcm2_profiles[] = {
 		.magic = {
 			{ 0x83f8ecc8, "2.5.0alpha8R2" },
 		},
+		.cfg_flags = BCM2_CFG_ENC_DES_ECB | BCM2_CFG_FMT_GWS_FULL_ENC,
+		.cfg_md5key = "3250736c633b752865676d64302d2778",
+		.cfg_defkeys = { "aabbccddeeffaabb" },
 		.spaces = {
 			{
 				.name = "ram",

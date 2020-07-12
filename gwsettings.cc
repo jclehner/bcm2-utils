@@ -87,6 +87,19 @@ bool gws_unpad(string& buf, const csp<profile>& p)
 			buf.resize(buf.size() - padnum);
 			return true;
 		}
+	} else if (pad == BCM2_CFG_PAD_ZERO) {
+		bool ok = true;
+		for (char c : buf.substr(align_left(buf.size(), blksize), buf.size() % blksize)) {
+			if (c) {
+				ok = false;
+				break;
+			}
+		}
+
+		if (ok) {
+			buf.resize(align_left(buf.size(), blksize));
+			return true;
+		}
 	} else if (pad == BCM2_CFG_PAD_ZEROBLK) {
 		string zeroblk(blksize, '\0');
 
@@ -195,6 +208,8 @@ string gws_encrypt(string buf, const string& key, const csp<profile>& p, bool pa
 					buf += char((padnum - 1) & 0xff);
 				} else if (padding == BCM2_CFG_PAD_PKCS7) {
 					buf += string(padnum, char(padnum & 0xff));
+				} else if (padding == BCM2_CFG_PAD_ZERO) {
+					buf += string(padnum, '\0');
 				} else if (padding) {
 					throw runtime_error("unknown padding type");
 				}
