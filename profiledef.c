@@ -736,6 +736,56 @@ struct bcm2_profile bcm2_profiles[] = {
 		}
 	},
 	{
+		.name = "epc3008",
+		.pretty = "Cisco EPC3008",
+		.baudrate = 115200,
+		.pssig = 0xa03a,
+		.blsig = 0xa03a,
+		.arch = BCM2_3382,
+		.kseg1mask = 0x20000000,
+		.spaces = {
+			{
+				.name = "ram",
+				.min = 0x80000000,
+				.size = 64 * 1024 * 1024,
+			},
+			{
+				.name = "flash",
+				.size = 4 * 1024 * 1024,
+				.parts = {
+					{ "bootloader", 0x000000, 0x010000 },
+					{ "permnv",     0x010000, 0x010000 },
+					{ "image1",     0x020000, 0x1e0000 },
+					{ "image2",     0x200000, 0x1e0000 },
+					{ "dynnv",      0x3e0000, 0x020000 },
+				},
+			},
+		},
+		.versions = {
+			{
+				.intf = BCM2_INTF_BLDR,
+				.rwcode = 0x80002000,
+				.buffer = 0x80004000,
+			},
+			{
+				.version = "2.3.1_R3",
+				.intf = BCM2_INTF_BLDR,
+				.magic = { 0x83f8a18c, "2.3.1_R3 Pre-release" },
+				.printf = 0x83f87b18,
+				.sscanf = 0x83f884ec,
+				.getline = 0x83f877c4,
+				.spaces = {
+					{
+						.name = "flash",
+						.read = { 0x83f80dc0, BCM2_READ_FUNC_OBL },
+						.write = { 0x83f80c48, BCM2_READ_FUNC_OBL },
+						.erase = { 0x83f80fb0, BCM2_ERASE_FUNC_OL },
+					}
+				}
+			},
+		},
+	},
+	{
 		.name = "tc8715",
 		.pretty = "Technicolor TC8715",
 		.baudrate = 115200,
