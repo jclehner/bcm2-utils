@@ -596,7 +596,7 @@ void profile::print_to_stdout(bool verbose) const
 void profile::parse_opt_override(const string& str)
 {
 	auto tok = split(str, '=', true, 2);
-	bcm2_typed_val val = { .type = BCM2_TYPE_NIL };
+	bcm2_typed_val val = { "", { 0 }, BCM2_TYPE_NIL };
 
 	if (tok.size() != 2) {
 		throw user_error("invalid override: '" + str + "'");
