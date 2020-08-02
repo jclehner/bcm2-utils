@@ -1244,11 +1244,11 @@ class nv_group_halif : public nv_group
 			NV_VAR(nv_u16, "usb_pid", true),
 			NV_VAR(nv_mac, "usb_mac"),
 			//NV_VAR(nv_bool, "usb_rndis"),
-			NV_VAR(nv_data, "", 0x19),
+			NV_VAR(nv_data, "", 0x18),
 			NV_VAR(nv_mac, "bluetooth_local_mac"),
 			NV_VAR(nv_mac, "bluetooth_remote_mac"),
 			//NV_VAR(nv_bool, "bluetooth_master"),
-			NV_VAR(nv_data, "", 0x15),
+			NV_VAR(nv_data, "", 0x16),
 			NV_VAR(nv_array<nv_mac COMMA() 4>, "mac_addrs_2"),
 		};
 	}
