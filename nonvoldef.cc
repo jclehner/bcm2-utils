@@ -1237,7 +1237,10 @@ class nv_group_halif : public nv_group
 					"moca"
 
 			}),
-			NV_VAR(nv_array<nv_mac COMMA() 4>, "mac_addrs_1"),
+			NV_VAR(nv_mac, "cm_mac"),
+			NV_VAR(nv_mac, "ip2_mac"),
+			NV_VAR(nv_mac, "rg_mac"),
+			NV_VAR(nv_mac, "ip4_mac"),
 			NV_VAR(nv_data, "", 5),
 			NV_VAR(nv_u8, "board_rev"),
 			NV_VAR(nv_u16, "usb_vid", true),
@@ -1249,7 +1252,10 @@ class nv_group_halif : public nv_group
 			NV_VAR(nv_mac, "bluetooth_remote_mac"),
 			//NV_VAR(nv_bool, "bluetooth_master"),
 			NV_VAR(nv_data, "", 0x16),
-			NV_VAR(nv_array<nv_mac COMMA() 4>, "mac_addrs_2"),
+			NV_VAR(nv_mac, "ip5_mac"),
+			NV_VAR(nv_mac, "mta_mac"),
+			NV_VAR(nv_mac, "veth_mac"),
+			NV_VAR(nv_mac, "ip8_mac"),
 		};
 	}
 };
