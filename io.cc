@@ -48,22 +48,6 @@ typedef runtime_error user_error;
 namespace bcm2dump {
 namespace {
 
-ofstream logfile;
-list<string> lines;
-
-void add_line(const string& line, bool in)
-{
-	if (lines.size() == 50) {
-		lines.pop_front();
-	}
-
-	lines.push_back((in ? "==> " : "<== ") + (line.empty() ?
-				"(empty)"s : ("'" + trim(line.c_str()) + "'")));
-
-	ostream& os = logfile ? logfile : logger::t();
-	os << lines.back() << endl;
-}
-
 class scoped_nonblock
 {
 	public:
@@ -368,7 +352,7 @@ void fdio::write(const string& str)
 		throw errno_error("write");
 	}
 #ifdef DEBUG
-	add_line(str, false);
+	logger::log_io(str, false);
 #endif
 }
 
@@ -398,7 +382,7 @@ void hio::write(const string& str)
 	}
 
 #ifdef DEBUG
-	add_line(str, false);
+	logger::log_io(str, false);
 #endif
 }
 
@@ -598,7 +582,7 @@ void tcp::write(const string& str)
 		throw errno_error("send");
 	}
 	#ifdef DEBUG
-	add_line(str, false);
+	logger::log_io(str, false);
 	#endif
 }
 
@@ -741,12 +725,12 @@ string io::readln(unsigned timeout)
 
 	if (!line.empty()) {
 #ifdef DEBUG
-		add_line(line, true);
+		logger::log_io(line, true);
 #endif
 		return line;
 	} else if (lf) {
 #ifdef DEBUG
-		add_line("", true);
+		logger::log_io("", true);
 #endif
 	}
 
