@@ -244,6 +244,8 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 
 			line = trim(line);
 
+			logger::d() << "line: ign=" << is_ignorable_line(line) << ", text='" << line << "'" << endl;
+
 			if (is_ignorable_line(line)) {
 				continue;
 			} else {
