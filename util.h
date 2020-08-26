@@ -356,7 +356,6 @@ class logger
 
 	private:
 	static std::list<std::string> s_lines;
-	static std::ofstream s_bucket;
 	static int s_loglevel;
 	static bool s_no_stdout;
 };

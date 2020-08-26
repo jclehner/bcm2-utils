@@ -221,7 +221,6 @@ std::string transform(const std::string& str, std::function<int(int)> f)
 	return ret;
 }
 
-ofstream logger::s_bucket;
 int logger::s_loglevel = logger::info;
 bool logger::s_no_stdout = false;
 list<string> logger::s_lines;
@@ -236,7 +235,7 @@ constexpr int logger::err;
 ostream& logger::log(int severity)
 {
 	if (severity < s_loglevel) {
-		return s_bucket;
+		return logbuf::file;
 	} else if (s_no_stdout || severity >= warn) {
 		return log_cerr;
 	} else {
