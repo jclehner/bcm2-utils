@@ -94,8 +94,7 @@ class interface
 
 	virtual bool foreach_line(std::function<bool(const std::string&)> f, unsigned timeout = 0, unsigned timeout_line = 0) const;
 
-	virtual std::string readln(unsigned timeout = 0) const
-	{ return m_io->readln(timeout ? timeout : this->timeout()); }
+	virtual std::string readln(unsigned timeout = 0) const;
 
 	virtual bool pending(unsigned timeout = 0) const
 	{ return m_io->pending(timeout ? timeout : this->timeout()); }
@@ -106,6 +105,9 @@ class interface
 	virtual bcm2_interface id() const = 0;
 
 	protected:
+	virtual bool is_crash_line(const std::string& line) const
+	{ return false; }
+
 	virtual uint32_t timeout() const
 	{ return 200; }
 

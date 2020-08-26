@@ -276,6 +276,9 @@ class bootloader : public interface
 	{ return BCM2_INTF_BLDR; }
 
 	virtual void runcmd(const string& cmd) override;
+
+	protected:
+	virtual bool is_crash_line(const string& line) const override;
 };
 
 bool bootloader::is_ready(bool passive)
@@ -298,6 +301,12 @@ void bootloader::runcmd(const string& cmd)
 #endif
 
 	m_io->write(cmd);
+}
+
+
+bool bootloader::is_crash_line(const string& line) const
+{
+	return starts_with(line, "******************** CRASH");
 }
 
 class bootloader2 : public interface
@@ -648,6 +657,20 @@ bool interface::foreach_line(function<bool(const string&)> f, unsigned timeout, 
 	}
 
 	return false;
+}
+
+string interface::readln(unsigned timeout) const
+{
+	string line = m_io->readln(timeout ? timeout : this->timeout());
+
+	if (is_crash_line(line)) {
+		// consume lines to fill the io log
+		foreach_line([] (const string&) { return false; }, 0, 500);
+
+		throw runtime_error("target has crashed");
+	}
+
+	return line;
 }
 
 interface::sp interface::detect(const io::sp& io, const profile::sp& profile)
