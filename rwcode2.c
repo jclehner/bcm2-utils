@@ -67,6 +67,8 @@ void mips_read()
 		return;
 	}
 
+	// TODO allow chunked reads
+
 	if (args->fl_read) {
 		//RWCODE_BZERO(args->buffer, args->length);
 
@@ -90,6 +92,7 @@ void mips_read()
 		RWCODE_PATCH(args->patches);
 
 		args->fl_read = 0;
+		args->offset = 0;
 	}
 
 	uint32_t* buffer = (uint32_t*)(args->buffer + args->offset);
@@ -97,19 +100,16 @@ void mips_read()
 	args->length -= len;
 	args->offset += len;
 
-#if 1
 	do {
 		for (int i = 0; i < 4; ++i) {
 			((printf_fun)args->printf)(args->str_x, *buffer++);
 		}
 		((printf_fun)args->printf)(args->str_nl);
 	} while ((len -= 16));
-#else
-	do {
-		((printf_fun)args->printf)(args->str_x, *buffer++);
-		if (len && !(len % 16)) {
-			((printf_fun)args->printf)(args->str_nl);
-		}
-	} while (--len);
-#endif
+}
+
+void mips_write()
+{
+
+
 }

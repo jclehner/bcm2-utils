@@ -22,6 +22,7 @@
 #include <fstream>
 #include "progress.h"
 #include "mipsasm.h"
+#include "rwcode2.h"
 #include "util.h"
 #include "rwx.h"
 #include "ps.h"
@@ -228,7 +229,7 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 {
 	do_read_chunk(offset, length);
 
-	string line, linebuf, chunk, last;
+	string line, chunk, last;
 	uint32_t pos = offset;
 	mstimer t;
 	unsigned timeout = chunk_timeout(offset, length);
@@ -841,13 +842,15 @@ bool bootloader_ram::exec_impl(uint32_t offset)
 // this defines uint32 dumpcode[] and writecode[]
 #include "rwcode.c"
 
+#include "rwcode2.inc"
+
 class code_rwx : public parsing_rwx
 {
 	public:
 	code_rwx() {}
 
 	virtual limits limits_read() const override
-	{ return limits(4, 16, 0x4000); }
+	{ return limits(16, 16, 0x4000); }
 
 	virtual limits limits_write() const override
 	{ return limits(16, 16, 0x4000); }
@@ -954,10 +957,10 @@ class code_rwx : public parsing_rwx
 		uint32_t remaining = m_rw_length - (offset - m_rw_offset);
 
 		if (!m_write) {
-			patch32(m_code, 0x10, offset);
+			patch32(m_code, offsetof(bcm2_read_args, offset), offset);
 			m_ram->write(m_loadaddr + 0x10, m_code.substr(0x10, 4));
 
-			patch32(m_code, 0x1c, remaining);
+			patch32(m_code, offsetof(bcm2_read_args, length), remaining);
 			m_ram->write(m_loadaddr + 0x1c, m_code.substr(0x1c, 4));
 		} else {
 			// TODO: implement if we ever use on_chunk_retry for writes
@@ -966,7 +969,7 @@ class code_rwx : public parsing_rwx
 
 	unsigned chunk_timeout(uint32_t offset, uint32_t length) const override
 	{
-		if (offset != m_rw_offset || !m_read_func.addr()) {
+		if (offset != m_rw_offset || space().is_mem()) {
 			return parsing_rwx::chunk_timeout(offset, length);
 		} else {
 			return 60 * 1000;
@@ -998,33 +1001,12 @@ class code_rwx : public parsing_rwx
 		// TODO: check whether we have a custom code file
 		if (true) {
 			if (!write) {
-				m_read_func = funcs["read"];
+				bcm2_read_args args = get_read_args(offset, length);
+				m_entry = sizeof(args);
+				m_code = to_buf(args);
 
-				m_code = string(reinterpret_cast<const char*>(dumpcode), sizeof(dumpcode));
-				m_entry = 0x4c;
-
-				if (!cfg["printf"] || (!m_space.is_mem() && (!cfg["buffer"] || !m_read_func.addr()))) {
-					throw user_error("profile " + profile->name() + " does not support fast dump mode; use -s flag");
-				}
-
-				patch32(m_code, 0x10, 0);
-				patch32(m_code, 0x14, kseg1 | cfg["buffer"]);
-				patch32(m_code, 0x18, offset);
-				patch32(m_code, 0x1c, length);
-				patch32(m_code, 0x20, limits_read().max);
-				patch32(m_code, 0x24, kseg1 | cfg["printf"]);
-
-				if (m_read_func.addr()) {
-					patch32(m_code, 0x0c, m_read_func.args());
-					patch32(m_code, 0x28, kseg1 | m_read_func.addr());
-
-					unsigned i = 0;
-					for (auto patch : m_read_func.patches()) {
-						uint32_t off = 0x2c + (8 * i++);
-						uint32_t addr = patch->addr;
-						patch32(m_code, off, addr ? (kseg1 | addr) : 0);
-						patch32(m_code, off + 4, addr ? patch->word : 0);
-					}
+				for (uint32_t word : mips_read_code) {
+					m_code += to_buf(hton(word));
 				}
 			} else {
 				m_write_func = funcs["write"];
@@ -1067,14 +1049,14 @@ class code_rwx : public parsing_rwx
 
 				patch32(m_code, WRITECODE_CFGOFF + 0x2c, length);
 			}
-
 			uint32_t codesize = m_code.size();
-			if (mipsasm_resolve_labels(reinterpret_cast<uint32_t*>(&m_code[0]), &codesize, m_entry) != 0) {
-				throw runtime_error("failed to resolve mips asm labels");
+			if (write) {
+				if (mipsasm_resolve_labels(reinterpret_cast<uint32_t*>(&m_code[0]), &codesize, m_entry) != 0) {
+					throw runtime_error("failed to resolve mips asm labels");
+				}
+
+				m_code.resize(codesize);
 			}
-
-			m_code.resize(codesize);
-
 #if 1
 			ofstream("code.bin").write(m_code.data(), m_code.size());
 #endif
@@ -1114,6 +1096,48 @@ class code_rwx : public parsing_rwx
 		}
 	}
 
+	bcm2_read_args get_read_args(uint32_t offset, uint32_t length)
+	{
+		auto profile = m_intf->profile();
+		uint32_t kseg1 = profile->kseg1();
+		auto cfg = m_intf->version().codecfg();
+		auto funcs = m_intf->version().functions(m_space.name());
+
+		auto fl_read = funcs["read"];
+
+		if (!cfg["printf"] || (!m_space.is_mem() && (!cfg["buffer"] || !fl_read.addr()))) {
+			throw user_error("profile " + profile->name() + " does not support fast dump mode; use -s flag");
+		}
+
+		bcm2_read_args args = { ":%x", "\r\n" };
+		args.offset = hton(offset);
+		args.length = hton(length);
+		args.chunklen = hton(limits_read().max);
+		args.printf = hton(kseg1 | cfg["printf"]);
+
+		if (m_space.is_mem()) {
+			args.buffer = 0;
+			args.fl_read = 0;
+		} else {
+			args.buffer = hton(kseg1 | cfg["buffer"]);
+			args.flags = hton(fl_read.args());
+			args.fl_read = hton(kseg1 | fl_read.addr());
+		}
+
+		size_t i = 0;
+		for (auto p : fl_read.patches()) {
+			if (p->addr) {
+				args.patches[i].addr = hton(kseg1 | p->addr);
+				args.patches[i].word = hton(p->word);
+			} else {
+				memset(&args.patches[i], 0, sizeof(bcm2_patch));
+			}
+			++i;
+		}
+
+		return args;
+	}
+
 	string m_code;
 	uint32_t m_loadaddr = 0;
 	uint32_t m_entry = 0;
@@ -1122,7 +1146,6 @@ class code_rwx : public parsing_rwx
 	uint32_t m_rw_offset = 0;
 	uint32_t m_rw_length = 0;
 
-	func m_read_func;
 	func m_write_func;
 	func m_erase_func;
 

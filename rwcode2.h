@@ -23,7 +23,7 @@ extern "C" {
 // * locate itself in RAM
 // * load private data
 //   * if function call, do so now
-	
+
 
 struct bcm2_read_args
 {
@@ -40,6 +40,10 @@ struct bcm2_read_args
 } __attribute__((aligned(4)));
 
 void mips_read();
+
+struct bcm2_write_args;
+
+void mips_write();
 
 #ifdef __cplusplus
 }

@@ -1,6 +1,7 @@
 CC ?= $(CROSS)gcc
 CXX ?= $(CROSS)g++
 STRIP = $(CROSS)strip
+OBJCOPY = $(CROSS)objcopy
 LIBS ?=
 VERSION = $(shell git describe --always)
 CFLAGS += -Wall -Wno-sign-compare -g -DVERSION=\"$(VERSION)\"
@@ -70,8 +71,14 @@ $(psextract): $(psextract_OBJ)
 t_nonvol: $(t_nonvol_OBJ)
 	$(CXX) $(CXXFLAGS) $(t_nonvol_OBJ) -o $@ $(LDFLAGS)
 
-rwx.o: rwx.cc rwx.h rwcode.c
+rwx.o: rwx.cc rwx.h rwcode.c rwcode2.h rwcode2.inc
 	$(CXX) -c $(CXXFLAGS) $< -o $@
+
+rwcode2.o: rwcode2.c rwcode2.h
+	$(MIPS)gcc -c -Os -ffreestanding -mno-abicalls -nostdlib -mips4 -ffunction-sections $< -o $@
+
+rwcode2.inc: rwcode2.o
+	./bin2hdr.rb $(MIPS) $< > $@ || rm $@
 
 %.o: %.c %.h
 	$(CC) -c $(CFLAGS) $< -o $@
