@@ -152,11 +152,15 @@ void mips_write()
 #if 0
 	if (args->fl_write && args->index == args->length) {
 		if (args->fl_erase && args->flags & BCM2_ERASE_FUNC_OL) {
+			RWCODE_PATCH(args->erase_patches);
 			((w2_fun)args->fl_erase)(args->offset, args->length);
+			RWCODE_PATCH(args->erase_patches);
 		}
 
+		RWCODE_PATCH(args->write_patches);
 		// all write functions are OBL
 		((w3_fun)args->fl_write)(args->offset, args->buffer, args->length);
+		RWCODE_PATCH(args->write_patches);
 	}
 #endif
 }

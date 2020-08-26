@@ -41,7 +41,25 @@ struct bcm2_read_args
 
 void mips_read();
 
-struct bcm2_write_args;
+struct bcm2_write_args
+{
+	char str_4x[12];
+	char str_1x[4];
+	char str_nl[4];
+	uint32_t flags;
+	uint32_t buffer;
+	uint32_t offset;
+	uint32_t length;
+	uint32_t chunklen;
+	uint32_t index;
+	uint32_t printf;
+	uint32_t xscanf;
+	uint32_t getline;
+	uint32_t fl_erase;
+	uint32_t fl_write;
+	struct bcm2_patch erase_patches[BCM2_PATCH_NUM];
+	struct bcm2_patch write_patches[BCM2_PATCH_NUM];
+} __attribute__((aligned(4)));
 
 void mips_write();
 

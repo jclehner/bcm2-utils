@@ -980,7 +980,6 @@ class code_rwx : public parsing_rwx
 	{
 		const profile::sp& profile = m_intf->profile();
 		auto cfg = m_intf->version().codecfg();
-		auto funcs = m_intf->version().functions(m_space.name());
 
 		if (cfg["buflen"] && length > cfg["buflen"]) {
 			throw user_error("requested length exceeds buffer size ("
@@ -1009,53 +1008,13 @@ class code_rwx : public parsing_rwx
 					m_code += to_buf(hton(word));
 				}
 			} else {
-				m_write_func = funcs["write"];
-				m_erase_func = funcs["erase"];
+				bcm2_write_args args = get_write_args(offset, length);
+				m_entry = sizeof(args);
+				m_code = to_buf(args);
 
-				m_code = string(reinterpret_cast<const char*>(writecode), sizeof(writecode));
-				m_entry = WRITECODE_ENTRY;
-
-				patch32(m_code, WRITECODE_CFGOFF + 0x00, m_write_func.args() | m_erase_func.args());
-				patch32(m_code, WRITECODE_CFGOFF + 0x04, m_space.is_ram() ? offset : (kseg1 | cfg["buffer"]));
-				patch32(m_code, WRITECODE_CFGOFF + 0x08, 0);
-				patch32(m_code, WRITECODE_CFGOFF + 0x0c, limits_write().max);
-
-				if (!m_space.is_ram()) {
-					patch32(m_code, WRITECODE_CFGOFF + 0x10, offset);
-					try {
-						patch32(m_code, WRITECODE_CFGOFF + 0x14, m_space.partition(offset).size());
-					} catch (const user_error& e) {
-						throw user_error("writing to random offsets within a flash partition is not supported");
-					}
-				} else {
-					patch32(m_code, WRITECODE_CFGOFF + 0x10, 0);
-					patch32(m_code, WRITECODE_CFGOFF + 0x14, 0);
+				for (uint32_t word : mips_write_code) {
+					m_code += to_buf(hton(word));
 				}
-
-				patch32(m_code, WRITECODE_CFGOFF + 0x18, kseg1 | cfg["printf"]);
-
-				if (cfg["printf"] && cfg["sscanf"] && cfg["getline"]) {
-					patch32(m_code, WRITECODE_CFGOFF + 0x1c, kseg1 | cfg["sscanf"]);
-					patch32(m_code, WRITECODE_CFGOFF + 0x20, kseg1 | cfg["getline"]);
-				} else if (cfg["printf"] && cfg["scanf"]) {
-					patch32(m_code, WRITECODE_CFGOFF + 0x1c, kseg1 | cfg["scanf"]);
-					patch32(m_code, WRITECODE_CFGOFF + 0x20, 0);
-				} else {
-					throw user_error("profile " + profile->name() + " does not support fast write mode; use -s flag");
-				}
-
-				patch32(m_code, WRITECODE_CFGOFF + 0x24, m_write_func.addr());
-				patch32(m_code, WRITECODE_CFGOFF + 0x28, m_erase_func.addr());
-
-				patch32(m_code, WRITECODE_CFGOFF + 0x2c, length);
-			}
-			uint32_t codesize = m_code.size();
-			if (write) {
-				if (mipsasm_resolve_labels(reinterpret_cast<uint32_t*>(&m_code[0]), &codesize, m_entry) != 0) {
-					throw runtime_error("failed to resolve mips asm labels");
-				}
-
-				m_code.resize(codesize);
 			}
 #if 1
 			ofstream("code.bin").write(m_code.data(), m_code.size());
@@ -1065,13 +1024,13 @@ class code_rwx : public parsing_rwx
 			uint32_t actual = ntoh(extract<uint32_t>(m_ram->read(m_loadaddr + m_code.size() - 4, 4)));
 			bool quick = (expected == actual);
 
-			patch32(m_code, codesize - 4, expected);
+			patch32(m_code, m_code.size() - 4, expected);
 
 			progress pg;
 			progress_init(&pg, m_loadaddr, m_code.size());
 
 			if (m_prog_l && !quick) {
-				logger::i("updating code at 0x%08x (%u b)\n", m_loadaddr, codesize);
+				logger::i("updating code at 0x%08x (%lu b)\n", m_loadaddr, m_code.size());
 			}
 
 			for (unsigned pass = 0; pass < 2; ++pass) {
@@ -1094,6 +1053,71 @@ class code_rwx : public parsing_rwx
 
 			logger::i("\n");
 		}
+	}
+
+	template<size_t N> void copy_patches(bcm2_patch (&dest)[N], const func& f, uint32_t kseg1)
+	{
+		auto ps = f.patches();
+
+		for (size_t i = 0; i < N && i < ps.size(); ++i) {
+			if (ps[i]->addr) {
+				dest[i].addr = hton(kseg1 | ps[i]->addr);
+				dest[i].word = hton(ps[i]->word);
+			} else {
+				memset(&dest[i], 0, sizeof(bcm2_patch));
+			}
+		}
+	}
+
+	bcm2_write_args get_write_args(uint32_t offset, uint32_t length)
+	{
+		auto profile = m_intf->profile();
+		uint32_t kseg1 = profile->kseg1();
+		auto cfg = m_intf->version().codecfg();
+		auto funcs = m_intf->version().functions(m_space.name());
+
+		auto fl_write = funcs["write"];
+		auto fl_erase = funcs["erase"];
+
+		bcm2_write_args args = { ":%x:%x:%x", ":%x", "\r\n" };
+		args.flags = hton(fl_write.args() | fl_erase.args());
+		args.length = hton(length);
+		args.chunklen = hton(limits_read().max);
+		args.index = 0;
+		args.fl_write = 0;
+
+		if (space().is_ram()) {
+			args.buffer = hton(offset);
+			args.offset = 0;
+		} else {
+			args.buffer = hton(kseg1 | cfg["buffer"]);
+			args.offset = hton(offset);
+		}
+
+		args.printf = hton(cfg["printf"]);
+
+		if (cfg["sscanf"] && cfg["getline"]) {
+			args.xscanf = hton(cfg["sscanf"]);
+			args.getline = hton(cfg["getline"]);
+		} else if (cfg["scanf"]) {
+			args.xscanf = hton(cfg["scanf"]);
+		}
+
+		if (fl_erase.addr()) {
+			args.fl_erase = hton(kseg1 | fl_erase.addr());
+			copy_patches(args.erase_patches, fl_erase, kseg1);
+		}
+
+		if (fl_write.addr()) {
+			args.fl_write = hton(kseg1 | fl_write.addr());
+			copy_patches(args.write_patches, fl_write, kseg1);
+		}
+
+		if (!args.printf || !args.xscanf || (!space().is_mem() && !args.fl_write)) {
+			throw user_error("profile " + profile->name() + " does not support fast write mode; use -s flag");
+		}
+
+		return args;
 	}
 
 	bcm2_read_args get_read_args(uint32_t offset, uint32_t length)
@@ -1124,16 +1148,7 @@ class code_rwx : public parsing_rwx
 			args.fl_read = hton(kseg1 | fl_read.addr());
 		}
 
-		size_t i = 0;
-		for (auto p : fl_read.patches()) {
-			if (p->addr) {
-				args.patches[i].addr = hton(kseg1 | p->addr);
-				args.patches[i].word = hton(p->word);
-			} else {
-				memset(&args.patches[i], 0, sizeof(bcm2_patch));
-			}
-			++i;
-		}
+		copy_patches(args.patches, fl_read, kseg1);
 
 		return args;
 	}
@@ -1145,9 +1160,6 @@ class code_rwx : public parsing_rwx
 	bool m_write = false;
 	uint32_t m_rw_offset = 0;
 	uint32_t m_rw_length = 0;
-
-	func m_write_func;
-	func m_erase_func;
 
 	rwx::sp m_ram;
 };
