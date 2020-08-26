@@ -228,7 +228,7 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 {
 	do_read_chunk(offset, length);
 
-	string line, linebuf, chunk, last;
+	string line, chunk, last;
 	uint32_t pos = offset;
 	mstimer t;
 	unsigned timeout = chunk_timeout(offset, length);
