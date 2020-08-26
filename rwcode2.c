@@ -9,14 +9,12 @@
 #define RWCODE_INIT_ARGS(name) \
 	asm volatile ( \
 		"  lui %0, 0xffff\n" \
-		"  bal L_next\n" \
-		"L_next:\n" \
+		"  bal 1f\n" \
+		"1:\n" \
 		"  and %0, $ra, %0\n" \
-		/*"  addiu %0, -%1\n" \*/ \
 		: \
 		"=r" (args) \
 		: \
-		/*"i" (sizeof(*args))*/ \
 		: "$t4");
 #else
 #define RWCODE_INIT_ARGS(name) \
@@ -47,8 +45,12 @@
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
-typedef uint32_t (*fl_read_fun)(uint32_t, uint32_t, uint32_t);
+typedef uint32_t (*w3_fun)(uint32_t, uint32_t, uint32_t);
+typedef uint32_t (*w2_fun)(uint32_t, uint32_t);
 typedef int (*printf_fun)(const char*, ...);
+typedef void (*getline_fun)(char*, uint32_t);
+typedef int (*sscanf_fun)(char*, const char*, ...);
+typedef int (*scanf_fun)(const char*, ...);
 
 // These functions will be executed on the modem itself, NOT
 // the device running bcm2dump. As such, certain restrictions
@@ -88,7 +90,7 @@ void mips_read()
 		}
 
 		RWCODE_PATCH(args->patches);
-		uint32_t ret = ((fl_read_fun)args->fl_read)(arg1, arg2, args->length);
+		uint32_t ret = ((w3_fun)args->fl_read)(arg1, arg2, args->length);
 		RWCODE_PATCH(args->patches);
 
 		args->fl_read = 0;
@@ -110,6 +112,51 @@ void mips_read()
 
 void mips_write()
 {
+	struct bcm2_write_args* args;
+	RWCODE_INIT_ARGS(args);
 
+	if (!args->length) {
+		return;
+	}
 
+	uint32_t* buffer = (uint32_t*)(args->buffer + args->index);
+	uint32_t remaining = args->length - args->index;
+	uint32_t len = MIN(remaining, args->chunklen);
+	args->index += len;
+
+	while (buffer < (buffer + len)) {
+		int n;
+
+		if (args->getline) {
+			char line[38];
+			((getline_fun)args->getline)(line, sizeof(line));
+			line[37] = 0;
+
+			n = ((sscanf_fun)args->xscanf)(line, args->str_4x,
+				&buffer[0], &buffer[1], &buffer[2], &buffer[3]);
+		} else {
+			n = ((scanf_fun)args->xscanf)(args->str_4x,
+				&buffer[0], &buffer[1], &buffer[2], &buffer[3]);
+		}
+
+		if (n != 4) {
+			return;
+		}
+
+		((printf_fun)args->printf)(args->str_1x, buffer);
+		((printf_fun)args->printf)(args->str_nl);
+
+		buffer += 4;
+	}
+
+#if 0
+	if (args->fl_write && args->index == args->length) {
+		if (args->fl_erase && args->flags & BCM2_ERASE_FUNC_OL) {
+			((w2_fun)args->fl_erase)(args->offset, args->length);
+		}
+
+		// all write functions are OBL
+		((w3_fun)args->fl_write)(args->offset, args->buffer, args->length);
+	}
+#endif
 }
