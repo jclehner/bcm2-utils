@@ -370,7 +370,7 @@ void serial::writeln(const string& str)
 {
 	write(str + "\r");
 	// consume the line we've just written
-	readln();
+	readln(100);
 }
 
 #ifdef _WIN32
@@ -636,7 +636,7 @@ void telnet::write(const string& str)
 void telnet::writeln(const string& str)
 {
 	write(str + "\r");
-	readln();
+	readln(20);
 }
 
 int telnet::getc()
