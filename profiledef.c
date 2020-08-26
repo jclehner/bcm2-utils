@@ -344,12 +344,11 @@ struct bcm2_profile bcm2_profiles[] = {
 			},
 			{
 				.name = "nvram",
-				.size = 0x100000,
+				.size = 4 * 1024 * 1024,
 				.parts = {
-					{ "bootloader", 0x00000, 0x10000 },
-					{ "permnv",     0x10000, 0x20000, "perm" },
-					{ "unknown",	0x30000, 0x90000 },
-					{ "dynnv",      0xc0000, 0x40000, "dyn" },
+					{ "bootloader", 0x000000, 0x10000 },
+					{ "permnv",     0x010000, 0x20000, "perm" },
+					{ "dynnv",      0x3c0000, 0x40000, "dyn" },
 				}
 			},
 			{
