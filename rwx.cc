@@ -1016,15 +1016,18 @@ class code_rwx : public parsing_rwx
 					m_code += to_buf(hton(word));
 				}
 			}
+
+			size_t codesize = m_code.size() - m_entry;
+
+			uint32_t expected = 0xc0de0000 | crc16_ccitt(m_code.substr(m_entry, codesize));
+			uint32_t actual = ntoh(extract<uint32_t>(m_ram->read(m_loadaddr + codesize, 4)));
+			bool quick = (expected == actual);
+
+			m_code += to_buf(hton(expected));
+
 #if 1
 			ofstream("code.bin").write(m_code.data(), m_code.size());
 #endif
-
-			uint32_t expected = 0xc0de0000 | crc16_ccitt(m_code.substr(m_entry, m_code.size() - 4 - m_entry));
-			uint32_t actual = ntoh(extract<uint32_t>(m_ram->read(m_loadaddr + m_code.size() - 4, 4)));
-			bool quick = (expected == actual);
-
-			patch32(m_code, m_code.size() - 4, expected);
 
 			progress pg;
 			progress_init(&pg, m_loadaddr, m_code.size());
@@ -1079,7 +1082,7 @@ class code_rwx : public parsing_rwx
 		auto fl_write = funcs["write"];
 		auto fl_erase = funcs["erase"];
 
-		bcm2_write_args args = { ":%x:%x:%x", ":%x", "\r\n" };
+		bcm2_write_args args = { ":%x:%x:%x:%x", "\r\n" };
 		args.flags = hton(fl_write.args() | fl_erase.args());
 		args.length = hton(length);
 		args.chunklen = hton(limits_read().max);

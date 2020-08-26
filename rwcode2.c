@@ -14,8 +14,7 @@
 		"  and %0, $ra, %0\n" \
 		: \
 		"=r" (args) \
-		: \
-		: "$t4");
+		);
 #else
 #define RWCODE_INIT_ARGS(name) \
 	name = &rwcode_args
@@ -124,7 +123,7 @@ void mips_write()
 	uint32_t len = MIN(remaining, args->chunklen);
 	args->index += len;
 
-	while (buffer < (buffer + len)) {
+	do {
 		int n;
 
 		if (args->getline) {
@@ -132,22 +131,30 @@ void mips_write()
 			((getline_fun)args->getline)(line, sizeof(line));
 			line[37] = 0;
 
+			if (!*line) {
+				break;
+			}
+
+#if 0
 			n = ((sscanf_fun)args->xscanf)(line, args->str_4x,
 				&buffer[0], &buffer[1], &buffer[2], &buffer[3]);
+#else
+			n = 4;
+#endif
 		} else {
 			n = ((scanf_fun)args->xscanf)(args->str_4x,
 				&buffer[0], &buffer[1], &buffer[2], &buffer[3]);
 		}
 
 		if (n != 4) {
-			return;
+			break;
 		}
 
-		((printf_fun)args->printf)(args->str_1x, buffer);
+		((printf_fun)args->printf)(args->str_4x + 9, buffer);
 		((printf_fun)args->printf)(args->str_nl);
 
 		buffer += 4;
-	}
+	} while ((len -= 16));
 
 #if 0
 	if (args->fl_write && args->index == args->length) {
