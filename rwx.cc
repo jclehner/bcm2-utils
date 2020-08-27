@@ -998,9 +998,11 @@ class code_rwx : public parsing_rwx
 					+ to_string(cfg["buflen"]) + " b)");
 		}
 
+#if 0
 		if (write && !m_space.is_ram()) {
 			throw user_error("writing to non-ram address space is not supported");
 		}
+#endif
 
 		m_write = write;
 		m_rw_offset = offset;
