@@ -43,7 +43,7 @@ void mips_read();
 
 struct bcm2_write_args
 {
-	char str_4x[16];
+	char str_2x[8];
 	char str_nl[4];
 	uint32_t flags;
 	uint32_t buffer;

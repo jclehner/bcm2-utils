@@ -853,7 +853,7 @@ class code_rwx : public parsing_rwx
 	{ return limits(16, 16, 0x4000); }
 
 	virtual limits limits_write() const override
-	{ return limits(16, 16, 0x4000); }
+	{ return limits(8, 8, 0x4000); }
 
 	virtual unsigned capabilities() const override
 	{ return cap_rwx; }
@@ -898,10 +898,14 @@ class code_rwx : public parsing_rwx
 		string linebuf;
 
 		auto values = split(line.substr(1), ':');
-		if (values.size() == 4) {
-			for (string val : values) {
-				linebuf += to_buf(hton(hex_cast<uint32_t>(val)));
-			}
+		auto lim = limits_read();
+
+		if (values.size() < (lim.min / 4) || values.size() > (lim.max / 4)) {
+			throw runtime_error("invalid chunk line: '" + line + "'");
+		}
+
+		for (string val : values) {
+			linebuf += to_buf(hton(hex_cast<uint32_t>(val)));
 		}
 
 		return linebuf;
@@ -911,16 +915,24 @@ class code_rwx : public parsing_rwx
 	virtual bool write_chunk(uint32_t offset, const string& chunk) override
 	{
 		m_ram->exec(m_loadaddr + m_entry);
-		for (size_t i = 0; i < chunk.size(); i += 16) {
+
+		for (size_t i = 0; i < chunk.size(); i += limits_write().min) {
 			string line;
-			for (size_t k = 0; k < 4; ++k) {
+
+			for (size_t k = 0; k < limits_write().min / 4; ++k) {
 				line += ":" + to_hex(chunk.substr(i + k * 4, 4));
 			}
+
 			m_intf->writeln(line);
 
 			line = trim(m_intf->readln());
-			if (line.empty() || line[0] != ':' || hex_cast<uint32_t>(line.substr(1)) != (offset + i)) {
+			if (line.empty() || line[0] != ':') {
 				throw runtime_error("expected offset, got '" + line + "'");
+			}
+
+			uint32_t actual = hex_cast<uint32_t>(line.substr(1));
+			if (actual != (offset + i)) {
+				throw runtime_error("expected offset 0x" + to_hex(offset + i, 8) + ", got 0x" + to_hex(actual));
 			}
 
 			update_progress(offset + i, 16);
@@ -1082,7 +1094,7 @@ class code_rwx : public parsing_rwx
 		auto fl_write = funcs["write"];
 		auto fl_erase = funcs["erase"];
 
-		bcm2_write_args args = { ":%x:%x:%x:%x", "\r\n" };
+		bcm2_write_args args = { ":%x:%x", "\r\n" };
 		args.flags = hton(fl_write.args() | fl_erase.args());
 		args.length = hton(length);
 		args.chunklen = hton(limits_read().max);

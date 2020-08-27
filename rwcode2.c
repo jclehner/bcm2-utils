@@ -89,7 +89,7 @@ void mips_read()
 		}
 
 		RWCODE_PATCH(args->patches);
-		uint32_t ret = ((w3_fun)args->fl_read)(arg1, arg2, args->length);
+		((w3_fun)args->fl_read)(arg1, arg2, args->length);
 		RWCODE_PATCH(args->patches);
 
 		args->fl_read = 0;
@@ -109,6 +109,10 @@ void mips_read()
 	} while ((len -= 16));
 }
 
+// INPUT format:
+// :%x:%x (word 1, word 2)
+// OUTPUT format
+// :%x (offset of word 1)
 void mips_write()
 {
 	struct bcm2_write_args* args;
@@ -118,45 +122,50 @@ void mips_write()
 		return;
 	}
 
+	bool ram = !args->fl_write;
 	uint32_t* buffer = (uint32_t*)(args->buffer + args->index);
 	uint32_t remaining = args->length - args->index;
 	uint32_t len = MIN(remaining, args->chunklen);
 	args->index += len;
 
 	do {
+		char line[38];
 		int n;
 
 		if (args->getline) {
-			char line[38];
 			((getline_fun)args->getline)(line, sizeof(line));
-			line[37] = 0;
+			line[sizeof(line)-1] = 0;
 
 			if (!*line) {
 				break;
 			}
 
-#if 0
-			n = ((sscanf_fun)args->xscanf)(line, args->str_4x,
-				&buffer[0], &buffer[1], &buffer[2], &buffer[3]);
-#else
-			n = 4;
-#endif
+			// XXX it would be more efficient to scan 4 words at once.
+			// However, this would require a fifth argument to sscanf,
+			// and these are handled differently, depending on the MIPS
+			// ABI in use (n32 uses a register, o32 uses the stack).
+
+			n = ((sscanf_fun)args->xscanf)(line, args->str_2x, buffer, buffer + 1);
 		} else {
-			n = ((scanf_fun)args->xscanf)(args->str_4x,
-				&buffer[0], &buffer[1], &buffer[2], &buffer[3]);
+			n = ((scanf_fun)args->xscanf)(args->str_2x, buffer, buffer + 1);
 		}
 
-		if (n != 4) {
-			break;
+		if (n != 2) {
+			goto err;
 		}
 
-		((printf_fun)args->printf)(args->str_4x + 9, buffer);
+		// FIXME this is ugly
+		if (ram) {
+			((printf_fun)args->printf)(args->str_2x + 3, buffer);
+		} else {
+			uint32_t off = args->offset + (((uint32_t)buffer) - args->buffer);
+			((printf_fun)args->printf)(args->str_2x + 3, off);
+		}
+
 		((printf_fun)args->printf)(args->str_nl);
+		buffer += 2;
+	} while ((len -= 8));
 
-		buffer += 4;
-	} while ((len -= 16));
-
-#if 0
 	if (args->fl_write && args->index == args->length) {
 		if (args->fl_erase && args->flags & BCM2_ERASE_FUNC_OL) {
 			RWCODE_PATCH(args->erase_patches);
@@ -169,5 +178,11 @@ void mips_write()
 		((w3_fun)args->fl_write)(args->offset, args->buffer, args->length);
 		RWCODE_PATCH(args->write_patches);
 	}
-#endif
+	return;
+
+err:
+	// since we don't allow unaligned writes, and this is an odd
+	// number, it'll never collide with an actual offset
+	((printf_fun)args->printf)(args->str_2x + 3, 0xdeadbeef);
+	((printf_fun)args->printf)(args->str_nl);
 }

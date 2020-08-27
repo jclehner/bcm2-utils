@@ -39,7 +39,7 @@ define PackageRelease
 	zip bcm2utils-$(VERSION)-$(1).zip README.md bcm2cfg$(2) bcm2dump$(2) psextract$(2)
 endef
 
-.PHONY: all clean
+.PHONY: all clean mrproper
 
 all: $(bcm2dump) $(bcm2cfg) $(psextract)
 
@@ -74,11 +74,9 @@ t_nonvol: $(t_nonvol_OBJ)
 rwx.o: rwx.cc rwx.h rwcode.c rwcode2.h rwcode2.inc
 	$(CXX) -c $(CXXFLAGS) $< -o $@
 
-rwcode2.o: rwcode2.c rwcode2.h
-	$(MIPS)gcc -c -Os -ffreestanding -mno-abicalls -nostdlib -mips4 -ffunction-sections $< -o $@
-
-rwcode2.inc: rwcode2.o
-	./bin2hdr.rb $(MIPS) $< > $@ || rm $@
+rwcode2.inc: rwcode2.c rwcode2.h
+	$(MIPS)gcc -Wall -c -Os -ffreestanding -mips4 -ffunction-sections -mno-abicalls $< -o rwcode2.elf
+	./bin2hdr.rb $(MIPS) rwcode2.elf > $@ || rm $@
 
 %.o: %.c %.h
 	$(CC) -c $(CFLAGS) $< -o $@
@@ -98,6 +96,9 @@ check: t_nonvol
 
 clean:
 	rm -f t_nonvol $(bcm2cfg) $(bcm2dump) $(psextract) *.o
+
+mrproper: clean
+	rm -f *.inc
 
 install: all
 	install -m 755 $(bcm2cfg) $(PREFIX)/bin

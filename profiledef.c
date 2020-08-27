@@ -76,6 +76,43 @@ struct bcm2_profile bcm2_profiles[] = {
 			}
 		},
 	},
+	{
+		.name = "debug",
+		.pretty = "Debug",
+		.magic = {{ 0x80010000, "DBUG" }},
+		.spaces = {
+			{
+				.name = "ram",
+			},
+			{
+				.name = "flash",
+				.size = 0x100000,
+				.parts = {
+					{ "bootloader", 0x00000, 0x10000 },
+					{ "permnv",     0x10000, 0x10000, "perm" },
+					{ "dynnv",      0xe0000, 0x20000, "dyn" }
+				},
+			},
+		},
+		.versions = {
+			{
+				.intf = BCM2_INTF_BLDR,
+				.rwcode = 0x84010000,
+				.buffer = 0x85f00000,
+				.printf = 0x83f8b0c0,
+				.sscanf = 0x83f8ba94,
+				.getline = 0x83f8ad10,
+				.spaces = {
+					{
+						.name = "flash",
+						.read = { 0x80010068, BCM2_READ_FUNC_OBL },
+						.write = { 0x80010034, BCM2_READ_FUNC_BOL },
+						.erase = { 0x80010004, BCM2_ERASE_FUNC_OL },
+					}
+				}
+			},
+		}
+	},
 #if 0
 	// this is a 'gwsdyn' format!
 	{
