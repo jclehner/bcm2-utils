@@ -390,6 +390,20 @@ struct bcm2_profile bcm2_profiles[] = {
 							}
 						},
 				}
+			},
+			{
+				.version = "DNA_3.490.0-T3-20200429",
+				.intf = BCM2_INTF_BFC,
+				.magic = { 0x81082fa8, "FAST3686_DNA_3.490.0-T3-20200429" },
+				.spaces = {
+						{
+							.name = "flash",
+							.open = { 0x803e1940, BCM2_ARGS_OE },
+							.read = { 0x803e1408, BCM2_READ_FUNC_BOL,
+									.patch = {{ 0x803e1598, 0x10000018 }},
+							}
+						},
+				}
 			}
 		},
 	},
