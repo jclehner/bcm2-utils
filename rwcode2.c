@@ -8,7 +8,7 @@
 #ifdef __mips__
 #define RWCODE_INIT_ARGS(name) \
 	asm volatile ( \
-		"  lui %0, 0xffff\n" \
+		"  li %0, 0xfffff000\n" \
 		"  bal 1f\n" \
 		"1:\n" \
 		"  and %0, $ra, %0\n" \

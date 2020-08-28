@@ -869,8 +869,8 @@ class code_rwx : public parsing_rwx
 		auto cfg = intf->version().codecfg();
 		if (!cfg["rwcode"] || !cfg["buffer"] || !cfg["printf"]) {
 			throw runtime_error("insufficient profile information for code dumper");
-		} else if (cfg["rwcode"] & 0xffff) {
-			throw runtime_error("rwcode address must be aligned to 64k");
+		} else if (cfg["rwcode"] & 0xfff) {
+			throw runtime_error("rwcode address must be aligned to 4k");
 		}
 
 		m_ram = rwx::create(intf, "ram");
@@ -966,14 +966,9 @@ class code_rwx : public parsing_rwx
 			throw runtime_error("error recovery is not possible with custom dumpcode");
 		}
 
-		uint32_t remaining = m_rw_length - (offset - m_rw_offset);
-
 		if (!m_write) {
-			patch32(m_code, offsetof(bcm2_read_args, offset), offset);
-			m_ram->write(m_loadaddr + 0x10, m_code.substr(0x10, 4));
-
-			patch32(m_code, offsetof(bcm2_read_args, length), remaining);
-			m_ram->write(m_loadaddr + 0x1c, m_code.substr(0x1c, 4));
+			m_ram->write(m_loadaddr + offsetof(bcm2_read_args, offset), to_buf(hton(offset)));
+			m_ram->write(m_loadaddr + offsetof(bcm2_read_args, length), to_buf(hton(length)));
 		} else {
 			// TODO: implement if we ever use on_chunk_retry for writes
 		}
@@ -1011,59 +1006,61 @@ class code_rwx : public parsing_rwx
 		uint32_t kseg1 = profile->kseg1();
 		m_loadaddr = kseg1 | (cfg["rwcode"] + (write ? 0 : 0 /*0x10000*/));
 
+		string code;
+
 		// TODO: check whether we have a custom code file
 		if (true) {
 			if (!write) {
 				bcm2_read_args args = get_read_args(offset, length);
 				m_entry = sizeof(args);
-				m_code = to_buf(args);
+				code = to_buf(args);
 
 				for (uint32_t word : mips_read_code) {
-					m_code += to_buf(hton(word));
+					code += to_buf(hton(word));
 				}
 			} else {
 				bcm2_write_args args = get_write_args(offset, length);
 				m_entry = sizeof(args);
-				m_code = to_buf(args);
+				code = to_buf(args);
 
 				for (uint32_t word : mips_write_code) {
-					m_code += to_buf(hton(word));
+					code += to_buf(hton(word));
 				}
 			}
 
-			size_t codesize = m_code.size() - m_entry;
+			size_t codesize = code.size() - m_entry;
 
-			uint32_t expected = 0xc0de0000 | crc16_ccitt(m_code.substr(m_entry, codesize));
+			uint32_t expected = 0xc0de0000 | crc16_ccitt(code.substr(m_entry, codesize));
 			uint32_t actual = ntoh(extract<uint32_t>(m_ram->read(m_loadaddr + codesize, 4)));
 			bool quick = (expected == actual);
 
-			m_code += to_buf(hton(expected));
+			code += to_buf(hton(expected));
 
 #if 1
-			ofstream("code.bin").write(m_code.data(), m_code.size());
+			ofstream("code.bin").write(code.data(), code.size());
 #endif
 
 			progress pg;
-			progress_init(&pg, m_loadaddr, m_code.size());
+			progress_init(&pg, m_loadaddr, code.size());
 
 			if (m_prog_l && !quick) {
-				logger::i("updating code at 0x%08x (%lu b)\n", m_loadaddr, m_code.size());
+				logger::i("updating code at 0x%08x (%lu b)\n", m_loadaddr, code.size());
 			}
 
 			for (unsigned pass = 0; pass < 2; ++pass) {
-				string ramcode = m_ram->read(m_loadaddr, m_code.size());
-				for (uint32_t i = 0; i < m_code.size(); i += 4) {
+				string ramcode = m_ram->read(m_loadaddr, code.size());
+				for (uint32_t i = 0; i < code.size(); i += 4) {
 					if (!quick && pass == 0 && m_prog_l) {
 						progress_add(&pg, 4);
 						logger::i("\r ");
 						progress_print(&pg, stdout);
 					}
 
-					if (ramcode.substr(i, 4) != m_code.substr(i, 4)) {
+					if (ramcode.substr(i, 4) != code.substr(i, 4)) {
 						if (pass == 1) {
 							throw runtime_error("dump code verification failed at 0x" + to_hex(i + m_loadaddr, 8));
 						}
-						m_ram->write(m_loadaddr + i, m_code.substr(i, 4));
+						m_ram->write(m_loadaddr + i, code.substr(i, 4));
 					}
 				}
 			}
@@ -1170,7 +1167,6 @@ class code_rwx : public parsing_rwx
 		return args;
 	}
 
-	string m_code;
 	uint32_t m_loadaddr = 0;
 	uint32_t m_entry = 0;
 

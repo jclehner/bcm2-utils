@@ -76,6 +76,7 @@ struct bcm2_profile bcm2_profiles[] = {
 			}
 		},
 	},
+#if 1
 	{
 		.name = "debug",
 		.pretty = "Debug",
@@ -97,7 +98,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		.versions = {
 			{
 				.intf = BCM2_INTF_BLDR,
-				.rwcode = 0x84010000,
+				.rwcode = 0x80002000,
 				.buffer = 0x85f00000,
 				.printf = 0x83f8b0c0,
 				.sscanf = 0x83f8ba94,
@@ -113,6 +114,7 @@ struct bcm2_profile bcm2_profiles[] = {
 			},
 		}
 	},
+#endif
 #if 0
 	// this is a 'gwsdyn' format!
 	{
@@ -936,7 +938,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		.versions = {
 			{
 				.intf = BCM2_INTF_BLDR,
-				.rwcode = 0x84010000,
+				.rwcode = 0x80002000,
 				.buffer = 0x85f00000
 			},
 			{
