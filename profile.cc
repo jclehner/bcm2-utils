@@ -373,11 +373,9 @@ void version::parse_codecfg()
 	PARSE_ADDR(rwcode);
 #undef PARSE_ADDR
 
-#if 0
-	if (m_codecfg["rwcode"] & 0xffff) {
-		throw user_error(m_prof->name() + ": "s + name() + ": rwcode not aligned to 64k");
+	if (m_codecfg["rwcode"] & 0xfff) {
+		throw user_error(m_prof->name() + ": "s + name() + ": rwcode not aligned to 4k");
 	}
-#endif
 
 	if ((m_codecfg["buflen"] = m_p->buflen ? m_p->buflen : m_def->buflen)) {
 		auto buffer = m_codecfg["buffer"];

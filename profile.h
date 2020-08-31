@@ -120,7 +120,7 @@ struct bcm2_patch {
 	uint32_t addr;
 	// ... with this word
 	uint32_t word;
-};
+} __attribute__((packed));
 
 struct bcm2_func {
 	// address of this function

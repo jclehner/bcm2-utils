@@ -22,6 +22,7 @@
 #include <fstream>
 #include "progress.h"
 #include "mipsasm.h"
+#include "rwcode2.h"
 #include "util.h"
 #include "rwx.h"
 #include "ps.h"
@@ -32,6 +33,33 @@ using namespace std;
 
 namespace bcm2dump {
 namespace {
+
+class bad_chunk_line : public runtime_error
+{
+	bool m_critical;
+
+	public:
+	template<class T> static bad_chunk_line critical(const T& t)
+	{ return { t, true }; }
+
+	template<class T> static bad_chunk_line regular(const T& t)
+	{ return { t, false }; }
+
+	static bad_chunk_line regular()
+	{ return { "bad_chunk_line", false }; }
+
+	bool critical() const
+	{ return m_critical; }
+
+	private:
+	bad_chunk_line(const exception& cause, bool critical)
+	: runtime_error(cause.what()), m_critical(critical)
+	{}
+
+	bad_chunk_line(const string& what, bool critical)
+	: runtime_error(what), m_critical(critical)
+	{}
+};
 
 const unsigned max_retry_count = 5;
 
@@ -258,13 +286,15 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 					chunk += linebuf;
 					last = line;
 					update_progress(pos, chunk.size());
-				} catch (const exception& e) {
-					string msg = "failed to parse chunk line @" + to_hex(pos) + ": '" + line + "' (" + e.what() + ")";
-					if (retries >= max_retry_count) {
+				} catch (const bad_chunk_line& e) {
+					string msg = "bad chunk line @" + to_hex(pos) + ": '" + line + "' (" + e.what() + ")";
+					if (e.critical() && retries >= max_retry_count) {
 						throw runtime_error(msg);
 					}
 
 					logger::d() << endl << msg << endl;
+				} catch (const exception& e) {
+					logger::d() << "error while parsing '" << line << "': " << e.what() << endl;
 					break;
 				}
 			}
@@ -371,30 +401,27 @@ bool bfc_ram::is_ignorable_line(const string& line)
 
 string bfc_ram::parse_chunk_line(const string& line, uint32_t offset)
 {
+	uint32_t data[4];
+	uint32_t off;
+
+	int n = sscanf(line.c_str(),
+			m_hint_decimal ? "%u: %u  %u  %u  %u" : "%x: %x  %x  %x  %x",
+			&off, &data[0], &data[1], &data[2], &data[3]);
+
+	if (!n) {
+		throw bad_chunk_line::regular();
+	} else if (off != offset) {
+		throw bad_chunk_line::critical("offset mismatch");
+	}
+
 	string linebuf;
 
-	if (!m_hint_decimal) {
-		if (offset != hex_cast<uint32_t>(line.substr(0, 8))) {
-			throw runtime_error("offset mismatch");
-		}
-		for (unsigned i = 0; i < 4; ++i) {
-			linebuf += to_buf(hton(hex_cast<uint32_t>(line.substr((i + 1) * 10, 8))));
-		}
-	} else {
-		auto beg = line.find(": ");
-		if (offset != lexical_cast<uint32_t>(line.substr(0, beg))) {
-			throw runtime_error("offset mismatch");
-		}
-
-		for (unsigned i = 0; i < 4; ++i) {
-			beg = line.find_first_of("0123456789", beg);
-			auto end = line.find_first_not_of("0123456789", beg);
-			linebuf += to_buf(hton(lexical_cast<uint32_t>(line.substr(beg, end - beg))));
-			beg = end;
-		}
+	for (int i = 0; i < (n - 1); ++i) {
+		linebuf += to_buf(ntoh(data[i]));
 	}
 
 	return linebuf;
+
 }
 
 class bfc_flash2 : public bfc_ram
@@ -666,25 +693,29 @@ bool bfc_flash::is_ignorable_line(const string& line)
 
 string bfc_flash::parse_chunk_line(const string& line, uint32_t offset)
 {
+	auto tok = split(line, ' ', false);
+	if (tok.empty()) {
+		throw bad_chunk_line::regular();
+	}
+
 	string linebuf;
 
-	if (use_direct_read()) {
-		for (unsigned i = 0; i < 16; ++i) {
-			// don't change this to uint8_t
-			uint32_t val = hex_cast<uint32_t>(line.substr(i * 3 + (i / 4) * 2, 2));
-			if (val > 0xff) {
-				throw runtime_error("value out of range: 0x" + to_hex(val));
-			}
-
-			linebuf += char(val);
+	for (auto num : tok) {
+		uint32_t n;
+		try {
+			n = hex_cast<uint32_t>(num);
+		} catch (const exception& e) {
+			throw bad_chunk_line::regular(e);
 		}
-	} else {
-		for (size_t i = 0; i < line.size(); i += 9) {
-			linebuf += to_buf(hton(hex_cast<uint32_t>(line.substr(i, 8))));
 
-			if (!(i % 128)) {
-				update_progress(offset + i, 0);
+		if (use_direct_read()) {
+			if (n > 0xff) {
+				throw bad_chunk_line::regular("invalid byte: 0x" + to_hex(n));
 			}
+
+			linebuf += char(n);
+		} else {
+			linebuf += to_buf(ntoh(n));
 		}
 	}
 
@@ -776,7 +807,12 @@ bool bootloader_ram::write_chunk(uint32_t offset, const string& chunk)
 
 		m_intf->writeln(to_hex(offset, 0));
 		uint32_t val = ntoh(extract<uint32_t>(chunk));
+#if 0
 		return m_intf->runcmd(to_hex(val) + "\r\n", "Main Menu");
+#else
+		m_intf->writeln(to_hex(val));
+		return true;
+#endif
 	} catch (const exception& e) {
 		// ensure that we're in a sane state
 		m_intf->runcmd("\r\n", "Main Menu");
@@ -802,13 +838,13 @@ string bootloader_ram::parse_chunk_line(const string& line, uint32_t offset)
 {
 	if (line.find("Value at") == 0) {
 		if (offset != hex_cast<uint32_t>(line.substr(9, 8))) {
-			throw runtime_error("offset mismatch");
+			throw bad_chunk_line::critical("offset mismatch");
 		}
 
 		return to_buf(hton(hex_cast<uint32_t>(line.substr(19, 8))));
 	}
 
-	throw runtime_error("unexpected line");
+	throw bad_chunk_line::regular();
 }
 
 bool bootloader_ram::exec_impl(uint32_t offset)
@@ -843,16 +879,18 @@ bool bootloader_ram::exec_impl(uint32_t offset)
 // this defines uint32 dumpcode[] and writecode[]
 #include "rwcode.c"
 
+#include "rwcode2.inc"
+
 class code_rwx : public parsing_rwx
 {
 	public:
 	code_rwx() {}
 
 	virtual limits limits_read() const override
-	{ return limits(4, 16, 0x4000); }
+	{ return limits(16, 16, 0x4000); }
 
 	virtual limits limits_write() const override
-	{ return limits(16, 16, 0x4000); }
+	{ return limits(8, 8, 0x4000); }
 
 	virtual unsigned capabilities() const override
 	{ return cap_rwx; }
@@ -868,8 +906,8 @@ class code_rwx : public parsing_rwx
 		auto cfg = intf->version().codecfg();
 		if (!cfg["rwcode"] || !cfg["buffer"] || !cfg["printf"]) {
 			throw runtime_error("insufficient profile information for code dumper");
-		} else if (cfg["rwcode"] & 0xffff) {
-			throw runtime_error("rwcode address must be aligned to 64k");
+		} else if (cfg["rwcode"] & 0xfff) {
+			throw runtime_error("rwcode address must be aligned to 4k");
 		}
 
 		m_ram = rwx::create(intf, "ram");
@@ -897,10 +935,14 @@ class code_rwx : public parsing_rwx
 		string linebuf;
 
 		auto values = split(line.substr(1), ':');
-		if (values.size() == 4) {
-			for (string val : values) {
-				linebuf += to_buf(hton(hex_cast<uint32_t>(val)));
-			}
+		auto lim = limits_read();
+
+		if (values.size() < (lim.min / 4) || values.size() > (lim.max / 4)) {
+			throw runtime_error("invalid chunk line: '" + line + "'");
+		}
+
+		for (string val : values) {
+			linebuf += to_buf(hton(hex_cast<uint32_t>(val)));
 		}
 
 		return linebuf;
@@ -910,19 +952,32 @@ class code_rwx : public parsing_rwx
 	virtual bool write_chunk(uint32_t offset, const string& chunk) override
 	{
 		m_ram->exec(m_loadaddr + m_entry);
-		for (size_t i = 0; i < chunk.size(); i += 16) {
+
+		for (size_t i = 0; i < chunk.size(); i += limits_write().min) {
 			string line;
-			for (size_t k = 0; k < 4; ++k) {
+
+			for (size_t k = 0; k < limits_write().min / 4; ++k) {
 				line += ":" + to_hex(chunk.substr(i + k * 4, 4));
 			}
+
 			m_intf->writeln(line);
 
 			line = trim(m_intf->readln());
-			if (line.empty() || line[0] != ':' || hex_cast<uint32_t>(line.substr(1)) != (offset + i)) {
+			if (line.empty() || line[0] != ':') {
 				throw runtime_error("expected offset, got '" + line + "'");
 			}
 
+			uint32_t actual = hex_cast<uint32_t>(line.substr(1));
+			if (actual != (offset + i)) {
+				throw runtime_error("expected offset 0x" + to_hex(offset + i, 8) + ", got 0x" + to_hex(actual));
+			}
+
 			update_progress(offset + i, 16);
+		}
+
+		if (!space().is_ram()) {
+			// FIXME
+			m_intf->wait_ready(60);
 		}
 
 		return true;
@@ -953,14 +1008,9 @@ class code_rwx : public parsing_rwx
 			throw runtime_error("error recovery is not possible with custom dumpcode");
 		}
 
-		uint32_t remaining = m_rw_length - (offset - m_rw_offset);
-
 		if (!m_write) {
-			patch32(m_code, 0x10, offset);
-			m_ram->write(m_loadaddr + 0x10, m_code.substr(0x10, 4));
-
-			patch32(m_code, 0x1c, remaining);
-			m_ram->write(m_loadaddr + 0x1c, m_code.substr(0x1c, 4));
+			m_ram->write(m_loadaddr + offsetof(bcm2_read_args, offset), to_buf(hton(offset)));
+			m_ram->write(m_loadaddr + offsetof(bcm2_read_args, length), to_buf(hton(length)));
 		} else {
 			// TODO: implement if we ever use on_chunk_retry for writes
 		}
@@ -968,7 +1018,7 @@ class code_rwx : public parsing_rwx
 
 	unsigned chunk_timeout(uint32_t offset, uint32_t length) const override
 	{
-		if (offset != m_rw_offset || !m_read_func.addr()) {
+		if (offset != m_rw_offset || space().is_mem()) {
 			return parsing_rwx::chunk_timeout(offset, length);
 		} else {
 			return 60 * 1000;
@@ -979,16 +1029,17 @@ class code_rwx : public parsing_rwx
 	{
 		const profile::sp& profile = m_intf->profile();
 		auto cfg = m_intf->version().codecfg();
-		auto funcs = m_intf->version().functions(m_space.name());
 
 		if (cfg["buflen"] && length > cfg["buflen"]) {
 			throw user_error("requested length exceeds buffer size ("
 					+ to_string(cfg["buflen"]) + " b)");
 		}
 
+#if 0
 		if (write && !m_space.is_ram()) {
 			throw user_error("writing to non-ram address space is not supported");
 		}
+#endif
 
 		m_write = write;
 		m_rw_offset = offset;
@@ -997,117 +1048,61 @@ class code_rwx : public parsing_rwx
 		uint32_t kseg1 = profile->kseg1();
 		m_loadaddr = kseg1 | (cfg["rwcode"] + (write ? 0 : 0 /*0x10000*/));
 
+		string code;
+
 		// TODO: check whether we have a custom code file
 		if (true) {
 			if (!write) {
-				m_read_func = funcs["read"];
+				bcm2_read_args args = get_read_args(offset, length);
+				m_entry = sizeof(args);
+				code = to_buf(args);
 
-				m_code = string(reinterpret_cast<const char*>(dumpcode), sizeof(dumpcode));
-				m_entry = 0x4c;
-
-				if (!cfg["printf"] || (!m_space.is_mem() && (!cfg["buffer"] || !m_read_func.addr()))) {
-					throw user_error("profile " + profile->name() + " does not support fast dump mode; use -s flag");
-				}
-
-				patch32(m_code, 0x10, 0);
-				patch32(m_code, 0x14, kseg1 | cfg["buffer"]);
-				patch32(m_code, 0x18, offset);
-				patch32(m_code, 0x1c, length);
-				patch32(m_code, 0x20, limits_read().max);
-				patch32(m_code, 0x24, kseg1 | cfg["printf"]);
-
-				if (m_read_func.addr()) {
-					patch32(m_code, 0x0c, m_read_func.args());
-					patch32(m_code, 0x28, kseg1 | m_read_func.addr());
-
-					unsigned i = 0;
-					for (auto patch : m_read_func.patches()) {
-						uint32_t off = 0x2c + (8 * i++);
-						uint32_t addr = patch->addr;
-						patch32(m_code, off, addr ? (kseg1 | addr) : 0);
-						patch32(m_code, off + 4, addr ? patch->word : 0);
-					}
+				for (uint32_t word : mips_read_code) {
+					code += to_buf(hton(word));
 				}
 			} else {
-				m_write_func = funcs["write"];
-				m_erase_func = funcs["erase"];
+				bcm2_write_args args = get_write_args(offset, length);
+				m_entry = sizeof(args);
+				code = to_buf(args);
 
-				m_code = string(reinterpret_cast<const char*>(writecode), sizeof(writecode));
-				m_entry = WRITECODE_ENTRY;
-
-				patch32(m_code, WRITECODE_CFGOFF + 0x00, m_write_func.args() | m_erase_func.args());
-				patch32(m_code, WRITECODE_CFGOFF + 0x04, m_space.is_ram() ? offset : (kseg1 | cfg["buffer"]));
-				patch32(m_code, WRITECODE_CFGOFF + 0x08, 0);
-				patch32(m_code, WRITECODE_CFGOFF + 0x0c, limits_write().max);
-
-				if (!m_space.is_ram()) {
-					patch32(m_code, WRITECODE_CFGOFF + 0x10, offset);
-					try {
-						patch32(m_code, WRITECODE_CFGOFF + 0x14, m_space.partition(offset).size());
-					} catch (const user_error& e) {
-						throw user_error("writing to random offsets within a flash partition is not supported");
-					}
-				} else {
-					patch32(m_code, WRITECODE_CFGOFF + 0x10, 0);
-					patch32(m_code, WRITECODE_CFGOFF + 0x14, 0);
+				for (uint32_t word : mips_write_code) {
+					code += to_buf(hton(word));
 				}
-
-				patch32(m_code, WRITECODE_CFGOFF + 0x18, kseg1 | cfg["printf"]);
-
-				if (cfg["printf"] && cfg["sscanf"] && cfg["getline"]) {
-					patch32(m_code, WRITECODE_CFGOFF + 0x1c, kseg1 | cfg["sscanf"]);
-					patch32(m_code, WRITECODE_CFGOFF + 0x20, kseg1 | cfg["getline"]);
-				} else if (cfg["printf"] && cfg["scanf"]) {
-					patch32(m_code, WRITECODE_CFGOFF + 0x1c, kseg1 | cfg["scanf"]);
-					patch32(m_code, WRITECODE_CFGOFF + 0x20, 0);
-				} else {
-					throw user_error("profile " + profile->name() + " does not support fast write mode; use -s flag");
-				}
-
-				patch32(m_code, WRITECODE_CFGOFF + 0x24, m_write_func.addr());
-				patch32(m_code, WRITECODE_CFGOFF + 0x28, m_erase_func.addr());
-
-				patch32(m_code, WRITECODE_CFGOFF + 0x2c, length);
 			}
 
-			uint32_t codesize = m_code.size();
-			if (mipsasm_resolve_labels(reinterpret_cast<uint32_t*>(&m_code[0]), &codesize, m_entry) != 0) {
-				throw runtime_error("failed to resolve mips asm labels");
-			}
+			size_t codesize = code.size() - m_entry;
 
-			m_code.resize(codesize);
-
-#if 1
-			ofstream("code.bin").write(m_code.data(), m_code.size());
-#endif
-
-			uint32_t expected = 0xc0de0000 | crc16_ccitt(m_code.substr(m_entry, m_code.size() - 4 - m_entry));
-			uint32_t actual = ntoh(extract<uint32_t>(m_ram->read(m_loadaddr + m_code.size() - 4, 4)));
+			uint32_t expected = 0xc0de0000 | crc16_ccitt(code.substr(m_entry, codesize));
+			uint32_t actual = ntoh(extract<uint32_t>(m_ram->read(m_loadaddr + codesize, 4)));
 			bool quick = (expected == actual);
 
-			patch32(m_code, codesize - 4, expected);
+			code += to_buf(hton(expected));
+
+#if 1
+			ofstream("code.bin").write(code.data(), code.size());
+#endif
 
 			progress pg;
-			progress_init(&pg, m_loadaddr, m_code.size());
+			progress_init(&pg, m_loadaddr, code.size());
 
 			if (m_prog_l && !quick) {
-				logger::i("updating code at 0x%08x (%u b)\n", m_loadaddr, codesize);
+				logger::i("updating code at 0x%08x (%lu b)\n", m_loadaddr, code.size());
 			}
 
 			for (unsigned pass = 0; pass < 2; ++pass) {
-				string ramcode = m_ram->read(m_loadaddr, m_code.size());
-				for (uint32_t i = 0; i < m_code.size(); i += 4) {
+				string ramcode = m_ram->read(m_loadaddr, code.size());
+				for (uint32_t i = 0; i < code.size(); i += 4) {
 					if (!quick && pass == 0 && m_prog_l) {
 						progress_add(&pg, 4);
 						logger::i("\r ");
 						progress_print(&pg, stdout);
 					}
 
-					if (ramcode.substr(i, 4) != m_code.substr(i, 4)) {
+					if (ramcode.substr(i, 4) != code.substr(i, 4)) {
 						if (pass == 1) {
 							throw runtime_error("dump code verification failed at 0x" + to_hex(i + m_loadaddr, 8));
 						}
-						m_ram->write(m_loadaddr + i, m_code.substr(i, 4));
+						m_ram->write(m_loadaddr + i, code.substr(i, 4));
 					}
 				}
 			}
@@ -1116,17 +1111,110 @@ class code_rwx : public parsing_rwx
 		}
 	}
 
-	string m_code;
+	template<size_t N> void copy_patches(bcm2_patch (&dest)[N], const func& f, uint32_t kseg1)
+	{
+		auto ps = f.patches();
+
+		for (size_t i = 0; i < N && i < ps.size(); ++i) {
+			if (ps[i]->addr) {
+				dest[i].addr = hton(kseg1 | ps[i]->addr);
+				dest[i].word = hton(ps[i]->word);
+			} else {
+				memset(&dest[i], 0, sizeof(bcm2_patch));
+			}
+		}
+	}
+
+	bcm2_write_args get_write_args(uint32_t offset, uint32_t length)
+	{
+		auto profile = m_intf->profile();
+		uint32_t kseg1 = profile->kseg1();
+		auto cfg = m_intf->version().codecfg();
+		auto funcs = m_intf->version().functions(m_space.name());
+
+		auto fl_write = funcs["write"];
+		auto fl_erase = funcs["erase"];
+
+		bcm2_write_args args = { ":%x:%x", "\r\n" };
+		args.flags = hton(fl_write.args() | fl_erase.args());
+		args.length = hton(length);
+		args.chunklen = hton(limits_read().max);
+		args.index = 0;
+		args.fl_write = 0;
+
+		if (space().is_ram()) {
+			args.buffer = hton(offset);
+			args.offset = 0;
+		} else {
+			args.buffer = hton(kseg1 | cfg["buffer"]);
+			args.offset = hton(offset);
+		}
+
+		args.printf = hton(cfg["printf"]);
+
+		if (cfg["sscanf"] && cfg["getline"]) {
+			args.xscanf = hton(cfg["sscanf"]);
+			args.getline = hton(cfg["getline"]);
+		} else if (cfg["scanf"]) {
+			args.xscanf = hton(cfg["scanf"]);
+		}
+
+		if (fl_erase.addr()) {
+			args.fl_erase = hton(kseg1 | fl_erase.addr());
+			copy_patches(args.erase_patches, fl_erase, kseg1);
+		}
+
+		if (fl_write.addr()) {
+			args.fl_write = hton(kseg1 | fl_write.addr());
+			copy_patches(args.write_patches, fl_write, kseg1);
+		}
+
+		if (!args.printf || !args.xscanf || (!space().is_mem() && !args.fl_write)) {
+			throw user_error("profile " + profile->name() + " does not support fast write mode; use -s flag");
+		}
+
+		return args;
+	}
+
+	bcm2_read_args get_read_args(uint32_t offset, uint32_t length)
+	{
+		auto profile = m_intf->profile();
+		uint32_t kseg1 = profile->kseg1();
+		auto cfg = m_intf->version().codecfg();
+		auto funcs = m_intf->version().functions(m_space.name());
+
+		auto fl_read = funcs["read"];
+
+		if (!cfg["printf"] || (!m_space.is_mem() && (!cfg["buffer"] || !fl_read.addr()))) {
+			throw user_error("profile " + profile->name() + " does not support fast dump mode; use -s flag");
+		}
+
+		bcm2_read_args args = { ":%x", "\r\n" };
+		args.offset = hton(offset);
+		args.length = hton(length);
+		args.chunklen = hton(limits_read().max);
+		args.printf = hton(kseg1 | cfg["printf"]);
+
+		if (m_space.is_mem()) {
+			args.buffer = 0;
+			args.fl_read = 0;
+		} else {
+			args.buffer = hton(kseg1 | cfg["buffer"]);
+			args.flags = hton(fl_read.args());
+			args.fl_read = hton(kseg1 | fl_read.addr());
+		}
+
+		copy_patches(args.patches, fl_read, kseg1);
+
+		return args;
+	}
+
 	uint32_t m_loadaddr = 0;
 	uint32_t m_entry = 0;
 
 	bool m_write = false;
 	uint32_t m_rw_offset = 0;
 	uint32_t m_rw_length = 0;
-
-	func m_read_func;
-	func m_write_func;
-	func m_erase_func;
 
 	rwx::sp m_ram;
 };
