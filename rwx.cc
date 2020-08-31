@@ -973,6 +973,11 @@ class code_rwx : public parsing_rwx
 			update_progress(offset + i, 16);
 		}
 
+		if (!space().is_ram()) {
+			// FIXME
+			m_intf->wait_ready(60);
+		}
+
 		return true;
 	}
 
