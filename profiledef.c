@@ -431,7 +431,7 @@ struct bcm2_profile bcm2_profiles[] = {
 				}
 			},
 			{
-				.version = "DNA_3.490.0-T3-20200429",
+				.version = "DNA_3.490.0",
 				.intf = BCM2_INTF_BFC,
 				.magic = { 0x81082fa8, "FAST3686_DNA_3.490.0-T3-20200429" },
 				.spaces = {
