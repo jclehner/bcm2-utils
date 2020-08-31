@@ -71,7 +71,7 @@ $(psextract): $(psextract_OBJ)
 t_nonvol: $(t_nonvol_OBJ)
 	$(CXX) $(CXXFLAGS) $(t_nonvol_OBJ) -o $@ $(LDFLAGS)
 
-rwx.o: rwx.cc rwx.h rwcode.c rwcode2.h rwcode2.inc
+rwx.o: rwx.cc rwx.h rwcode2.h rwcode2.inc
 	$(CXX) -c $(CXXFLAGS) $< -o $@
 
 rwcode2.inc: rwcode2.c rwcode2.h

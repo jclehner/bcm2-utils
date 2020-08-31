@@ -874,11 +874,7 @@ bool bootloader_ram::exec_impl(uint32_t offset)
  * A good candidate would be 'z' (Cause exception).
  */
 
-
-
 // this defines uint32 dumpcode[] and writecode[]
-#include "rwcode.c"
-
 #include "rwcode2.inc"
 
 class code_rwx : public parsing_rwx
