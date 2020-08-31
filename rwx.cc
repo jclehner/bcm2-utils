@@ -805,7 +805,12 @@ bool bootloader_ram::write_chunk(uint32_t offset, const string& chunk)
 
 		m_intf->writeln(to_hex(offset, 0));
 		uint32_t val = ntoh(extract<uint32_t>(chunk));
+#if 0
 		return m_intf->runcmd(to_hex(val) + "\r\n", "Main Menu");
+#else
+		m_intf->writeln(to_hex(val));
+		return true;
+#endif
 	} catch (const exception& e) {
 		// ensure that we're in a sane state
 		m_intf->runcmd("\r\n", "Main Menu");
