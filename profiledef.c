@@ -98,7 +98,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		.versions = {
 			{
 				.intf = BCM2_INTF_BLDR,
-				.rwcode = 0x80002000,
+				.rwcode = 0x85eff000,
 				.buffer = 0x85f00000,
 				.printf = 0x83f8b0c0,
 				.sscanf = 0x83f8ba94,
@@ -106,8 +106,8 @@ struct bcm2_profile bcm2_profiles[] = {
 				.spaces = {
 					{
 						.name = "flash",
-						.read = { 0x80010068, BCM2_READ_FUNC_OBL },
-						.write = { 0x80010034, BCM2_READ_FUNC_BOL },
+						.read = { 0x80010068, BCM2_READ_FUNC_BOL },
+						.write = { 0x80010034, 0 },
 						.erase = { 0x80010004, BCM2_ERASE_FUNC_OL },
 					}
 				}
@@ -817,7 +817,7 @@ struct bcm2_profile bcm2_profiles[] = {
 					{
 						.name = "flash",
 						.read = { 0x83f80dc0, BCM2_READ_FUNC_OBL },
-						.write = { 0x83f80c48, BCM2_READ_FUNC_OBL },
+						.write = { 0x83f80c48, 0 },
 						.erase = { 0x83f80fb0, BCM2_ERASE_FUNC_OL },
 					}
 				}
@@ -956,13 +956,13 @@ struct bcm2_profile bcm2_profiles[] = {
 								.mode = BCM2_READ_FUNC_BOL,
 								.patch = {{ 0x83f83380, 0x10000017 }}
 						},
-						.write = { 0x83f82e98, BCM2_READ_FUNC_OBL },
+						.write = { 0x83f82e98, 0 },
 						.erase = { 0x83f82c08, BCM2_ERASE_FUNC_OS },
 					},
 					{
 						.name = "nvram",
 						.read = { 0x83f81298, BCM2_READ_FUNC_OBL },
-						.write = { 0x83f810bc, BCM2_READ_FUNC_OBL },
+						.write = { 0x83f810bc, 0 },
 						.erase = { 0x83f814e0, BCM2_ERASE_FUNC_OL },
 					}
 				}
