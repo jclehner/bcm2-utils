@@ -21,7 +21,6 @@
 #include <iostream>
 #include <fstream>
 #include "progress.h"
-#include "mipsasm.h"
 #include "rwcode2.h"
 #include "util.h"
 #include "rwx.h"
