@@ -26,10 +26,11 @@ FakeFlashErase:
 	jalr $v0
 	ori $a0, sErase
 
-	lw $ra, 0($sp)
-	addiu $sp, 4
-	jr $ra
 	and $v0, $a1, 3 // return non-zero on unaligned offset
+
+	lw $ra, 0($sp)
+	jr $ra
+	addiu $sp, 4
 
 // 0x80001034
 // bool FakeFlashWrite(uint32_t buffer, uint32_t offset, uint32_t length)
@@ -45,10 +46,11 @@ FakeFlashWrite:
 	jalr $v0
 	ori $a0, sWrite
 
-	lw $ra, 0($sp)
-	addiu $sp, 4
-	jr $ra
 	and $v0, $a2, 3 // return non-zero on unaligned offset
+
+	lw $ra, 0($sp)
+	jr $ra
+	addiu $sp, 4
 
 // 0x80010068
 // bool FakeFlashRead(uint32_t offset, uint32_t buffer, uint32_t length)
@@ -64,14 +66,15 @@ FakeFlashRead:
 	jalr $v0
 	ori $a0, sRead
 
-	lw $ra, 0($sp)
-	addiu $sp, 4
-	jr $ra
 	and $v0, $a1, 3 // return non-zero on unaligned offset
+
+	lw $ra, 0($sp)
+	jr $ra
+	addiu $sp, 4
 
 sErase:
 	.asciz "FakeFlashErase: off=0x%08x, len=%d\r\n"
 sWrite:
-	.asciz "FakeFlashWrite: buf=0x%08x, off=0x%08x, len=%d\r\n"
+	.asciz "FakeFlashWrite: off=0x%08x, buf=0x%08x, len=%d\r\n"
 sRead:
-	.asciz "FakeFlashRead: off=0x%08x, buf=0x%08x, len=%d\r\n"
+	.asciz "FakeFlashRead: buf=0x%08x, off=0x%08x, len=%d\r\n"
