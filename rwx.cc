@@ -34,6 +34,33 @@ using namespace std;
 namespace bcm2dump {
 namespace {
 
+class bad_chunk_line : public runtime_error
+{
+	bool m_critical;
+
+	public:
+	template<class T> static bad_chunk_line critical(const T& t)
+	{ return { t, true }; }
+
+	template<class T> static bad_chunk_line regular(const T& t)
+	{ return { t, false }; }
+
+	static bad_chunk_line regular()
+	{ return { "bad_chunk_line", false }; }
+
+	bool critical() const
+	{ return m_critical; }
+
+	private:
+	bad_chunk_line(const exception& cause, bool critical)
+	: runtime_error(cause.what()), m_critical(critical)
+	{}
+
+	bad_chunk_line(const string& what, bool critical)
+	: runtime_error(what), m_critical(critical)
+	{}
+};
+
 const unsigned max_retry_count = 5;
 
 template<class T> T hex_cast(const std::string& str)
@@ -257,13 +284,15 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 					chunk += linebuf;
 					last = line;
 					update_progress(pos, chunk.size());
-				} catch (const exception& e) {
-					string msg = "failed to parse chunk line @" + to_hex(pos) + ": '" + line + "' (" + e.what() + ")";
-					if (retries >= max_retry_count) {
+				} catch (const bad_chunk_line& e) {
+					string msg = "bad chunk line @" + to_hex(pos) + ": '" + line + "' (" + e.what() + ")";
+					if (e.critical() && retries >= max_retry_count) {
 						throw runtime_error(msg);
 					}
 
 					logger::d() << endl << msg << endl;
+				} catch (const exception& e) {
+					logger::d() << "error while parsing '" << line << "': " << e.what() << endl;
 					break;
 				}
 			}
@@ -370,30 +399,27 @@ bool bfc_ram::is_ignorable_line(const string& line)
 
 string bfc_ram::parse_chunk_line(const string& line, uint32_t offset)
 {
+	uint32_t data[4];
+	uint32_t off;
+
+	int n = sscanf(line.c_str(),
+			m_hint_decimal ? "%u: %u  %u  %u  %u" : "%x: %x  %x  %x  %x",
+			&off, &data[0], &data[1], &data[2], &data[3]);
+
+	if (!n) {
+		throw bad_chunk_line::regular();
+	} else if (off != offset) {
+		throw bad_chunk_line::critical("offset mismatch");
+	}
+
 	string linebuf;
 
-	if (!m_hint_decimal) {
-		if (offset != hex_cast<uint32_t>(line.substr(0, 8))) {
-			throw runtime_error("offset mismatch");
-		}
-		for (unsigned i = 0; i < 4; ++i) {
-			linebuf += to_buf(hton(hex_cast<uint32_t>(line.substr((i + 1) * 10, 8))));
-		}
-	} else {
-		auto beg = line.find(": ");
-		if (offset != lexical_cast<uint32_t>(line.substr(0, beg))) {
-			throw runtime_error("offset mismatch");
-		}
-
-		for (unsigned i = 0; i < 4; ++i) {
-			beg = line.find_first_of("0123456789", beg);
-			auto end = line.find_first_not_of("0123456789", beg);
-			linebuf += to_buf(hton(lexical_cast<uint32_t>(line.substr(beg, end - beg))));
-			beg = end;
-		}
+	for (int i = 0; i < (n - 1); ++i) {
+		linebuf += to_buf(ntoh(data[i]));
 	}
 
 	return linebuf;
+
 }
 
 class bfc_flash2 : public bfc_ram
@@ -665,25 +691,29 @@ bool bfc_flash::is_ignorable_line(const string& line)
 
 string bfc_flash::parse_chunk_line(const string& line, uint32_t offset)
 {
+	auto tok = split(line, ' ', false);
+	if (tok.empty()) {
+		throw bad_chunk_line::regular();
+	}
+
 	string linebuf;
 
-	if (use_direct_read()) {
-		for (unsigned i = 0; i < 16; ++i) {
-			// don't change this to uint8_t
-			uint32_t val = hex_cast<uint32_t>(line.substr(i * 3 + (i / 4) * 2, 2));
-			if (val > 0xff) {
-				throw runtime_error("value out of range: 0x" + to_hex(val));
-			}
-
-			linebuf += char(val);
+	for (auto num : tok) {
+		uint32_t n;
+		try {
+			n = hex_cast<uint32_t>(num);
+		} catch (const exception& e) {
+			throw bad_chunk_line::regular(e);
 		}
-	} else {
-		for (size_t i = 0; i < line.size(); i += 9) {
-			linebuf += to_buf(hton(hex_cast<uint32_t>(line.substr(i, 8))));
 
-			if (!(i % 128)) {
-				update_progress(offset + i, 0);
+		if (use_direct_read()) {
+			if (n > 0xff) {
+				throw bad_chunk_line::regular("invalid byte: 0x" + to_hex(n));
 			}
+
+			linebuf += char(n);
+		} else {
+			linebuf += to_buf(ntoh(n));
 		}
 	}
 
@@ -801,13 +831,13 @@ string bootloader_ram::parse_chunk_line(const string& line, uint32_t offset)
 {
 	if (line.find("Value at") == 0) {
 		if (offset != hex_cast<uint32_t>(line.substr(9, 8))) {
-			throw runtime_error("offset mismatch");
+			throw bad_chunk_line::critical("offset mismatch");
 		}
 
 		return to_buf(hton(hex_cast<uint32_t>(line.substr(19, 8))));
 	}
 
-	throw runtime_error("unexpected line");
+	throw bad_chunk_line::regular();
 }
 
 bool bootloader_ram::exec_impl(uint32_t offset)
