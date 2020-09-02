@@ -432,7 +432,7 @@ struct bcm2_profile bcm2_profiles[] = {
 				}
 			},
 			{
-				.version = "DNA_3.490.0",
+				.version = "DNA_3.490.0-T3",
 				.intf = BCM2_INTF_BFC,
 				.magic = { 0x81082fa8, "FAST3686_DNA_3.490.0-T3-20200429" },
 				.spaces = {
@@ -441,6 +441,20 @@ struct bcm2_profile bcm2_profiles[] = {
 							.open = { 0x803e1940, BCM2_ARGS_OE },
 							.read = { 0x803e1408, BCM2_READ_FUNC_BOL,
 									.patch = {{ 0x803e1598, 0x10000018 }},
+							}
+						},
+				}
+			},
+			{
+				.version = "DNA_3.490.0",
+				.intf = BCM2_INTF_BFC,
+				.magic = { 0x81083440, "FAST3686_DNA_3.495.0-20200715" },
+				.spaces = {
+						{
+							.name = "flash",
+							.open = { 0x803e1e50, BCM2_ARGS_OE },
+							.read = { 0x803e1918, BCM2_READ_FUNC_BOL,
+									.patch = {{ 0x803e1aa8, 0x10000018 }},
 							}
 						},
 				}
