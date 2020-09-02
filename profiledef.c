@@ -379,7 +379,8 @@ struct bcm2_profile bcm2_profiles[] = {
 		.spaces = {
 			{
 				.name = "ram",
-				.min = 0x80000000
+				.min = 0x80000000,
+				.size = 256 * 1024 * 1024,
 			},
 			{
 				.name = "nvram",
@@ -407,7 +408,7 @@ struct bcm2_profile bcm2_profiles[] = {
 			{
 				.intf = BCM2_INTF_BFC,
 				.rwcode = 0x80002000,
-				.buffer = 0x85f00000,
+				.buffer = 0x88000000,
 				.options = {
 					BCM2_VAL_STR("bfc:su_password", "$agem001"),
 					BCM2_VAL_U32("bfc:conthread_priv_off", 0x74),
