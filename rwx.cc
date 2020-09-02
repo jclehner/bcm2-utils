@@ -534,7 +534,7 @@ class bfc_flash2 : public bfc_ram
 			}
 
 			patch(read);
-			call(cmd, "read", 60);
+			call(cmd, "read", 120);
 		}
 	}
 
