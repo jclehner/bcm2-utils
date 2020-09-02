@@ -19,6 +19,7 @@
 
 #include <unistd.h>
 #include <iostream>
+#include <cstddef>
 #include <fstream>
 #include "progress.h"
 #include "rwcode2.h"
