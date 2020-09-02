@@ -136,6 +136,7 @@ class bfc : public interface
 	virtual bool check_privileged();
 	virtual void detect_profile() override;
 	virtual void initialize_impl() override;
+	virtual bool is_crash_line(const string& line) const override;
 
 	private:
 	void do_elevate_privileges();
@@ -295,6 +296,12 @@ void bfc::detect_profile()
 void bfc::initialize_impl()
 {
 	writeln("/docsis/scan_stop");
+}
+
+bool bfc::is_crash_line(const string& line) const
+{
+	return starts_with(line, "******************** CRASH")
+		|| starts_with(line, ">>> YIKES... ");
 }
 
 class bootloader : public interface
