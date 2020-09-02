@@ -510,10 +510,10 @@ class bfc_flash2 : public bfc_ram
 	void call(const string& cmd, const string& name, unsigned timeout = 5)
 	{
 		m_intf->runcmd(cmd);
+#if 0
 		// consume lines
 		m_intf->foreach_line([] (const string&) { return true; }, timeout * 1000, 0);
-
-#if 0
+#else
 		if (!m_intf->wait_ready(timeout)) {
 			throw runtime_error("timeout while waiting for function '" + name + "' to finish");
 		}
