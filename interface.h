@@ -116,6 +116,9 @@ class interface : public std::enable_shared_from_this<interface>
 	virtual void detect_profile()
 	{}
 
+	virtual void initialize_impl()
+	{}
+
 	std::shared_ptr<io> m_io;
 	profile::sp m_profile;
 	version_type m_version;

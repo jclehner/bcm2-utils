@@ -135,12 +135,12 @@ class bfc : public interface
 	protected:
 	virtual bool check_privileged();
 	virtual void detect_profile() override;
+	virtual void initialize_impl() override;
 
 	private:
 	void do_elevate_privileges();
 	bool m_privileged = false;
 	bool m_is_rg_prompt = false;
-	bool m_warn_ds_scan = true;
 };
 
 bool bfc::is_ready(bool passive)
@@ -152,14 +152,7 @@ bool bfc::is_ready(bool passive)
 	bool ready = false;
 
 	foreach_line([this, &ready] (const string& line) {
-		if (contains(line, "Scanning") && contains(line, "DS Channel at")) {
-			if (m_warn_ds_scan) {
-				// sadly we can't call /docsis_ctl/scan_stop here, since we might
-				// not have a root console just yet.
-				logger::v() << "downstream channel scan in progress" << endl;
-				m_warn_ds_scan = false;
-			}
-		} else if (is_bfc_prompt(line)) {
+		if (is_bfc_prompt(line)) {
 			m_privileged = is_bfc_prompt_privileged(line);
 			ready = true;
 		}
@@ -297,6 +290,11 @@ void bfc::detect_profile()
 			break;
 		}
 	}
+}
+
+void bfc::initialize_impl()
+{
+	writeln("/docsis/scan_stop");
 }
 
 class bootloader : public interface
@@ -701,8 +699,6 @@ string interface::readln(unsigned timeout) const
 
 void interface::initialize()
 {
-	elevate_privileges();
-
 	if (!m_profile) {
 		detect_profile_from_magics(shared_from_this(), m_profile);
 		elevate_privileges();
@@ -721,6 +717,8 @@ void interface::initialize()
 		}
 		logger::i() << endl;
 	}
+
+	initialize_impl();
 }
 
 interface::sp interface::detect(const io::sp& io, const profile::sp& profile)
