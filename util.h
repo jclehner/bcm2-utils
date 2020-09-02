@@ -112,7 +112,7 @@ class bad_lexical_cast : public std::invalid_argument
 	bad_lexical_cast(const std::string& str) : std::invalid_argument(str) {}
 };
 
-template<class T> T lexical_cast(const std::string& str, unsigned base = 10)
+template<class T> T lexical_cast(const std::string& str, unsigned base = 10, bool all = true)
 {
 	static std::istringstream istr;
 	istr.clear();
@@ -144,7 +144,7 @@ template<class T> T lexical_cast(const std::string& str, unsigned base = 10)
 		}
 
 		int c = istr.get() & 0xff;
-		if (istr.eof() || !c) {
+		if (!all || (istr.eof() || !c)) {
 			return t;
 		}
 	}
@@ -154,11 +154,11 @@ template<class T> T lexical_cast(const std::string& str, unsigned base = 10)
 
 // without these, istr >> t will read only one char instead of parsing the number
 
-template<> inline int8_t lexical_cast<int8_t>(const std::string& str, unsigned base)
-{ return lexical_cast<int16_t>(str, base) & 0xff; }
+template<> inline int8_t lexical_cast<int8_t>(const std::string& str, unsigned base, bool all)
+{ return lexical_cast<int16_t>(str, base, all) & 0xff; }
 
-template<> inline uint8_t lexical_cast<uint8_t>(const std::string& str, unsigned base)
-{ return lexical_cast<uint16_t>(str, base) & 0xff; }
+template<> inline uint8_t lexical_cast<uint8_t>(const std::string& str, unsigned base, bool all)
+{ return lexical_cast<uint16_t>(str, base, all) & 0xff; }
 
 template<class T> std::string to_hex(const T& t, size_t width = sizeof(T) * 2)
 {

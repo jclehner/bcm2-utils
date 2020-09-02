@@ -32,7 +32,7 @@
 
 namespace bcm2dump {
 
-class interface
+class interface : public std::enable_shared_from_this<interface>
 {
 	typedef bcm2dump::profile profile_type;
 	typedef bcm2dump::version version_type;
@@ -104,12 +104,17 @@ class interface
 
 	virtual bcm2_interface id() const = 0;
 
+	void initialize();
+
 	protected:
 	virtual bool is_crash_line(const std::string& line) const
 	{ return false; }
 
 	virtual uint32_t timeout() const
 	{ return 200; }
+
+	virtual void detect_profile()
+	{}
 
 	std::shared_ptr<io> m_io;
 	profile::sp m_profile;

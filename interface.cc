@@ -113,7 +113,7 @@ class telnet
 	virtual bool login(const string& user, const string& pw) = 0;
 };
 
-class bfc : public interface, public enable_shared_from_this<bfc>
+class bfc : public interface
 {
 	public:
 	virtual string name() const override
@@ -134,6 +134,7 @@ class bfc : public interface, public enable_shared_from_this<bfc>
 
 	protected:
 	virtual bool check_privileged();
+	virtual void detect_profile() override;
 
 	private:
 	void do_elevate_privileges();
@@ -262,6 +263,40 @@ bool bfc::check_privileged()
 	}, 0, 1000);
 
 	return m_privileged;
+}
+
+void bfc::detect_profile()
+{
+	uint16_t pssig = 0;
+
+	writeln("/version");
+
+	foreach_line([this, &pssig] (const string& l) {
+		const string needle = "PID=0x";
+		auto pos = l.find(needle);
+		if (pos != string::npos) {
+			try {
+				pssig = lexical_cast<uint16_t>(l.substr(pos + needle.size()), 16, false);
+				return true;
+			} catch (const exception& e) {
+				logger::d() << e.what() << endl;
+				// ignore
+			}
+		}
+
+		return false;
+	}, 0, 1000);
+
+	if (!pssig) {
+		return;
+	}
+
+	for (auto p : profile::list()) {
+		if (p->pssig() == pssig) {
+			m_profile = p;
+			break;
+		}
+	}
 }
 
 class bootloader : public interface
@@ -511,7 +546,7 @@ interface::sp detect_interface(const io::sp &io)
 }
 
 
-void detect_profile_if_not_set(const interface::sp& intf, const profile::sp& profile)
+void detect_profile_from_magics(const interface::sp& intf, const profile::sp& profile)
 {
 	if (profile) {
 		// TODO allow manually specifying a version, auto-detect otherwise
@@ -582,24 +617,15 @@ void detect_profile_if_not_set(const interface::sp& intf, const profile::sp& pro
 	for (const helper& h : magics) {
 		string data = magic_data(h.m);
 		if (ram->read(h.m->addr, data.size()) == data) {
-
-			logger::i() << "detected profile " << h.p->name() << "(" << intf->name() << ")";
 			version v = h.v;
 
-			if (!v.name().empty()) {
-				logger::i() << ", version " << v.name();
-			} else {
+			if (v.name().empty()) {
 				v = h.p->default_version(intf->id());
 			}
 
-			logger::i() << endl;
 			intf->set_profile(h.p, v);
 			return;
 		}
-	}
-
-	if (!profile) {
-		logger::i() << "profile auto-detection failed" << endl;
 	}
 }
 }
@@ -673,11 +699,34 @@ string interface::readln(unsigned timeout) const
 	return line;
 }
 
+void interface::initialize()
+{
+	elevate_privileges();
+
+	if (!m_profile) {
+		detect_profile_from_magics(shared_from_this(), m_profile);
+		elevate_privileges();
+	}
+
+	if (!m_profile) {
+		detect_profile();
+	}
+
+	if (!m_profile) {
+		logger::i() << "profile auto-detection failed" << endl;
+	} else {
+		logger::i() << "detected profile " << m_profile->name() << "(" << name() << ")";
+		if (!m_version.name().empty()) {
+			logger::i() << ", version " << m_version.name();
+		}
+		logger::i() << endl;
+	}
+}
+
 interface::sp interface::detect(const io::sp& io, const profile::sp& profile)
 {
 	interface::sp intf = detect_interface(io);
-	detect_profile_if_not_set(intf, profile);
-	intf->elevate_privileges();
+	intf->initialize();
 	return intf;
 }
 
@@ -729,8 +778,7 @@ interface::sp interface::create(const string& spec, const string& profile_name)
 				logger::w() << "detected non-telnet interface" << endl;
 			}
 
-			detect_profile_if_not_set(intf, profile);
-			intf->elevate_privileges();
+			intf->initialize();
 			return intf;
 		}
 	} catch (const bad_lexical_cast& e) {
