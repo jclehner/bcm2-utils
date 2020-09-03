@@ -355,6 +355,7 @@ bool bootloader::is_crash_line(const string& line) const
 	return starts_with(line, "******************** CRASH");
 }
 
+#if 0
 class bootloader2 : public interface
 {
 	public:
@@ -377,6 +378,7 @@ bool bootloader2::is_ready(bool passive)
 		return line.find("> ") == 0;
 	}, 2000);
 }
+#endif
 
 class bfc_telnet : public bfc, public telnet
 {
