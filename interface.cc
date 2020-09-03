@@ -297,7 +297,7 @@ void bfc::detect_profile()
 
 void bfc::initialize_impl()
 {
-	writeln("/docsis/scan_stop");
+	run("/docsis/scan_stop");
 }
 
 bool bfc::is_crash_line(const string& line) const

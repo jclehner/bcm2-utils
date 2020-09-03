@@ -259,7 +259,7 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 	uint32_t pos = offset;
 	string chunk;
 
-	m_intf->foreach_line([this, &chunk, &pos, &length, &retries] (const string& line) {
+	m_intf->foreach_line_raw([this, &chunk, &pos, &length, &retries] (const string& line) {
 		throw_if_interrupted();
 		string tline = trim(line);
 		if (!is_ignorable_line(tline)) {
