@@ -329,11 +329,9 @@ int do_run(int argc, char** argv, const string& profile)
 	auto intf = interface::create(argv[1], profile);
 
 	for (int i = 2; i < argc; ++i) {
-		intf->runcmd(argv[i]);
-		intf->foreach_line([] (const string& l) {
-				cout << trim(l) << endl;
-				return false;
-		}, 0, 1000);
+		for (auto line : intf->run(argv[i])) {
+			cout << trim(line) << endl;
+		}
 	}
 
 	return 0;

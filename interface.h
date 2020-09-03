@@ -43,8 +43,9 @@ class interface : public std::enable_shared_from_this<interface>
 	virtual ~interface() {}
 
 	virtual std::string name() const = 0;
-	virtual void runcmd(const std::string& cmd) = 0;
-	virtual bool runcmd(const std::string& cmd, const std::string& expect, bool stop_on_match = false);
+
+	std::vector<std::string> run(const std::string& cmd, unsigned timeout = 0);
+	bool run(const std::string& cmd, const std::string& expect, bool stop_on_match = false);
 
 	virtual void set_profile(const profile::sp& profile, const version& version)
 	{
@@ -92,7 +93,8 @@ class interface : public std::enable_shared_from_this<interface>
 	virtual void write(const std::string& str)
 	{ m_io->write(str); }
 
-	virtual bool foreach_line(std::function<bool(const std::string&)> f, unsigned timeout = 0, unsigned timeout_line = 0) const;
+	bool foreach_line_raw(std::function<bool(const std::string&)> f, unsigned timeout = 0) const;
+	bool foreach_line(std::function<bool(const std::string&)> f, unsigned timeout = 0) const;
 
 	virtual std::string readln(unsigned timeout = 0) const;
 
@@ -104,11 +106,16 @@ class interface : public std::enable_shared_from_this<interface>
 
 	virtual bcm2_interface id() const = 0;
 
-	void initialize();
-
 	protected:
+	virtual void call(const std::string& cmd)
+	{ writeln(cmd); }
+
+	void initialize(const profile::sp& profile);
+
 	virtual bool is_crash_line(const std::string& line) const
 	{ return false; }
+
+	virtual bool check_for_prompt(const std::string& line) const = 0;
 
 	virtual uint32_t timeout() const
 	{ return 200; }

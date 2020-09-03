@@ -124,9 +124,6 @@ class bfc : public interface
 	virtual bcm2_interface id() const override
 	{ return BCM2_INTF_BFC; }
 
-	virtual void runcmd(const string& cmd) override
-	{ writeln(cmd); }
-
 	virtual void elevate_privileges() override;
 
 	virtual bool is_privileged() const override
@@ -137,6 +134,7 @@ class bfc : public interface
 	virtual void detect_profile() override;
 	virtual void initialize_impl() override;
 	virtual bool is_crash_line(const string& line) const override;
+	virtual bool check_for_prompt(const string& line) const override;
 
 	private:
 	void do_elevate_privileges();
@@ -152,16 +150,21 @@ bool bfc::is_ready(bool passive)
 
 	bool ready = false;
 
-	foreach_line([this, &ready] (const string& line) {
+	foreach_line_raw([this, &ready] (const string& line) {
 		if (is_bfc_prompt(line)) {
 			m_privileged = is_bfc_prompt_privileged(line);
 			ready = true;
 		}
 
 		return false;
-	}, 2000);
+	});
 
 	return ready;
+}
+
+bool bfc::check_for_prompt(const string& line) const
+{
+	return is_bfc_prompt(line);
 }
 
 void bfc::elevate_privileges()
@@ -182,11 +185,11 @@ void bfc::do_elevate_privileges()
 	if (m_is_rg_prompt) {
 		if (m_privileged) {
 			// switchCpuConsole isn't available in the root shell!
-			runcmd("/exit");
+			run("/exit");
 			m_privileged = false;
 		}
 
-		runcmd("switchCpuConsole");
+		run("switchCpuConsole");
 		sleep(1);
 		writeln();
 		m_is_rg_prompt = false;
@@ -205,8 +208,7 @@ void bfc::do_elevate_privileges()
 	}
 
 	for (auto pw : passwords) {
-		runcmd("su");
-		usleep(200000);
+		run("su", "Password:", true);
 		writeln(pw);
 		writeln();
 
@@ -244,7 +246,7 @@ void bfc::do_elevate_privileges()
 
 bool bfc::check_privileged()
 {
-	foreach_line([this] (const string& l) {
+	foreach_line_raw([this] (const string& l) {
 		if (is_bfc_prompt_privileged(l)) {
 			m_privileged = true;
 		} else if (is_bfc_prompt_unprivileged(l)) {
@@ -254,7 +256,7 @@ bool bfc::check_privileged()
 		m_is_rg_prompt = is_bfc_prompt_rg(l);
 
 		return false;
-	}, 0, 1000);
+	});
 
 	return m_privileged;
 }
@@ -263,7 +265,11 @@ void bfc::detect_profile()
 {
 	uint16_t pssig = 0;
 
-	writeln("/version");
+	if (is_privileged()) {
+		writeln("/version");
+	} else {
+		writeln("/show version");
+	}
 
 	foreach_line([this, &pssig] (const string& l) {
 		const string needle = "PID=0x";
@@ -279,7 +285,7 @@ void bfc::detect_profile()
 		}
 
 		return false;
-	}, 0, 1000);
+	});
 
 	if (!pssig) {
 		return;
@@ -295,7 +301,7 @@ void bfc::detect_profile()
 
 void bfc::initialize_impl()
 {
-	writeln("/docsis/scan_stop");
+	run("/docsis/scan_stop");
 }
 
 bool bfc::is_crash_line(const string& line) const
@@ -315,10 +321,10 @@ class bootloader : public interface
 	virtual bcm2_interface id() const override
 	{ return BCM2_INTF_BLDR; }
 
-	virtual void runcmd(const string& cmd) override;
-
 	protected:
+	virtual void call(const string& cmd) override;
 	virtual bool is_crash_line(const string& line) const override;
+	virtual bool check_for_prompt(const string& line) const override;
 };
 
 bool bootloader::is_ready(bool passive)
@@ -327,19 +333,23 @@ bool bootloader::is_ready(bool passive)
 		writeln();
 	}
 
-	return foreach_line([] (const string& line) {
-		return line.find("Main Menu") != string::npos;
-	}, 2000);
+	return foreach_line_raw([this] (const string& line) {
+		return check_for_prompt(line);	
+	});
 }
 
-void bootloader::runcmd(const string& cmd)
+bool bootloader::check_for_prompt(const string& line) const
 {
-#if 0
-	if (cmd.size() != 1) {
-		throw invalid_argument("invalid bootloader command: " + cmd);
+	if (!starts_with(line, "Main Menu")) {
+		return false;
 	}
-#endif
 
+	foreach_line([] (const string&) { return false; });
+	return true;
+}
+
+void bootloader::call(const string& cmd)
+{
 	m_io->write(cmd);
 }
 
@@ -359,8 +369,6 @@ class bootloader2 : public interface
 
 	virtual bcm2_interface id() const override
 	{ return BCM2_INTF_BLDR; }
-
-	virtual void runcmd(const string& cmd) override;
 };
 
 bool bootloader2::is_ready(bool passive)
@@ -374,11 +382,6 @@ bool bootloader2::is_ready(bool passive)
 	}, 2000);
 }
 
-void bootloader2::runcmd(const string& cmd)
-{
-	m_io->write(cmd);
-}
-
 class bfc_telnet : public bfc, public telnet
 {
 	public:
@@ -389,13 +392,12 @@ class bfc_telnet : public bfc, public telnet
 	virtual ~bfc_telnet()
 	{
 		try {
-			runcmd("/exit");
+			call("/exit");
 		} catch (...) {
 
 		}
 	}
 
-	virtual void runcmd(const string& cmd) override;
 	virtual bool is_active() override
 	{ return is_ready(true); }
 	virtual bool is_ready(bool passive) override;
@@ -407,6 +409,8 @@ class bfc_telnet : public bfc, public telnet
 	protected:
 	virtual uint32_t timeout() const override
 	{ return 500; }
+
+	virtual void call(const string& cmd) override;
 
 	private:
 	unsigned m_status = invalid;
@@ -420,7 +424,7 @@ bool bfc_telnet::is_ready(bool passive)
 			writeln();
 		}
 
-		foreach_line([this] (const string& line) {
+		foreach_line_raw([this] (const string& line) {
 			if (contains(line, "Telnet Server")) {
 				m_status = connected;
 			} else if (m_status == connected) {
@@ -434,7 +438,7 @@ bool bfc_telnet::is_ready(bool passive)
 
 			return false;
 
-		}, 3000);
+		}, 1000);
 
 		return m_status >= connected;
 	} else {
@@ -442,13 +446,13 @@ bool bfc_telnet::is_ready(bool passive)
 	}
 }
 
-void bfc_telnet::runcmd(const string& cmd)
+void bfc_telnet::call(const string& cmd)
 {
 	if (m_status < authenticated) {
 		throw runtime_error("not authenticated");
 	}
 
-	bfc::runcmd(cmd);
+	bfc::call(cmd);
 }
 
 bool bfc_telnet::login(const string& user, const string& pass)
@@ -457,7 +461,7 @@ bool bfc_telnet::login(const string& user, const string& pass)
 	bool send_newline = true;
 
 	while (!have_prompt) {
-		have_prompt = foreach_line([] (const string& line) {
+		have_prompt = foreach_line_raw([] (const string& line) {
 			return is_bfc_login_prompt(line);
 		}, 3000);
 
@@ -474,7 +478,7 @@ bool bfc_telnet::login(const string& user, const string& pass)
 
 	writeln(user);
 
-	have_prompt = foreach_line([] (const string& line) {
+	have_prompt = foreach_line_raw([] (const string& line) {
 		if (contains(line, "Password:") || contains(line, "password:")) {
 			return true;
 		}
@@ -491,7 +495,7 @@ bool bfc_telnet::login(const string& user, const string& pass)
 	writeln(pass);
 	writeln();
 
-	foreach_line([this] (const string& line) {
+	foreach_line_raw([this] (const string& line) {
 		if (contains(line, "Invalid login")) {
 			return true;
 		} else if (is_bfc_prompt(line)) {
@@ -649,12 +653,12 @@ bool interface::wait_ready(unsigned timeout)
 	return false;
 }
 
-bool interface::runcmd(const string& cmd, const string& expect, bool stop_on_match)
+bool interface::run(const string& cmd, const string& expect, bool stop_on_match)
 {
-	runcmd(cmd);
+	call(cmd);
 	bool match = false;
 
-	foreach_line([&expect, &stop_on_match, &match] (const string& line) -> bool {
+	foreach_line_raw([&expect, &stop_on_match, &match] (const string& line) {
 		if (line.find(expect) != string::npos) {
 			match = true;
 			if (stop_on_match) {
@@ -668,26 +672,63 @@ bool interface::runcmd(const string& cmd, const string& expect, bool stop_on_mat
 	return match;
 }
 
-bool interface::foreach_line(function<bool(const string&)> f, unsigned timeout, unsigned timeout_line) const
+vector<string> interface::run(const string& cmd, unsigned timeout)
+{
+	call(cmd);
+	vector<string> lines;
+
+	foreach_line([&lines] (const string& line) {
+		lines.push_back(line);
+		return false;
+	}, timeout);
+
+	return lines;
+}
+
+bool interface::foreach_line_raw(function<bool(const string&)> f, unsigned timeout) const
 {
 	mstimer t;
 
 	while (true) {
-		if (pending(timeout_line)) {
-			string line = readln();
-			if (line.empty()) {
-				//logger::d() << "line was empty, but pending() returned true" << endl;
-				//break;
+		string line;
+
+		if (timeout) {
+			auto remaining = timeout - t.elapsed();
+			if (remaining < 0) {
+				break;
 			}
-			if (f(line)) {
-				return true;
-			}
-		} else if (!timeout || t.elapsed() >= timeout) {
+
+			line = readln(remaining);
+		} else {
+			line = readln();
+		}
+
+		if (line.empty()) {
 			break;
+		} else if (f(line)) {
+			return true;
 		}
 	}
 
 	return false;
+}
+
+bool interface::foreach_line(function<bool(const string&)> f, unsigned timeout) const
+{
+	bool prompt = false;
+	bool stopped = foreach_line_raw([this, &prompt, &f] (const string& line) {
+		if (check_for_prompt(line)) {
+			prompt = true;
+			return true;
+		}
+
+		return f(line);
+	}, timeout);
+
+	// we bailed out using `return true` in case of a prompt, but we don't want to
+	// give the impression that `f` returned true!
+
+	return stopped ? (!prompt) : false;
 }
 
 string interface::readln(unsigned timeout) const
@@ -696,7 +737,7 @@ string interface::readln(unsigned timeout) const
 
 	if (is_crash_line(line)) {
 		// consume lines to fill the io log
-		foreach_line([] (const string&) { return false; }, 0, 500);
+		foreach_line([] (const string&) { return false; }, 1000);
 
 		throw runtime_error("target has crashed");
 	}
@@ -704,8 +745,10 @@ string interface::readln(unsigned timeout) const
 	return line;
 }
 
-void interface::initialize()
+void interface::initialize(const profile::sp& profile)
 {
+	m_profile = profile;
+
 	if (!m_profile) {
 		detect_profile_from_magics(shared_from_this(), m_profile);
 		elevate_privileges();
@@ -731,7 +774,7 @@ void interface::initialize()
 interface::sp interface::detect(const io::sp& io, const profile::sp& profile)
 {
 	interface::sp intf = detect_interface(io);
-	intf->initialize();
+	intf->initialize(profile);
 	return intf;
 }
 
@@ -783,7 +826,7 @@ interface::sp interface::create(const string& spec, const string& profile_name)
 				logger::w() << "detected non-telnet interface" << endl;
 			}
 
-			intf->initialize();
+			intf->initialize(profile);
 			return intf;
 		}
 	} catch (const bad_lexical_cast& e) {

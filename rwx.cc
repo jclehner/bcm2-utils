@@ -256,48 +256,33 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 {
 	do_read_chunk(offset, length);
 
-	string line, chunk, last;
 	uint32_t pos = offset;
-	mstimer t;
-	unsigned timeout = chunk_timeout(offset, length);
+	string chunk;
 
-	do {
-		while ((!length || chunk.size() < length) && m_intf->pending()) {
-			throw_if_interrupted();
-
-			line = m_intf->readln();
-			if (line.empty()) {
-				break;
-			}
-
-			line = trim(line);
-
-			if (is_ignorable_line(line)) {
-				continue;
-			} else {
-				// no need for the timeout anymore, because we have the chunk line
-				timeout = 0;
-
-				try {
-					string linebuf = parse_chunk_line(line, pos);
-					pos += linebuf.size();
-					chunk += linebuf;
-					last = line;
-					update_progress(pos, chunk.size());
-				} catch (const bad_chunk_line& e) {
-					string msg = "bad chunk line @" + to_hex(pos) + ": '" + line + "' (" + e.what() + ")";
-					if (e.critical() && retries >= max_retry_count) {
-						throw runtime_error(msg);
-					}
-
-					logger::d() << endl << msg << endl;
-				} catch (const exception& e) {
-					logger::d() << "error while parsing '" << line << "': " << e.what() << endl;
-					break;
+	m_intf->foreach_line([this, &chunk, &pos, &retries] (const string& line) {
+		throw_if_interrupted();
+		string tline = trim(line);
+		if (!is_ignorable_line(line)) {
+			try {
+				string linebuf = parse_chunk_line(line, pos);
+				pos += linebuf.size();
+				chunk += linebuf;
+				update_progress(pos, chunk.size());
+			} catch (const bad_chunk_line& e) {
+				string msg = "bad chunk line @" + to_hex(pos) + ": '" + line + "' (" + e.what() + ")";
+				if (e.critical() && retries >= max_retry_count) {
+					throw runtime_error(msg);
 				}
+
+				logger::d() << endl << msg << endl;
+			} catch (const exception& e) {
+				logger::d() << "error while parsing '" << line << "': " << e.what() << endl;
+				return true;
 			}
 		}
-	} while (timeout && t.elapsed() < timeout);
+
+		return line.empty();
+	}, chunk_timeout(offset, length));
 
 	if (length && (chunk.size() != length)) {
 		string msg = "read incomplete chunk 0x" + to_hex(offset)
@@ -353,18 +338,18 @@ class bfc_ram : public parsing_rwx
 
 bool bfc_ram::exec_impl(uint32_t offset)
 {
-	return m_intf->runcmd("/call func -a 0x" + to_hex(offset), "Calling function 0x");
+	return m_intf->run("/call func -a 0x" + to_hex(offset), "Calling function 0x");
 };
 
 bool bfc_ram::write_chunk(uint32_t offset, const string& chunk)
 {
 	if (m_intf->is_privileged()) {
 		uint32_t val = chunk.size() == 4 ? ntoh(extract<uint32_t>(chunk)) : chunk[0];
-		return m_intf->runcmd("/write_memory -s " + to_string(chunk.size()) + " 0x" +
+		return m_intf->run("/write_memory -s " + to_string(chunk.size()) + " 0x" +
 				to_hex(offset, 0) + " 0x" + to_hex(val, 0), "Writing");
 	} else {
 		// diag writemem only supports writing bytes
-		return m_intf->runcmd("/system/diag writemem 0x" + to_hex(offset, 0) + " 0x" +
+		return m_intf->run("/system/diag writemem 0x" + to_hex(offset, 0) + " 0x" +
 				to_hex(chunk[0] & 0xff, 0), "Writing");
 	}
 }
@@ -372,9 +357,9 @@ bool bfc_ram::write_chunk(uint32_t offset, const string& chunk)
 void bfc_ram::do_read_chunk(uint32_t offset, uint32_t length)
 {
 	if (m_intf->is_privileged()) {
-		m_intf->runcmd("/read_memory -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
+		m_intf->writeln("/read_memory -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
 	} else {
-		m_intf->runcmd("/system/diag readmem -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
+		m_intf->writeln("/system/diag readmem -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
 	}
 
 	m_hint_decimal = false;
@@ -510,7 +495,7 @@ class bfc_flash2 : public bfc_ram
 
 	void call(const string& cmd, const string& name, unsigned timeout = 5)
 	{
-		m_intf->runcmd(cmd);
+		m_intf->run(cmd);
 #if 0
 		// consume lines
 		m_intf->foreach_line([] (const string&) { return true; }, timeout * 1000, 0);
@@ -619,29 +604,27 @@ void bfc_flash::init(uint32_t, uint32_t, bool write)
 	}
 
 	for (unsigned pass = 0; pass < 2; ++pass) {
-		m_intf->runcmd("/flash/open " + m_partition.altname());
+		auto lines = m_intf->run("/flash/open " + m_partition.altname());
 
 		bool opened = false;
 		bool retry = false;
 
-		m_intf->foreach_line([&opened, &retry] (const string& line) {
+		for (auto line : lines) {
 			if (contains(line, "opened twice")) {
 				retry = true;
 				opened = false;
 			} else if (contains(line, "driver opened")) {
 				opened = true;
 			}
-
-			return false;
-		}, 10000, 10000);
+		}
 
 		if (opened) {
 			break;
 		} else if (retry && pass == 0) {
 			logger::d() << "reinitializing flash driver before reopening" << endl;
 			cleanup();
-			m_intf->runcmd("/flash/deinit", "Deinitializing");
-			m_intf->runcmd("/flash/init", "Initializing");
+			m_intf->run("/flash/deinit", "Deinitializing");
+			m_intf->run("/flash/init", "Initializing");
 			sleep(1);
 		} else {
 			throw runtime_error("failed to open partition " + m_partition.name());
@@ -651,14 +634,14 @@ void bfc_flash::init(uint32_t, uint32_t, bool write)
 
 void bfc_flash::cleanup()
 {
-	m_intf->runcmd("/flash/close", "driver closed");
+	m_intf->run("/flash/close", "driver closed");
 }
 
 bool bfc_flash::write_chunk(uint32_t offset, const std::string& chunk)
 {
 	offset = to_partition_offset(offset);
 	uint32_t val = chunk.size() == 4 ? ntoh(extract<uint32_t>(chunk)) : chunk[0];
-	return m_intf->runcmd("/flash/write " + to_string(chunk.size()) + " 0x"
+	return m_intf->run("/flash/write " + to_string(chunk.size()) + " 0x"
 			+ to_hex(offset) + " 0x" + to_hex(val), "successfully written");
 }
 
@@ -666,9 +649,9 @@ void bfc_flash::do_read_chunk(uint32_t offset, uint32_t length)
 {
 	offset = to_partition_offset(offset);
 	if (use_direct_read()) {
-		m_intf->runcmd("/flash/readDirect " + to_string(length) + " " + to_string(offset));
+		m_intf->writeln("/flash/readDirect " + to_string(length) + " " + to_string(offset));
 	} else {
-		m_intf->runcmd("/flash/read 4 " + to_string(length) + " " + to_string(offset));
+		m_intf->writeln("/flash/read 4 " + to_string(length) + " " + to_string(offset));
 	}
 }
 
@@ -784,7 +767,7 @@ class bootloader_ram : public parsing_rwx
 void bootloader_ram::init(uint32_t offset, uint32_t length, bool write)
 {
 	if (!write) {
-		m_intf->runcmd("r");
+		m_intf->write("r");
 	} else {
 		m_intf->writeln();
 	}
@@ -799,21 +782,17 @@ void bootloader_ram::cleanup()
 bool bootloader_ram::write_chunk(uint32_t offset, const string& chunk)
 {
 	try {
-		if (!m_intf->runcmd("w", "Write memory.", true)) {
+		if (!m_intf->run("w", "Write memory.", true)) {
 			return false;
 		}
 
 		m_intf->writeln(to_hex(offset, 0));
 		uint32_t val = ntoh(extract<uint32_t>(chunk));
-#if 0
-		return m_intf->runcmd(to_hex(val) + "\r\n", "Main Menu");
-#else
 		m_intf->writeln(to_hex(val));
 		return true;
-#endif
 	} catch (const exception& e) {
 		// ensure that we're in a sane state
-		m_intf->runcmd("\r\n", "Main Menu");
+		m_intf->run("\r");
 		return false;
 	}
 }
@@ -847,8 +826,8 @@ string bootloader_ram::parse_chunk_line(const string& line, uint32_t offset)
 
 bool bootloader_ram::exec_impl(uint32_t offset)
 {
-	m_intf->runcmd("");
-	m_intf->runcmd("j", "");
+	m_intf->run("");
+	m_intf->run("j", "");
 	m_intf->writeln(to_hex(offset));
 	// FIXME
 	return true;
@@ -1260,7 +1239,7 @@ class bfc_cmcfg : public parsing_rwx
 
 void bfc_cmcfg::do_read_chunk(uint32_t offset, uint32_t length)
 {
-	m_intf->runcmd("/docsis_ctl/cfg_hex_show");
+	m_intf->writeln("/docsis_ctl/cfg_hex_show");
 }
 
 bool bfc_cmcfg::is_ignorable_line(const string& line)
@@ -1497,7 +1476,7 @@ void rwx::write(uint32_t offset, const string& buf, uint32_t length)
 	if (!length) {
 		length = buf.size();
 	}
-	
+
 	m_space.check_range(offset, length);
 
 	limits lim = limits_write();
@@ -1566,7 +1545,7 @@ void rwx::write(uint32_t offset, const string& buf, uint32_t length)
 						msg += " (" + what + ")";
 					}
 
-					if (++retries < 5 && wait_for_interface(m_intf)) {
+					if (++retries < 5 /*&& wait_for_interface(m_intf)*/) {
 						logger::d() << endl << msg << "; retrying" << endl;
 						//on_chunk_retry(offset_w, chunk.size());
 						continue;
