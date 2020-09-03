@@ -262,21 +262,21 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 	m_intf->foreach_line([this, &chunk, &pos, &retries] (const string& line) {
 		throw_if_interrupted();
 		string tline = trim(line);
-		if (!is_ignorable_line(line)) {
+		if (!is_ignorable_line(tline)) {
 			try {
-				string linebuf = parse_chunk_line(line, pos);
+				string linebuf = parse_chunk_line(tline, pos);
 				pos += linebuf.size();
 				chunk += linebuf;
 				update_progress(pos, chunk.size());
 			} catch (const bad_chunk_line& e) {
-				string msg = "bad chunk line @" + to_hex(pos) + ": '" + line + "' (" + e.what() + ")";
+				string msg = "bad chunk line @" + to_hex(pos) + ": '" + tline + "' (" + e.what() + ")";
 				if (e.critical() && retries >= max_retry_count) {
 					throw runtime_error(msg);
 				}
 
 				logger::d() << endl << msg << endl;
 			} catch (const exception& e) {
-				logger::d() << "error while parsing '" << line << "': " << e.what() << endl;
+				logger::d() << "error while parsing '" << tline << "': " << e.what() << endl;
 				return true;
 			}
 		}
@@ -291,7 +291,7 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 			// if the dump is still underway, we need to wait for it to finish
 			// before issuing the next command. wait for up to 10 seconds.
 
-			if (wait_for_interface(m_intf)) {
+			if (/*wait_for_interface(m_intf)*/ true) {
 				logger::d() << endl << msg << "; retrying" << endl;
 				on_chunk_retry(offset, length);
 				return read_chunk_impl(offset, length, retries + 1);
@@ -762,6 +762,9 @@ class bootloader_ram : public parsing_rwx
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
 	virtual bool is_ignorable_line(const string& line) override;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
+
+	virtual unsigned chunk_timeout(uint32_t offset, uint32_t length) const override
+	{ return 0; }
 };
 
 void bootloader_ram::init(uint32_t offset, uint32_t length, bool write)
