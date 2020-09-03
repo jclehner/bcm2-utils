@@ -775,8 +775,7 @@ void bootloader_ram::init(uint32_t offset, uint32_t length, bool write)
 
 void bootloader_ram::cleanup()
 {
-	m_intf->writeln();
-	m_intf->writeln();
+	m_intf->run("\r");
 }
 
 bool bootloader_ram::write_chunk(uint32_t offset, const string& chunk)
