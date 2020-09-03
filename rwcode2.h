@@ -34,6 +34,7 @@ struct bcm2_read_args
 	uint32_t offset;
 	uint32_t length;
 	uint32_t chunklen;
+	uint32_t index;
 	uint32_t printf;
 	uint32_t fl_read;
 	struct bcm2_patch patches[BCM2_PATCH_NUM];

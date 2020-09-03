@@ -68,18 +68,18 @@ void mips_read()
 		return;
 	}
 
-	// TODO allow chunked reads
+	uint32_t remaining = args->length - args->index;
+	uint32_t chunklen = MIN(remaining, args->chunklen);
+	uint32_t* buffer;
 
 	if (args->fl_read) {
-		//RWCODE_BZERO(args->buffer, args->length);
-
 		uint32_t arg1, arg2;
 
 		if (args->flags & BCM2_READ_FUNC_OBL) {
-			arg1 = args->offset;
+			arg1 = args->offset + args->index;
 			arg2 = args->buffer;
 		} else {
-			arg2 = args->offset;
+			arg2 = args->offset + args->index;
 
 			if (args->flags & BCM2_READ_FUNC_PBOL) {
 				arg1 = (uint32_t)&args->buffer;
@@ -89,24 +89,22 @@ void mips_read()
 		}
 
 		RWCODE_PATCH(args->patches);
-		((w3_fun)args->fl_read)(arg1, arg2, args->length);
+		((w3_fun)args->fl_read)(arg1, arg2, chunklen);
 		RWCODE_PATCH(args->patches);
 
-		args->fl_read = 0;
-		args->offset = 0;
+		buffer = (uint32_t*)args->buffer;
+	} else {
+		buffer = (uint32_t*)(args->buffer + args->index);
 	}
 
-	uint32_t* buffer = (uint32_t*)(args->buffer + args->offset);
-	uint32_t len = MIN(args->length, args->chunklen);
-	args->length -= len;
-	args->offset += len;
+	args->index += chunklen;
 
 	do {
 		for (int i = 0; i < 4; ++i) {
 			((printf_fun)args->printf)(args->str_x, *buffer++);
 		}
 		((printf_fun)args->printf)(args->str_nl);
-	} while ((len -= 16));
+	} while ((chunklen -= 16));
 }
 
 // INPUT format:

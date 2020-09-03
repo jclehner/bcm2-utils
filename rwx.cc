@@ -981,7 +981,8 @@ class code_rwx : public parsing_rwx
 		}
 
 		if (!m_write) {
-			m_ram->write(m_loadaddr + offsetof(bcm2_read_args, offset), to_buf(hton(offset)));
+			uint32_t index = offset - m_rw_offset;
+			m_ram->write(m_loadaddr + offsetof(bcm2_read_args, index), to_buf(hton(index)));
 			m_ram->write(m_loadaddr + offsetof(bcm2_read_args, length), to_buf(hton(length)));
 		} else {
 			// TODO: implement if we ever use on_chunk_retry for writes
@@ -1162,15 +1163,17 @@ class code_rwx : public parsing_rwx
 		}
 
 		bcm2_read_args args = { ":%x", "\r\n" };
-		args.offset = hton(offset);
 		args.length = hton(length);
+		args.index = 0;
 		args.chunklen = hton(limits_read().max);
 		args.printf = hton(kseg1 | cfg["printf"]);
 
 		if (m_space.is_mem()) {
-			args.buffer = 0;
+			args.buffer = hton(offset);
+			args.offset = 0;
 			args.fl_read = 0;
 		} else {
+			args.offset = hton(offset);
 			args.buffer = hton(kseg1 | cfg["buffer"]);
 			args.flags = hton(fl_read.args());
 			args.fl_read = hton(kseg1 | fl_read.addr());
