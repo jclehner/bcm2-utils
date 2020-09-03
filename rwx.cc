@@ -259,7 +259,7 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 	uint32_t pos = offset;
 	string chunk;
 
-	m_intf->foreach_line([this, &chunk, &pos, &retries] (const string& line) {
+	m_intf->foreach_line([this, &chunk, &pos, &length, &retries] (const string& line) {
 		throw_if_interrupted();
 		string tline = trim(line);
 		if (!is_ignorable_line(tline)) {
@@ -281,7 +281,7 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 			}
 		}
 
-		return line.empty();
+		return !(chunk.size() < length);
 	}, chunk_timeout(offset, length));
 
 	if (length && (chunk.size() != length)) {
@@ -762,9 +762,6 @@ class bootloader_ram : public parsing_rwx
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
 	virtual bool is_ignorable_line(const string& line) override;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
-
-	virtual unsigned chunk_timeout(uint32_t offset, uint32_t length) const override
-	{ return 0; }
 };
 
 void bootloader_ram::init(uint32_t offset, uint32_t length, bool write)
