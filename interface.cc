@@ -148,18 +148,14 @@ bool bfc::is_ready(bool passive)
 		writeln();
 	}
 
-	bool ready = false;
-
-	foreach_line_raw([this, &ready] (const string& line) {
+	return foreach_line_raw([this] (const string& line) {
 		if (is_bfc_prompt(line)) {
 			m_privileged = is_bfc_prompt_privileged(line);
-			ready = true;
+			return true;
 		}
 
 		return false;
 	});
-
-	return ready;
 }
 
 bool bfc::check_for_prompt(const string& line) const
@@ -301,7 +297,7 @@ void bfc::detect_profile()
 
 void bfc::initialize_impl()
 {
-	run("/docsis/scan_stop");
+	writeln("/docsis/scan_stop");
 }
 
 bool bfc::is_crash_line(const string& line) const
@@ -335,7 +331,7 @@ bool bootloader::is_ready(bool passive)
 
 	return foreach_line_raw([this] (const string& line) {
 		return check_for_prompt(line);	
-	});
+	}, 1000);
 }
 
 bool bootloader::check_for_prompt(const string& line) const
@@ -749,6 +745,8 @@ void interface::initialize(const profile::sp& profile)
 {
 	m_profile = profile;
 
+	initialize_impl();
+
 	if (!m_profile) {
 		detect_profile_from_magics(shared_from_this(), m_profile);
 		elevate_privileges();
@@ -767,8 +765,6 @@ void interface::initialize(const profile::sp& profile)
 		}
 		logger::i() << endl;
 	}
-
-	initialize_impl();
 }
 
 interface::sp interface::detect(const io::sp& io, const profile::sp& profile)
