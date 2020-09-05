@@ -454,11 +454,8 @@ serial::serial(const char* tty, unsigned speed)
 		throw errno_error("cfsetXspeed");
 	}
 
-	cf.c_cflag &= ~(CSIZE | PARENB | PARODD | CSTOPB | CRTSCTS);
-	cf.c_cflag |= CS8 | CLOCAL | CREAD;
-	cf.c_iflag &= ~(IXON | IXOFF | IXANY | IGNBRK);
-	cf.c_lflag = 0;
-	cf.c_oflag = 0;
+	cfmakeraw(&cf);
+
 	cf.c_cc[VMIN] = 0;
 	cf.c_cc[VTIME] = 5;
 
