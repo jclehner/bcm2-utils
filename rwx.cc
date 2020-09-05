@@ -265,7 +265,7 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 					throw runtime_error(msg);
 				}
 
-				logger::d() << endl << msg << endl;
+				logger::t() << endl << msg << endl;
 			} catch (const exception& e) {
 				logger::d() << "error while parsing '" << tline << "': " << e.what() << endl;
 				return true;
@@ -764,6 +764,8 @@ void bootloader_ram::cleanup()
 {
 	if (!m_write) {
 		m_intf->run("\r");
+	} else {
+		m_intf->writeln();
 	}
 }
 
