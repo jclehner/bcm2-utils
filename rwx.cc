@@ -291,7 +291,7 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 			// if the dump is still underway, we need to wait for it to finish
 			// before issuing the next command. wait for up to 10 seconds.
 
-			if (/*wait_for_interface(m_intf)*/ true) {
+			if (wait_for_interface(m_intf)) {
 				logger::d() << endl << msg << "; retrying" << endl;
 				on_chunk_retry(offset, length);
 				return read_chunk_impl(offset, length, retries + 1);
@@ -452,7 +452,6 @@ class bfc_flash2 : public bfc_ram
 		m_dump_offset = offset;
 		m_dump_length = length;
 		m_funcs = ver.functions(m_space.name());
-		m_read = true;
 
 		call_open_close("open", offset, length);
 	}
@@ -465,22 +464,18 @@ class bfc_flash2 : public bfc_ram
 
 	virtual unsigned chunk_timeout(uint32_t offset, uint32_t length) const override
 	{
-		return offset == m_dump_offset ? 60 * 1000 : 0;
+		return 5 * 1000;
 	}
 
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override
 	{
-		return bfc_ram::parse_chunk_line(line, m_cfg["buffer"] + (offset - m_dump_offset));
+		return bfc_ram::parse_chunk_line(line, m_cfg["buffer"] + (offset % limits_read().max));
 	}
 
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override
 	{
-		if (m_read) {
-			call_read(m_dump_offset, m_dump_length);
-			m_read = false;
-		}
-
-		bfc_ram::do_read_chunk(m_cfg["buffer"] + (offset - m_dump_offset), length);
+		call_read(offset, length);
+		bfc_ram::do_read_chunk(m_cfg["buffer"], length);
 	}
 
 	private:
@@ -493,17 +488,9 @@ class bfc_flash2 : public bfc_ram
 		}
 	}
 
-	void call(const string& cmd, const string& name, unsigned timeout = 5)
+	void call(const string& cmd, const string& name, unsigned timeout = 5 * 1000)
 	{
-		m_intf->run(cmd);
-#if 0
-		// consume lines
-		m_intf->foreach_line([] (const string&) { return true; }, timeout * 1000, 0);
-#else
-		if (!m_intf->wait_ready(timeout)) {
-			throw runtime_error("timeout while waiting for function '" + name + "' to finish");
-		}
-#endif
+		m_intf->run(cmd, timeout);
 	}
 
 	void call_read(uint32_t offset, uint32_t length)
@@ -512,15 +499,15 @@ class bfc_flash2 : public bfc_ram
 		if (read.addr()) {
 			string cmd = mkcmd(read);
 			if (read.args() == BCM2_READ_FUNC_BOL) {
-				args(cmd, { m_cfg["buffer"], offset, length });
+				add_args(cmd, { m_cfg["buffer"], offset, length });
 			} else if (read.args() == BCM2_READ_FUNC_OBL) {
-				args(cmd, { offset, m_cfg["buffer"], length });
+				add_args(cmd, { offset, m_cfg["buffer"], length });
 			} else {
 				throw runtime_error("unsupported 'read' args");
 			}
 
 			patch(read);
-			call(cmd, "read", 120);
+			call(cmd, "read");
 		}
 	}
 
@@ -531,9 +518,9 @@ class bfc_flash2 : public bfc_ram
 			string cmd = mkcmd(f, { offset });
 
 			if (f.args() == BCM2_ARGS_OL) {
-				arg(cmd, length);
+				add_arg(cmd, length);
 			} else if (f.args() == BCM2_ARGS_OE) {
-				arg(cmd, offset + length);
+				add_arg(cmd, offset + length);
 			} else {
 				throw runtime_error("unsupported '" + name + "' args");
 			}
@@ -546,21 +533,20 @@ class bfc_flash2 : public bfc_ram
 	string mkcmd(const func& f, vector<uint32_t> a = {})
 	{
 		string ret = "/call func -a 0x" + to_hex(f.addr() | m_intf->profile()->kseg1());
-		args(ret, a);
+		add_args(ret, a);
 		return ret;
 	}
 
-	static void arg(string& cmd, uint32_t arg)
+	static void add_arg(string& cmd, uint32_t arg)
 	{ cmd += " 0x" + to_hex(arg); }
 
-	static void args(string& cmd, vector<uint32_t> args)
+	static void add_args(string& cmd, vector<uint32_t> args)
 	{
 		for (auto a : args) {
-			arg(cmd, a);
+			add_arg(cmd, a);
 		}
 	}
 
-	bool m_read = true;
 	uint32_t m_dump_offset = 0;
 	uint32_t m_dump_length = 0;
 	version::funcmap m_funcs;
