@@ -486,6 +486,7 @@ serial::serial(const char* tty, unsigned speed)
 	dcb.ByteSize = 8;
 	dcb.StopBits = ONESTOPBIT;
 	dcb.Parity = NOPARITY;
+	dcb.fBinary = true;
 
 	if (!SetCommState(m_h, &dcb)) {
 		throw winapi_error("SetCommState");

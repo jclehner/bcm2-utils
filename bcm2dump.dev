@@ -29,7 +29,7 @@ IncludeVersionInfo=0
 SupportXPThemes=0
 CompilerSet=3
 CompilerSettings=0000000100100000000001000
-UnitCount=19
+UnitCount=16
 
 [VersionInfo]
 Major=1
@@ -101,26 +101,6 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit6]
-FileName=mipsasm.c
-CompileCpp=0
-Folder=
-Compile=1
-Link=1
-Priority=1000
-OverrideBuildCmd=0
-BuildCmd=$(CC) -c mipsasm.c -o obj/mipsasm.o $(CFLAGS)
-
-[Unit7]
-FileName=mipsasm.h
-CompileCpp=1
-Folder=
-Compile=1
-Link=1
-Priority=1000
-OverrideBuildCmd=0
-BuildCmd=
-
-[Unit8]
 FileName=profile.cc
 CompileCpp=1
 Folder=
@@ -130,7 +110,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit9]
+[Unit7]
 FileName=profile.h
 CompileCpp=1
 Folder=
@@ -140,7 +120,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit10]
+[Unit8]
 FileName=profiledef.c
 CompileCpp=0
 Folder=
@@ -150,7 +130,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=$(CC) -c profiledef.c -o obj/profiledef.o $(CFLAGS)
 
-[Unit11]
+[Unit9]
 FileName=progress.c
 CompileCpp=1
 Folder=
@@ -160,7 +140,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit12]
+[Unit10]
 FileName=progress.h
 CompileCpp=1
 Folder=
@@ -170,7 +150,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit13]
+[Unit11]
 FileName=ps.cc
 CompileCpp=1
 Folder=
@@ -180,7 +160,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit14]
+[Unit12]
 FileName=ps.h
 CompileCpp=1
 Folder=
@@ -190,18 +170,38 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
-[Unit15]
-FileName=rwcode.c
-CompileCpp=0
+[Unit13]
+FileName=rwx.cc
+CompileCpp=1
 Folder=
-Compile=0
-Link=0
+Compile=1
+Link=1
 Priority=1000
 OverrideBuildCmd=0
-BuildCmd=$(CC) -c rwcode.c -o obj/rwcode.o $(CFLAGS)
+BuildCmd=
+
+[Unit14]
+FileName=rwx.h
+CompileCpp=1
+Folder=
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit15]
+FileName=util.cc
+CompileCpp=1
+Folder=
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
 
 [Unit16]
-FileName=rwx.cc
+FileName=util.h
 CompileCpp=1
 Folder=
 Compile=1
