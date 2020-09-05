@@ -70,6 +70,11 @@ void mips_read()
 
 	uint32_t remaining = args->length - args->index;
 	uint32_t chunklen = MIN(remaining, args->chunklen);
+
+	if (!chunklen) {
+		return;
+	}
+
 	uint32_t* buffer;
 
 	if (args->fl_read) {

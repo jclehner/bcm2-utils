@@ -241,10 +241,14 @@ string parsing_rwx::read_special(uint32_t offset, uint32_t length)
 
 string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t retries)
 {
+	logger::t() << "read_chunk_impl: calling do_read_chunk" << endl;
+
 	do_read_chunk(offset, length);
 
 	uint32_t pos = offset;
 	string chunk;
+
+	logger::t() << "read_chunk_impl: consuming lines" << endl;
 
 	m_intf->foreach_line_raw([this, &chunk, &pos, &length, &retries] (const string& line) {
 		throw_if_interrupted();
@@ -269,7 +273,9 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 		}
 
 		return !(chunk.size() < length);
-	}, chunk_timeout(offset, length), true);
+	}, 10000);
+
+	logger::t() << "read_chunk_impl: done reading lines" << endl;
 
 	// consume any more output
 	m_intf->wait_quiet(20);
@@ -808,6 +814,7 @@ string bootloader_ram::parse_chunk_line(const string& line, uint32_t offset)
 
 bool bootloader_ram::exec_impl(uint32_t offset)
 {
+	m_intf->run("");
 	if (m_intf->run("j", "address (hex):", true)) {
 		m_intf->writeln(to_hex(offset));
 		return true;
@@ -966,7 +973,6 @@ class code_rwx : public parsing_rwx
 		if (!m_write) {
 			uint32_t index = offset - m_rw_offset;
 			m_ram->write(m_loadaddr + offsetof(bcm2_read_args, index), to_buf(hton(index)));
-			m_ram->write(m_loadaddr + offsetof(bcm2_read_args, length), to_buf(hton(length)));
 		} else {
 			// TODO: implement if we ever use on_chunk_retry for writes
 		}
