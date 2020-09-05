@@ -998,7 +998,7 @@ struct bcm2_profile bcm2_profiles[] = {
 			{
 				.intf = BCM2_INTF_BFC,
 				.rwcode = 0x80002000,
-				.buffer = 0x85f00000,
+				.buffer = 0x86000000,
 				.buflen = 0x19c0000,
 				.options = {
 					BCM2_VAL_U32("bfc:conthread_priv_off", 0x74),
