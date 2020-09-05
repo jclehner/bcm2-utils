@@ -66,7 +66,8 @@ class interface : public std::enable_shared_from_this<interface>
 	{ return !m_version.name().empty(); }
 
 	virtual bool is_ready(bool passive = false) = 0;
-	virtual bool wait_ready(unsigned timeout = 5);
+	virtual bool wait_ready(unsigned timeout = 5000);
+	virtual bool wait_quiet(unsigned timeout = 500) const;
 
 	virtual bool is_active()
 	{ return is_ready(false); }
@@ -93,7 +94,7 @@ class interface : public std::enable_shared_from_this<interface>
 	virtual void write(const std::string& str)
 	{ m_io->write(str); }
 
-	bool foreach_line_raw(std::function<bool(const std::string&)> f, unsigned timeout = 0) const;
+	bool foreach_line_raw(std::function<bool(const std::string&)> f, unsigned timeout = 0, bool restart = false) const;
 	bool foreach_line(std::function<bool(const std::string&)> f, unsigned timeout = 0) const;
 
 	virtual std::string readln(unsigned timeout = 0) const;
@@ -105,6 +106,7 @@ class interface : public std::enable_shared_from_this<interface>
 	static interface::sp create(const std::string& specl, const std::string& profile = "");
 
 	virtual bcm2_interface id() const = 0;
+
 
 	protected:
 	virtual void call(const std::string& cmd)
@@ -118,7 +120,7 @@ class interface : public std::enable_shared_from_this<interface>
 	virtual bool check_for_prompt(const std::string& line) const = 0;
 
 	virtual uint32_t timeout() const
-	{ return 200; }
+	{ return 50; }
 
 	virtual void detect_profile()
 	{}

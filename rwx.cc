@@ -191,19 +191,6 @@ void parse_offset_size(rwx& rwx, const string& arg, uint32_t& offset, uint32_t& 
 	}
 }
 
-bool wait_for_interface(const interface::sp& intf)
-{
-	for (unsigned i = 0; i < 10; ++i) {
-		if (intf->is_ready(false)) {
-			return true;
-		} else if (i != 9) {
-			sleep(1);
-		}
-	}
-
-	return false;
-}
-
 // rwx base class for a command line interface where you
 // enter a command which in turn displays a (hex) dump of the
 // data. for now, all rwx implementations are based on this
@@ -282,7 +269,10 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 		}
 
 		return !(chunk.size() < length);
-	}, chunk_timeout(offset, length));
+	}, chunk_timeout(offset, length), true);
+
+	// consume any more output
+	m_intf->wait_quiet(20);
 
 	if (length && (chunk.size() != length)) {
 		string msg = "read incomplete chunk 0x" + to_hex(offset)
@@ -291,7 +281,7 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 			// if the dump is still underway, we need to wait for it to finish
 			// before issuing the next command. wait for up to 10 seconds.
 
-			if (wait_for_interface(m_intf)) {
+			if (m_intf->wait_ready()) {
 				logger::d() << endl << msg << "; retrying" << endl;
 				on_chunk_retry(offset, length);
 				return read_chunk_impl(offset, length, retries + 1);
@@ -488,7 +478,7 @@ class bfc_flash2 : public bfc_ram
 		}
 	}
 
-	void call(const string& cmd, const string& name, unsigned timeout = 5 * 1000)
+	void call(const string& cmd, const string& name, unsigned timeout = 100)
 	{
 		m_intf->run(cmd, timeout);
 	}
@@ -748,6 +738,9 @@ class bootloader_ram : public parsing_rwx
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
 	virtual bool is_ignorable_line(const string& line) override;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
+
+	private:
+	bool m_write = false;
 };
 
 void bootloader_ram::init(uint32_t offset, uint32_t length, bool write)
@@ -757,11 +750,15 @@ void bootloader_ram::init(uint32_t offset, uint32_t length, bool write)
 	} else {
 		m_intf->writeln();
 	}
+
+	m_write = write;
 }
 
 void bootloader_ram::cleanup()
 {
-	m_intf->run("\r");
+	if (!m_write) {
+		m_intf->run("\r");
+	}
 }
 
 bool bootloader_ram::write_chunk(uint32_t offset, const string& chunk)
@@ -811,11 +808,11 @@ string bootloader_ram::parse_chunk_line(const string& line, uint32_t offset)
 
 bool bootloader_ram::exec_impl(uint32_t offset)
 {
-	m_intf->run("");
-	m_intf->run("j", "");
-	m_intf->writeln(to_hex(offset));
-	// FIXME
-	return true;
+	if (m_intf->run("j", "address (hex):", true)) {
+		m_intf->writeln(to_hex(offset));
+		return true;
+	}
+	return false;
 }
 
 /**

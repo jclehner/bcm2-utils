@@ -368,7 +368,7 @@ void serial::write(const string& str)
 
 void serial::writeln(const string& str)
 {
-	write(str + "\r");
+	write(str + "\r\n");
 	// consume the line we've just written
 	readln(100);
 }
@@ -634,7 +634,7 @@ void telnet::write(const string& str)
 void telnet::writeln(const string& str)
 {
 	write(str + "\r");
-	readln(20);
+	readln(200);
 }
 
 int telnet::getc()

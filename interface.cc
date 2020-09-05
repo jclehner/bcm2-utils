@@ -331,7 +331,7 @@ bool bootloader::is_ready(bool passive)
 
 	return foreach_line_raw([this] (const string& line) {
 		return check_for_prompt(line);	
-	}, 1000);
+	}, 200);
 }
 
 bool bootloader::check_for_prompt(const string& line) const
@@ -340,7 +340,7 @@ bool bootloader::check_for_prompt(const string& line) const
 		return false;
 	}
 
-	foreach_line([] (const string&) { return false; });
+	wait_quiet(20);
 	return true;
 }
 
@@ -406,7 +406,7 @@ class bfc_telnet : public bfc, public telnet
 
 	protected:
 	virtual uint32_t timeout() const override
-	{ return 500; }
+	{ return 50; }
 
 	virtual void call(const string& cmd) override;
 
@@ -639,16 +639,19 @@ void detect_profile_from_magics(const interface::sp& intf, const profile::sp& pr
 
 bool interface::wait_ready(unsigned timeout)
 {
-	time_t begin = time(NULL);
-
-	while ((time(nullptr) - begin) < timeout) {
-		if (is_ready()) {
-			return true;
+	call("");
+	return foreach_line_raw([this] (const string& line) {
+		if (!check_for_prompt(line)) {
+			return false;
 		}
-		usleep(10000);
-	}
+		return true;
+	}, timeout);
+}
 
-	return false;
+bool interface::wait_quiet(unsigned timeout) const
+{
+	foreach_line_raw([] (const string&) { return false; }, timeout, true);
+	return true;
 }
 
 bool interface::run(const string& cmd, const string& expect, bool stop_on_match)
@@ -683,13 +686,12 @@ vector<string> interface::run(const string& cmd, unsigned timeout)
 	return lines;
 }
 
-bool interface::foreach_line_raw(function<bool(const string&)> f, unsigned timeout) const
+bool interface::foreach_line_raw(function<bool(const string&)> f, unsigned timeout, bool restart) const
 {
 	mstimer t;
 
 	while (true) {
 		string line;
-
 		if (timeout) {
 			auto remaining = timeout - t.elapsed();
 			if (remaining < 0) {
@@ -704,6 +706,9 @@ bool interface::foreach_line_raw(function<bool(const string&)> f, unsigned timeo
 		if (line.empty()) {
 			break;
 		} else if (f(line)) {
+			if (restart) {
+				t.reset();
+			}
 			return true;
 		}
 	}
@@ -735,7 +740,7 @@ string interface::readln(unsigned timeout) const
 
 	if (is_crash_line(line)) {
 		// consume lines to fill the io log
-		foreach_line([] (const string&) { return false; }, 1000);
+		wait_quiet(50);
 
 		throw runtime_error("target has crashed");
 	}
