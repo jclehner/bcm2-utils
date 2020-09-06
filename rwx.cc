@@ -307,7 +307,7 @@ class bfc_ram : public parsing_rwx
 	virtual ~bfc_ram() {}
 
 	virtual limits limits_read() const override
-	{ return limits(4, 16, 8192); }
+	{ return limits(4, 16, 2 * 8192); }
 
 	virtual limits limits_write() const override
 	{
@@ -450,6 +450,8 @@ class bfc_flash2 : public bfc_ram
 		m_funcs = ver.functions(m_space.name());
 
 		call_open_close("open", offset, length);
+
+		patch(m_funcs["read"]);
 	}
 
 	virtual void cleanup() override
@@ -502,7 +504,7 @@ class bfc_flash2 : public bfc_ram
 				throw runtime_error("unsupported 'read' args");
 			}
 
-			patch(read);
+			//patch(read);
 			call(cmd, "read");
 		}
 	}
@@ -521,7 +523,7 @@ class bfc_flash2 : public bfc_ram
 				throw runtime_error("unsupported '" + name + "' args");
 			}
 
-			patch(f);
+			//patch(f);
 			call(cmd, name);
 		}
 	}
