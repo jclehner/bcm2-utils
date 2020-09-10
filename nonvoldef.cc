@@ -969,6 +969,20 @@ class nv_group_cdp : public nv_group
 	}
 };
 
+class nv_group_csp : public nv_group
+{
+	public:
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_csp, "CSP.", "csp")
+
+	protected:
+	virtual list definition(int type, const nv_version& ver) const override
+	{
+		return {
+			NV_VAR(nv_cdata<44>, ""),
+			NV_VAR2(nv_enum<nv_u8>, "firewall_policy", "", { "low", "medium", "high" }),
+		};
+	}
+};
 
 class nv_group_fire : public nv_group
 {
@@ -1368,6 +1382,7 @@ struct registrar {
 			NV_GROUP(nv_group_t802),
 			NV_GROUP(nv_group_rg),
 			NV_GROUP(nv_group_cdp),
+			NV_GROUP(nv_group_csp),
 			NV_GROUP(nv_group_fire),
 			NV_GROUP(nv_group_cmev),
 			NV_GROUP(nv_group_upc),
