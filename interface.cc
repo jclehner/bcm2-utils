@@ -756,8 +756,9 @@ void interface::initialize(const profile::sp& profile)
 
 	if (!m_profile) {
 		detect_profile_from_magics(shared_from_this(), m_profile);
-		elevate_privileges();
 	}
+
+	elevate_privileges();
 
 	if (!m_profile) {
 		detect_profile();
