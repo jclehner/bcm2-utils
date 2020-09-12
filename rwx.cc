@@ -327,9 +327,6 @@ class bfc_ram : public parsing_rwx
 	virtual bool is_ignorable_line(const string& line) override;
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
-
-	private:
-	bool m_hint_decimal = false;
 };
 
 bool bfc_ram::exec_impl(uint32_t offset)
@@ -357,20 +354,16 @@ void bfc_ram::do_read_chunk(uint32_t offset, uint32_t length)
 	} else {
 		m_intf->writeln("/system/diag readmem -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
 	}
-
-	m_hint_decimal = false;
 }
 
 bool bfc_ram::is_ignorable_line(const string& line)
 {
 	if (line.size() >= 50) {
 		if (line.substr(8, 2) == ": " && line.substr(48, 2) == " |") {
-			m_hint_decimal = false;
 			return false;
 		} else if (contains(line, ": ") && (contains(line, " | ") || ends_with(line, " |"))) {
 			// if another message is printed by the firmware, the dump
 			// output sometimes switches to an all-decimal format.
-			m_hint_decimal = true;
 			return false;
 		}
 	}
@@ -380,12 +373,23 @@ bool bfc_ram::is_ignorable_line(const string& line)
 
 string bfc_ram::parse_chunk_line(const string& line, uint32_t offset)
 {
+	const char* fmts[] = {
+		"%x: %x  %x  %x  %x",
+		"%u: %u  %u  %u  %u",
+	};
+
 	uint32_t data[4];
 	uint32_t off;
+	int n;
 
-	int n = sscanf(line.c_str(),
-			m_hint_decimal ? "%u: %u  %u  %u  %u" : "%x: %x  %x  %x  %x",
-			&off, &data[0], &data[1], &data[2], &data[3]);
+	for (const char* fmt : fmts) {
+		n = sscanf(line.c_str(), fmt, &off, &data[0],
+				&data[1], &data[2], &data[3]);
+
+		if (n > 1 && off == offset) {
+			break;
+		}
+	}
 
 	if (!n) {
 		throw bad_chunk_line::regular();
