@@ -1371,6 +1371,45 @@ class nv_group_wigu : public nv_group
 	}
 };
 
+class nv_group_scie : public nv_group
+{
+	public:
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_scie, "Scie", "scie")
+
+	virtual list definition(int format, const nv_version& ver) const override
+	{
+		if (format == fmt_perm) {
+			return nv_group::definition(format, ver);
+		}
+
+		return {
+			NV_VAR(nv_u32, ""),
+			NV_VAR(nv_u8, ""),
+#if 0
+			NV_VAR(nv_u32, "sa_flags"),
+#else
+			NV_VAR2(nv_bitmask<nv_u32>, "flags", {
+					/* 0x01 */ "igmp_proxy",
+					/* 0x02 */ "web_switch",
+					/* 0x04 */ "ftp_improvement_switch",
+					/* 0x08 */ "console_enabled",
+					/* 0x10 */ "",
+					/* 0x20 */ "console_read_only",
+			}),
+#endif
+			NV_VAR(nv_cdata<0x28>, ""),
+			NV_VAR(NV_ARRAY(nv_u32, 10), ""),
+			NV_VAR(NV_ARRAY(nv_u8, 2), ""),
+			//
+			NV_VAR(nv_cdata<0x4>, ""),
+			//
+			NV_VAR(nv_u8, ""),
+			NV_VAR(nv_p8string, "telnet_username"),
+			NV_VAR(nv_p8string, "telnet_password"),
+		};
+	}
+};
+
 struct registrar {
 	registrar()
 	{
@@ -1397,6 +1436,7 @@ struct registrar {
 			NV_GROUP(nv_group_msc),
 			NV_GROUP(nv_group_wigu, false),
 			NV_GROUP(nv_group_wigu, true),
+			NV_GROUP(nv_group_scie),
 		};
 
 		for (auto g : groups) {
