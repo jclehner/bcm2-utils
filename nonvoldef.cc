@@ -1371,10 +1371,11 @@ class nv_group_wigu : public nv_group
 	}
 };
 
+// Scie / SA = Scientific Atlanta
 class nv_group_scie : public nv_group
 {
 	public:
-	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_scie, "Scie", "scie")
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_scie, "Scie", "sa")
 
 	virtual list definition(int format, const nv_version& ver) const override
 	{
@@ -1383,12 +1384,11 @@ class nv_group_scie : public nv_group
 		}
 
 		return {
-			NV_VAR(nv_u32, ""),
-			NV_VAR(nv_u8, ""),
-#if 0
-			NV_VAR(nv_u32, "sa_flags"),
-#else
-			NV_VAR2(nv_bitmask<nv_u32>, "flags", {
+			NV_VAR(nv_u32, "access_protect_delay"),
+			NV_VAR2(nv_enum<nv_u8>, "access_protect_mode", "", {
+				"disabled", "enabled", "auto",
+			}),
+			NV_VAR2(nv_bitmask<nv_u32>, "features", {
 					/* 0x01 */ "igmp_proxy",
 					/* 0x02 */ "web_switch",
 					/* 0x04 */ "ftp_improvement_switch",
@@ -1396,16 +1396,25 @@ class nv_group_scie : public nv_group
 					/* 0x10 */ "",
 					/* 0x20 */ "console_read_only",
 			}),
-#endif
 			NV_VAR(nv_cdata<0x28>, ""),
 			NV_VAR(NV_ARRAY(nv_u32, 10), ""),
 			NV_VAR(NV_ARRAY(nv_u8, 2), ""),
 			//
-			NV_VAR(nv_cdata<0x4>, ""),
+			NV_VAR(nv_timestamp, "mta_certificate_date"),
 			//
-			NV_VAR(nv_u8, ""),
+			NV_VAR2(nv_enum<nv_u8>, "dhcp_requirements", "", {
+					"use_opt_122",
+					"require_opt_122_or_177",
+					"use_opt_177"
+			}),
 			NV_VAR(nv_p8string, "telnet_username"),
 			NV_VAR(nv_p8string, "telnet_password"),
+			NV_VAR(nv_u8, ""),
+			NV_VAR(nv_u8, ""),
+			NV_VAR(NV_ARRAY(nv_u8, 2), "mta_off_hook_current"),
+			NV_VAR(nv_bool, "telnet_enabled"),
+			NV_VAR(nv_u8, ""),
+			NV_VAR(NV_ARRAY(nv_u8, 2), "mta_off_hook_power"),
 		};
 	}
 };
