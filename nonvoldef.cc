@@ -1420,19 +1420,100 @@ class nv_group_scie : public nv_group
 			NV_VAR(nv_u32, "batt_measured_capacity"),
 			NV_VAR(NV_ARRAY(nv_u32, 5), ""),
 			NV_VAR(nv_u32, "batt_avg_discharge_current"),
-			NV_VAR(nv_cdata<0x435d>, ""),
+#if 0
+#if 1
+			NV_VAR(NV_ARRAY(nv_sa_audit_entry, 60), "audit_log"),
+			NV_VAR(nv_cdata<0x10d8>, ""),
+			NV_VAR(nv_u32, ""),
+			NV_VAR(nv_u8, ""),
+#endif
+			NV_VAR(NV_ARRAY(nv_sa_event_entry, 100), "event_log"),
+			NV_VAR(nv_u16, "event_log_head"),
+			NV_VAR(nv_u16, "event_log_tail"),
+			NV_VAR(nv_cdata<0x99>, ""),
+			NV_VAR(nv_u8, ""),
+			NV_VAR(nv_u32, ""),
+			NV_VAR(nv_u32, ""),
+			NV_VAR(nv_u32, ""),
+			NV_VAR(nv_u32, ""),
+			NV_VAR(nv_u32, ""),
+			NV_VAR(nv_cdata<9>, ""),
+			NV_VAR(nv_cdata<9>, ""),
+			NV_VAR(nv_cdata<9>, ""),
+			NV_VAR(nv_cdata<9>, ""),
+			NV_VAR(nv_cdata<7>, ""),
+			NV_VAR(nv_cdata<7>, ""),
+			NV_VAR(nv_u32, ""),
+			NV_VAR(nv_u8, ""),
+			NV_VAR(nv_u8, ""),
+			NV_VAR(nv_u8, ""),
+			NV_VAR(nv_u8, ""),
+#else
+			//NV_VAR(nv_cdata<0x435d>, ""),
+			NV_VAR(nv_cdata<0x435c>, ""),
+#endif
 			//
 			NV_VAR(nv_bool, "mta_rtp_mute_on_local_ring_back"),
 			NV_VAR(nv_u32, "cm_timer4"),
 			NV_VAR(nv_bool, "mta_force_t38"),
-			NV_VAR(nv_u32, ""),
+#if 1
+			NV_VAR2(nv_enum<nv_u32>, "serial_console_mode", "", {
+					"rw", "ro", "disabled"
+			}),
+#else
+			NV_VAR(nv_u32, "console_status", true),
+#endif
 			NV_VAR(nv_bool, "multicast_promiscous_mode"),
 			NV_VAR(nv_u32, "docsis1x_qpsk_burst_preamble"),
 			//
 			NV_VAR(nv_fzstring<0x41>, "last_upgrade_sw_name"),
-
 		};
 	}
+
+	protected:
+	class nv_sa_audit_entry : public nv_compound
+	{
+		public:
+		NV_COMPOUND_DEF_CTOR_AND_TYPE(nv_sa_audit_entry, "sa-audit-entry")
+
+		protected:
+		virtual list definition() const override
+		{
+			return {
+				NV_VAR(nv_u32, ""),
+				NV_VAR(nv_u32, ""),
+				NV_VAR(nv_u32, ""),
+				NV_VAR(nv_cdata<0xf>, ""),
+				NV_VAR(nv_cdata<0x1e>, ""),
+				NV_VAR(nv_cdata<0x1e>, ""),
+				NV_VAR(nv_cdata<0x7f>, ""),
+			};
+		}
+	};
+
+	class nv_sa_event_entry : public nv_compound
+	{
+		public:
+		NV_COMPOUND_DEF_CTOR_AND_TYPE(nv_sa_event_entry, "sa-event-entry")
+
+		protected:
+		virtual list definition() const override
+		{
+			return {
+				NV_VAR(nv_cdata<0xb>, ""),
+				NV_VAR(nv_u32, ""),
+				NV_VAR(nv_cdata<0x7f>, ""),
+				NV_VAR(nv_cdata<6>, ""),
+				NV_VAR(nv_u32, ""),
+				NV_VAR(nv_u16, ""),
+				NV_VAR(nv_u32, ""),
+				NV_VAR(nv_u16, ""),
+				NV_VAR(nv_u32, ""),
+				NV_VAR(nv_u16, ""),
+				NV_VAR(nv_u32, ""),
+			};
+		}
+	};
 };
 
 struct registrar {
