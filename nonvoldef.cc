@@ -1412,7 +1412,9 @@ class nv_group_scie : public nv_group
 			NV_VAR(nv_u8, ""),
 			NV_VAR(nv_u8, ""),
 			NV_VAR(NV_ARRAY(nv_u8, 2), "mta_off_hook_current"),
-			NV_VAR(nv_bool, "telnet_enabled"),
+			NV_VAR2(nv_enum<nv_u8>, "telnet_mode", "", {
+					"disabled", "enabled", "enabled_by_mib",
+			}),
 			NV_VAR(nv_u8, ""),
 			NV_VAR(NV_ARRAY(nv_u8, 2), "mta_off_hook_power"),
 			NV_VAR(nv_bool, "mta_fast_busy_signal"),
