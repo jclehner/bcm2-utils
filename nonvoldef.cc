@@ -1516,6 +1516,26 @@ class nv_group_scie : public nv_group
 	};
 };
 
+class nv_group_fact : public nv_group
+{
+	public:
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_fact, "FACT", "fact")
+
+	virtual list definition(int format, const nv_version& ver) const override
+	{
+		if (format == fmt_dyn) {
+			return nv_group::definition(format, ver);
+		}
+
+		return {
+			NV_VAR(nv_u16, "private_mib_enabled"),
+			NV_VAR(NV_ARRAY(nv_p16string, 8), "enable_keys"),
+			NV_VAR(NV_ARRAY(nv_p16string, 4), "serial_numbers"),
+			NV_VAR(nv_bool, "temporary_mib_enabled"),
+		};
+	}
+};
+
 struct registrar {
 	registrar()
 	{
@@ -1543,6 +1563,7 @@ struct registrar {
 			NV_GROUP(nv_group_wigu, false),
 			NV_GROUP(nv_group_wigu, true),
 			NV_GROUP(nv_group_scie),
+			NV_GROUP(nv_group_fact),
 		};
 
 		for (auto g : groups) {
