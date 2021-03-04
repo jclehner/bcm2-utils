@@ -123,7 +123,14 @@ string trim(string str)
 		return "";
 	}
 
-	return str.substr(i);
+	str = str.substr(i);
+
+	// strip embedded carriage returns
+	while ((i = str.find('\r')) != string::npos) {
+		str.erase(i, 1);
+	}
+
+	return str;
 }
 
 vector<string> split(const string& str, char delim, bool empties, size_t limit)
