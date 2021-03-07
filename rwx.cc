@@ -259,6 +259,10 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 				pos += linebuf.size();
 				chunk += linebuf;
 				update_progress(pos, chunk.size());
+
+				if (linebuf.size() < limits_read().max) {
+					logger::t() << "short line (" << linebuf.size() << " b): '" << tline << "'" << endl;
+				}
 			} catch (const bad_chunk_line& e) {
 				string msg = "bad chunk line @" + to_hex(pos) + ": '" + tline + "' (" + e.what() + ")";
 				if (e.critical() && retries >= max_retry_count) {
