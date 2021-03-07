@@ -253,7 +253,7 @@ bool bfc::check_privileged()
 		m_is_rg_prompt = is_bfc_prompt_rg(l);
 
 		return false;
-	});
+	}, 300);
 
 	return m_privileged;
 }
