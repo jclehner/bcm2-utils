@@ -260,7 +260,7 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 				chunk += linebuf;
 				update_progress(pos, chunk.size());
 
-				if (linebuf.size() < limits_read().max) {
+				if (linebuf.size() < limits_read().min) {
 					logger::t() << "short line (" << linebuf.size() << " b): '" << tline << "'" << endl;
 				}
 			} catch (const bad_chunk_line& e) {
