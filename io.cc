@@ -699,6 +699,7 @@ string io::readln(unsigned timeout)
 {
 	string line;
 	bool lf = false, cr = false;
+	size_t i = 0;
 
 	while (pending(timeout)) {
 		int c = getc();
@@ -709,11 +710,17 @@ string io::readln(unsigned timeout)
 			break;
 		} else if (c != '\r') {
 			if (cr) {
-				line.clear();
+				i = 0;
 			}
 
 			if (c != ign) {
-				line += char(c & 0xff);
+				if (i < line.size()) {
+					line[i] = c;
+				} else {
+					line += c;
+				}
+
+				++i;
 				cr = false;
 			}
 		} else {
