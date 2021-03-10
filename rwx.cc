@@ -597,11 +597,9 @@ void bfc_flash::init(uint32_t, uint32_t, bool write)
 		auto lines = m_intf->run("/flash/open " + m_partition.altname());
 
 		bool opened = false;
-		bool retry = false;
 
 		for (auto line : lines) {
 			if (contains(line, "opened twice")) {
-				retry = true;
 				opened = false;
 			} else if (contains(line, "driver opened")) {
 				opened = true;
@@ -610,8 +608,8 @@ void bfc_flash::init(uint32_t, uint32_t, bool write)
 
 		if (opened) {
 			break;
-		} else if (retry && pass == 0) {
-			logger::d() << "reinitializing flash driver before reopening" << endl;
+		} else if (pass == 0) {
+			logger::d() << "reinitializing flash driver" << endl;
 			cleanup();
 			m_intf->run("/flash/deinit", "Deinitializing");
 			m_intf->run("/flash/init", "Initializing");
