@@ -566,9 +566,7 @@ class bfc_flash : public parsing_rwx
 	{ cleanup(); }
 
 	virtual limits limits_read() const override
-	{
-		return use_direct_read() ? limits(1, 16, 4096) : limits(1, 16, 512);
-	}
+	{ return { 1, 16, 4096 }; }
 
 	virtual limits limits_write() const override
 	{ return limits(1, 1, 4); }
