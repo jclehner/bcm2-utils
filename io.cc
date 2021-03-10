@@ -655,7 +655,7 @@ int telnet::getc()
 		}
 	}
 
-	return c;
+	return c ? c : ign;
 }
 
 // the bfc telnet server sends the following
