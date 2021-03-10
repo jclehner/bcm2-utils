@@ -771,6 +771,8 @@ void interface::initialize(const profile::sp& profile)
 		logger::i() << "detected profile " << m_profile->name() << "(" << name() << ")";
 		if (!m_version.name().empty()) {
 			logger::i() << ", version " << m_version.name();
+		} else {
+			m_version = m_profile->default_version(id());
 		}
 		logger::i() << endl;
 	}

@@ -286,7 +286,7 @@ class profile_wrapper : public profile
 		const bcm2_version* v = m_p->versions;
 
 		for (size_t i = 0; i < ARRAY_SIZE(m_p->versions); ++i) {
-			if (!v[i].version[0]) {
+			if (!v[i].version[0] && v[i].intf != BCM2_INTF_NONE) {
 				m_defaults[v[i].intf] = version(&v[i], this, nullptr);
 			}
 		}
