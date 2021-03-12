@@ -274,7 +274,6 @@ void bfc::detect_profile()
 		if (pos != string::npos) {
 			try {
 				pssig = lexical_cast<uint16_t>(l.substr(pos + needle.size()), 16, false);
-				return true;
 			} catch (const exception& e) {
 				logger::d() << e.what() << endl;
 				// ignore
