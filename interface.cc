@@ -186,9 +186,9 @@ void bfc::do_elevate_privileges()
 		}
 
 		wait_ready();
-		run("switchCpuConsole");
-		sleep(2);
+		run("switchCpuConsole", 5000);
 		writeln();
+		check_privileged();
 		m_is_rg_prompt = false;
 	}
 
