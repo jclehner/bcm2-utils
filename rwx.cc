@@ -594,7 +594,7 @@ void bfc_flash::init(uint32_t, uint32_t, bool write)
 	}
 
 	for (unsigned pass = 0; pass < 2; ++pass) {
-		auto lines = m_intf->run("/flash/open " + m_partition.altname());
+		auto lines = m_intf->run("/flash/open " + m_partition.altname(), 5000);
 
 		bool opened = false;
 
@@ -612,8 +612,7 @@ void bfc_flash::init(uint32_t, uint32_t, bool write)
 			logger::d() << "reinitializing flash driver" << endl;
 			cleanup();
 			m_intf->run("/flash/deinit", "Deinitializing");
-			m_intf->run("/flash/init", "Initializing");
-			sleep(1);
+			m_intf->run("/flash/init", 5000);
 		} else {
 			throw runtime_error("failed to open partition " + m_partition.name());
 		}
