@@ -793,7 +793,8 @@ struct bcm2_profile bcm2_profiles[] = {
 					BCM2_VAL_STR("bfc:su_password", "ubeecable"),
 					BCM2_VAL_U32("bfc:conthread_priv_off", 0x74),
 					BCM2_VAL_U32("bfc:flash_reinit_on_retry", true),
-					BCM2_VAL_U32("bfc:flash_read_direct", false)
+					BCM2_VAL_U32("bfc:flash_read_direct", true),
+					BCM2_VAL_U32("bfc:flash_readsize", 2048),
 				},
 			},
 			{

@@ -565,8 +565,7 @@ class bfc_flash : public parsing_rwx
 	virtual ~bfc_flash()
 	{ cleanup(); }
 
-	virtual limits limits_read() const override
-	{ return { 1, 16, 4096 }; }
+	virtual limits limits_read() const override;
 
 	virtual limits limits_write() const override
 	{ return limits(1, 1, 4); }
@@ -586,6 +585,17 @@ class bfc_flash : public parsing_rwx
 	uint32_t to_partition_offset(uint32_t offset) const;
 	bool use_direct_read() const;
 };
+
+rwx::limits bfc_flash::limits_read() const
+{
+	auto v = m_intf->version();
+	auto readsize = v.get_opt_num("bfc:flash_readsize", 0);
+	if (readsize) {
+		return { readsize, readsize, readsize };
+	} else {
+		return { 1, 16, 4096 };
+	}
+}
 
 void bfc_flash::init(uint32_t, uint32_t, bool write)
 {
