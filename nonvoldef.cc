@@ -136,7 +136,13 @@ class nv_group_mlog : public nv_group
 						"thread",
 						"milliseconds"
 				}),
-				NV_VAR(nv_data, "", 33),
+#if 1
+				NV_VAR(nv_remote_acc_methods, "remote_acc_methods"),
+				NV_VAR(nv_cdata<16>, "remote_acc_user"),
+				NV_VAR(nv_cdata<16>, "remote_acc_pass"),
+#else
+				NV_VAR(nv_cdata<33>, ""),
+#endif
 				NV_VAR(nv_ip4, "remote_acc_ip"),
 				NV_VAR(nv_ip4, "remote_acc_subnet"),
 				NV_VAR(nv_ip4, "remote_acc_router"),
