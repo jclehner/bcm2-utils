@@ -229,6 +229,78 @@ class nv_group_cmap : public nv_group
 	}
 };
 
+class nv_group_snmp : public nv_group
+{
+	public:
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_snmp, "snmp", "snmp")
+
+	protected:
+	virtual list definition(int type, const nv_version& ver) const override
+	{
+		if (type == fmt_perm) {
+			return {
+				NV_VAR(nv_bool, "allow_config"),
+				NV_VAR(nv_cdata<0x20>, ""),
+				NV_VAR(nv_cdata<0x80>, ""),
+				NV_VAR(nv_cdata<0x80>, ""),
+				NV_VAR(nv_fzstring<0x80>, "sys_contact"),
+				NV_VAR(nv_fzstring<0x80>, "sys_name"),
+				NV_VAR(nv_fzstring<0x80>, "sys_location"),
+				NV_VAR(nv_cdata<0x80>, ""),
+				NV_VAR(nv_cdata<0x80>, ""),
+				NV_VAR(nv_u8, ""),
+				NV_VAR(nv_cdata<0x80>, ""),
+				NV_VAR(nv_fzstring<0x40>, "serial_number"),
+				// version 0.2
+				NV_VAR(nv_u8, "max_download_tries"),
+				// version 0.3
+				NV_VAR(nv_cdata<4>, ""),
+				// version 0.4
+				NV_VAR(nv_cdata<0x80>, ""),
+			};
+		} else {
+			return {
+				NV_VAR2(nv_enum<nv_u8>, "docs_dev_sw_admin_status", "docs_dev_sw_admin_status", {
+						"unknown",
+						"upgrade_from_mgmt",
+						"allow_provisioning_upgrade",
+						"ignore_provisioning_upgrade"
+				}),
+				NV_VAR2(nv_enum<nv_u8>, "docs_dev_sw_oper_status", "docs_dev_sw_oper_status", {
+						"unknown",
+						"in_progress",
+						"complete_from_provisioning",
+						"complete_from_mgmt"
+						"failed"
+						"other"
+				}),
+				NV_VAR(nv_fzstring<0x100>, "docs_dev_sw_file_name"),
+				NV_VAR(nv_ip4, "docs_dev_sw_server"),
+				NV_VAR3(ver.num() < 0x0002, nv_u16, ""),
+				// version 0.2
+				NV_VAR(nv_p16list<nv_cdata<12>>, "_list1"), // this list's size is reused later
+				NV_VAR(nv_p16list<nv_cdata<4 + 2 + 4 + 4>>, ""),
+				// version 0.3
+				NV_VAR(nv_fzstring<0x100>, "sys_contact"),
+				NV_VAR(nv_fzstring<0x100>, "sys_name"),
+				NV_VAR(nv_fzstring<0x100>, "sys_location"),
+				// version 0.4
+				NV_VAR(nv_u8, "num_download_tries"),
+				// version 0.5
+				NV_VAR(nv_u32, "num_engine_boots"),
+#if 0
+				// version 0.6
+				// since we don't yet support size specifiers other than 
+				// prefixes, we can't continue for now. what follows is an
+				// array of nv_p16data objects, whose size is the same as
+				// the one of the first nv_p16list of version 0.2 (see above).
+				NV_VAR(nv_pxlist<nv_p16data>, "", "_list1.elements"),
+#endif
+			};
+		}
+	}
+};
+
 class nv_group_thom : public nv_group
 {
 	public:
@@ -1572,6 +1644,7 @@ struct registrar {
 			NV_GROUP(nv_group_wigu, true),
 			NV_GROUP(nv_group_scie),
 			NV_GROUP(nv_group_fact),
+			NV_GROUP(nv_group_snmp),
 		};
 
 		for (auto g : groups) {
