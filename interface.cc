@@ -269,7 +269,7 @@ void bfc::detect_profile()
 	}
 
 	foreach_line([this, &pssig] (const string& l) {
-		const string needle = "PID=0x";
+		const string needle = "PID=";
 		auto pos = l.find(needle);
 		if (pos != string::npos) {
 			try {
