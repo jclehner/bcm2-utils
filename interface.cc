@@ -297,7 +297,8 @@ void bfc::detect_profile()
 
 void bfc::initialize_impl()
 {
-	//run("/docsis/scan_stop");
+	run("/docsis_ctl/scan_stop");
+	run("/cm_hal/scan_stop");
 }
 
 bool bfc::is_crash_line(const string& line) const
@@ -752,8 +753,6 @@ void interface::initialize(const profile::sp& profile)
 {
 	m_profile = profile;
 
-	initialize_impl();
-
 	if (!m_profile) {
 		detect_profile_from_magics(shared_from_this(), m_profile);
 	}
@@ -775,6 +774,8 @@ void interface::initialize(const profile::sp& profile)
 		}
 		logger::i() << endl;
 	}
+
+	initialize_impl();
 }
 
 interface::sp interface::detect(const io::sp& io, const profile::sp& profile)
