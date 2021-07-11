@@ -25,18 +25,20 @@ then, starting at `size`, the following algorithm is employed:
 ```c
 uint32_t hcs32(const char* buf, size_t len)
 {
-	uint32_t checksum = 0;
+	// this simulates the first 8 bytes being 4 bytes of
+	// `len` and 4 bytes of an all-zero checksum.
+	uint32_t checksum = len + 8;
 
-	while (len % 4 == 0) {
-		checksum += *(uint32_t*)buf;
+	while (len >= 4) {
+		checksum += ntohl(*(uint32_t*)buf);
 		buf += 4;
 		len -= 4;
 	}
 
 	uint16_t half;
 
-	if (len % 2) {
-		half = *(uint16_t*)buf;
+	if (len >= 2) {
+		half = ntohs(*(uint16_t*)buf);
 		buf += 2;
 		len -= 2;
 	} else {
