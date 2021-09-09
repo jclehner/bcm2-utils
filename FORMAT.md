@@ -25,9 +25,7 @@ then, starting at `size`, the following algorithm is employed:
 ```c
 uint32_t hcs32(const char* buf, size_t len)
 {
-	// this simulates the first 8 bytes being 4 bytes of
-	// `len` and 4 bytes of an all-zero checksum.
-	uint32_t checksum = len + 8;
+	uint32_t checksum = 0;
 
 	while (len >= 4) {
 		checksum += ntohl(*(uint32_t*)buf);
@@ -55,6 +53,9 @@ uint32_t hcs32(const char* buf, size_t len)
 For a buffer containing the data `\xaa\xaa\xaa\xaa\xbb\xbb\xbb\xbb\xcc\xcc\xdd`, the
 checksum is thus `~(0xaaaaaaaa + 0xbbbbbbbb + 0xccccdd00)`, for `\xaa\xaa\xaa\xaa\xbb`,
 it would be `~(0xaaaaaaaa + 0x0000bb00)` (assuming `uint32_t` rollover on overflow).
+
+To simply check for a valid checksum, the `checksum` field is left as is. In this case,
+the result would be `0`, if the checksum is valid.
 
 ### GatewaySettings.bin (standard)
 
