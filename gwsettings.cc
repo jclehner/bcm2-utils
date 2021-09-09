@@ -310,6 +310,7 @@ class permdyn : public encryptable_settings
 		if (is.read(&magic[0], magic.size()) && magic.find_first_not_of('\xff') == string::npos) {
 			m_prefix = magic;
 		} else {
+			is.clear(ios::goodbit);
 			is.seekg(0);
 			logger::d() << "no 202-byte 0xff prefix, seeking to " << beg << endl;
 		}
@@ -372,10 +373,6 @@ class permdyn : public encryptable_settings
 			m_parts.clear();
 			istr.str(crypt_aes_256_ecb(istr.str(), key(), false));
 			settings::read(istr);
-
-			cout << "unenc_groups=" << unenc_groups.size() << endl;
-			cout << "enc_parts=" << parts().size() << endl;
-			cout << "istr=" << istr.str().size() << endl;
 
 			if (unenc_groups.size() > parts().size()) {
 				// more groups when not decrypted -> file isn't encrypted
