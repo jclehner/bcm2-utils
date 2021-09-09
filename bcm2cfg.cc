@@ -394,7 +394,7 @@ int do_main(int argc, char** argv)
 	} else if (cmd == "dump") {
 		// don't clobber the output
 		logger::no_stdout();
-	} else if (cmd == "fix" || cmd == "encrypt" || cmd == "decrypt") {
+	} else if (cmd == "fix") {
 		raw = true;
 	}
 

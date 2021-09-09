@@ -287,11 +287,11 @@ string group_header_to_string(int format, const string& checksum, bool is_chksum
 	return ostr.str();
 }
 
-class permdyn : public settings
+class permdyn : public encryptable_settings
 {
 	public:
-	permdyn(int format, const csp<bcm2dump::profile>& p)
-	: settings("permdyn", format, p) {}
+	permdyn(int format, const csp<bcm2dump::profile>& p, const string& key)
+	: encryptable_settings("permdyn", format, p), m_key(key) {}
 
 	virtual size_t bytes() const override
 	{ return m_size.num(); }
@@ -304,26 +304,18 @@ class permdyn : public settings
 
 	virtual istream& read(istream& is) override
 	{
-		if (m_format != nv_group::fmt_gwsdyn) {
-			// actually, there's 16 more bytes at the beginning, but these have already been read
-			// by gwsettings::read_file, and determined to be all \xff
-			string magic(0xba, '\0');
-			if (!is.read(&magic[0], magic.size()) || !m_size.read(is) || !m_checksum.read(is)) {
-				throw runtime_error("failed to read header");
-			}
+		auto beg = is.tellg();
+		string magic(0xba, '\0');
 
-			if (magic.find_first_not_of('\xff') != string::npos) {
-				m_magic_valid = false;
-				is.clear(ios::failbit);
-				return is;
-				//throw runtime_error("found non-0xff byte in magic");
-			}
+		if (is.read(&magic[0], magic.size()) && magic.find_first_not_of('\xff') == string::npos) {
+			m_prefix = magic;
 		} else {
-			if (!m_size.read(is) || !m_checksum.read(is)) {
-				throw runtime_error("failed to read header");
-			}
+			is.seekg(0);
+			logger::d() << "no 202-byte 0xff prefix, seeking to " << beg << endl;
+		}
 
-			logger::t() << "m_size=" << m_size.num() << ", m_checksum=" << m_checksum.num() << endl;
+		if (!m_size.read(is) || !m_checksum.read(is)) {
+			throw runtime_error("failed to read header");
 		}
 
 		m_magic_valid = true;
@@ -338,7 +330,7 @@ class permdyn : public settings
 		m_checksum_valid = checksum == m_checksum.num();
 
 		if (!m_checksum_valid) {
-			logger::t() << type() << ": checksum mismatch: " << to_hex(checksum) << " / " << to_hex(m_checksum.num()) << endl;
+			logger::d() << type() << ": checksum mismatch: " << to_hex(checksum) << " / " << to_hex(m_checksum.num()) << endl;
 		}
 
 		m_footer = m_size.num() < buf.size() ? buf.substr(m_size.num()) : "";
@@ -367,6 +359,45 @@ class permdyn : public settings
 		istringstream istr(buf.substr(0, m_size.num()));
 		settings::read(istr);
 
+		auto unenc_groups = parts();
+
+		if (!key().empty()) {
+			// a key was specified, but we must check if the file is actually encrypted. compared with
+			// the GatewaySettings there's no easy way to do this, as there's no magic we can check for.
+			//
+			// we thus parse the data twice, once as-is, and once decrypted with the supplied key,
+			// and check which yields more settings groups. if there's only one group in both cases,
+			// do a sanity check on the version
+
+			m_parts.clear();
+			istr.str(crypt_aes_256_ecb(istr.str(), key(), false));
+			settings::read(istr);
+
+			cout << "unenc_groups=" << unenc_groups.size() << endl;
+			cout << "enc_parts=" << parts().size() << endl;
+			cout << "istr=" << istr.str().size() << endl;
+
+			if (unenc_groups.size() > parts().size()) {
+				// more groups when not decrypted -> file isn't encrypted
+				m_key.clear();
+			} else if (unenc_groups.size() == m_parts.size() && m_parts.size() == 1) {
+				// one part in both cases
+				auto unenc_ver = nv_val_cast<nv_group>(unenc_groups[0].val)->version();
+				auto enc_ver = nv_val_cast<nv_group>(parts()[0].val)->version();
+
+				if (enc_ver.major() > 5 || enc_ver.minor() > 100) {
+					// assume that file isn't encrypted, as major versions
+					// are usually 0 or 1. the limit on the minor version
+					// should be good for most cases too.
+					m_key.clear();
+				}
+			}
+
+			if (m_key.empty()) {
+				groups(unenc_groups);
+			}
+		}
+
 		return is;
 	}
 
@@ -374,10 +405,15 @@ class permdyn : public settings
 	{
 		ostringstream ostr;
 		settings::write(ostr);
+
 		string buf = ostr.str();
 
-		if (m_format != nv_group::fmt_gwsdyn && !(os << string(0xca, '\xff'))) {
-			throw runtime_error("failed to write magic");
+		if (!key().empty()) {
+			buf = crypt_aes_256_ecb(buf, key(), true);
+		}
+
+		if (!(os << m_prefix)) {
+			throw runtime_error("failed to write prefix");
 		}
 
 		if (!nv_u32::write(os, 8 + buf.size()) || !nv_u32::write(os, calc_checksum(buf))) {
@@ -417,6 +453,18 @@ class permdyn : public settings
 				m_size.num(), true, "", false, "", false, "");
 	}
 
+	virtual bool padded() const override
+	{ return false; }
+
+	virtual void padded(bool) override
+	{}
+
+	virtual string key() const override
+	{ return m_key; }
+
+	virtual void key(const string& key) override
+	{ m_key = key; }
+
 	private:
 	static uint32_t calc_checksum(const string& buf)
 	{
@@ -451,7 +499,9 @@ class permdyn : public settings
 
 	nv_u32 m_size;
 	nv_u32 m_checksum;
+	string m_prefix;
 	string m_footer;
+	string m_key;
 	uint32_t m_raw_size = 0;
 	bool m_checksum_valid = false;
 	bool m_magic_valid = false;
@@ -754,6 +804,8 @@ class gwsettings : public encryptable_settings
 
 istream& settings::read(istream& is)
 {
+	m_groups.clear();
+
 	if (m_is_raw) {
 		m_raw_data = read_stream(is);
 		return is;
@@ -814,7 +866,7 @@ sp<settings> settings::read(istream& is, int format, const csp<bcm2dump::profile
 	}
 
 	if (format != nv_group::fmt_gws) {
-		ret = sp<permdyn>(new permdyn(format, p));
+		ret = sp<permdyn>(new permdyn(format, p, key));
 	} else {
 		// if this is in fact a gwsettings type file, then start already contains the checksum
 		ret = sp<gwsettings>(new gwsettings(start, p, key, pw));

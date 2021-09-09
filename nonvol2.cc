@@ -873,7 +873,7 @@ istream& nv_group::read(istream& is, sp<nv_group>& group, int format,
 		group = nullptr;
 		return is;
 	} else if (size.num() > remaining) {
-		logger::v() << "group size " << size.to_str() << " exceeds maximum size " << remaining << endl;
+		logger::d() << "group size " << size.to_str() << " exceeds maximum size " << remaining << endl;
 		size.num(remaining);
 	}
 

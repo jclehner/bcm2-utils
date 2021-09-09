@@ -68,6 +68,9 @@ class settings : public nv_compound
 
 	csp<bcm2dump::profile> m_profile;
 
+	void groups(const list& g)
+	{ m_groups = g; }
+
 	protected:
 	int m_format;
 
