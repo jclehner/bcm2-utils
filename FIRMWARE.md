@@ -70,7 +70,7 @@ The exact meaning of the image numbers specified im `images` varies, depending
 on the platform, although though `0` is usually the bootloader. Below are
 examples for the BCM338x and BCM3390 platforms:
 
-| Number | BCM338{3,4}   | BCM3390      |
+| n      | BCM338{3,4}   | BCM3390      |
 |-------:|---------------|--------------|
 | 0      | `bootloader`  | `BOOTL` |
 | 1      | `image1`      | `DOCSIS` |
