@@ -64,9 +64,24 @@ Some firmware files are so-called monolithic images, which contain multiple imag
 | 8      | u32      | len   | Image size (including this header)          |
 | 12     | u32      | images| Bitmask of image numbers contained in this file. |
 
-Individual images are padded to a 64k block size. The exact meaning of
-the image numbers specified im `images` varies, depending on the platform, although though
-`0` is usually the bootloader.
+Individual images are padded to a 64k block size.
+
+The exact meaning of the image numbers specified im `images` varies, depending
+on the platform, although though `0` is usually the bootloader. Below are
+examples for the BCM338x and BCM3390 platforms:
+
+| Number | BCM338{3,4}   | BCM3390      |
+|-------:|---------------|--------------|
+| 0      | `bootloader`  | `BOOTL` |
+| 1      | `image1`      | `DOCSIS` |
+| 2      | `image2`      | `SVM` |
+| 3      | `linux`       | `RG` |
+| 4      | `linuxapps`   | `STB` |
+| 5      | `permv`       | `APPS` |
+| 6      | `dhtml`       | `BOLT` |
+| 7      | `dynnv`       | `DEVTREE` |
+| 8      | `linuxkfs`    | `HYP` |
+| 9      | N/A           | `KERNEL` |
 
 ###### ProgramStore image
 
