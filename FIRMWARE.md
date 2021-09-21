@@ -59,13 +59,14 @@ Some firmware files are so-called monolithic images, which contain multiple imag
 |-------:|----------|-------|---------------------------------------------|
 | 0      | u32      | magic-| `0x4d4f4e4f` (`MONO`)                       |
 | 4      | u16      | sig   | Device-dependent signature (similar to ProgramStore signature) |
-| 6      | byte[2]  | unk1  | Unknown                                     |
+| 6      | byte     | vmaj  | Major version                               |
+| 7      | byte     | vmin  | Minor version
 | 8      | u32      | len   | Image size (including this header)          |
-| 12     | byte[4]  | unk2  | Unknown                                     |
+| 12     | u32      | images| Bitmask of image numbers contained in this file. |
 
-Individual images are padded with `0` bytes, to a 64k block size. It's possible that the amount of
-padding is specified within the header. `unk1[1]` is `16` in all images I've seen so far, which
-*could* mean 16 `4k` blocks (but this is purely speculative).
+Individual images are padded to a 64k block size. The exact meaning of
+the image numbers specified im `images` varies, depending on the platform, although though
+`0` is usually the bootloader.
 
 ###### ProgramStore image
 
