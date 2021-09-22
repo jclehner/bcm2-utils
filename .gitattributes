@@ -1,3 +1,2 @@
-bcm2cfg.dev text eol=crlf
-bcm2dump.dev text eol=crlf
+*.dev text eol=crlf
 * text eol=lf
