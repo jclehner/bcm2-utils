@@ -57,6 +57,8 @@ class settings : public nv_compound
 	int format() const
 	{ return m_format; }
 
+	virtual void remove(const std::string& name);
+
 	protected:
 	settings(const std::string& name, int format, const csp<bcm2dump::profile>& p)
 	: nv_compound(true, name), m_profile(p), m_format(format) {}

@@ -842,6 +842,16 @@ ostream& settings::write(ostream& os) const
 	}
 }
 
+void settings::remove(const string& name)
+{
+	auto it = find_if(m_groups.begin(), m_groups.end(), [name](const nv_val::named& v) { return v.name == name; });
+	if (it != m_groups.end()) {
+		m_groups.erase(it);
+	} else {
+		throw user_error("no such group: " + name);
+	}
+}
+
 sp<settings> settings::read(istream& is, int format, const csp<bcm2dump::profile>& p, const string& key,
 		const string& pw, bool raw)
 {

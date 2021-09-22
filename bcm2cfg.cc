@@ -87,6 +87,11 @@ int usage(bool help = false)
 		os << "\n    Set value of variable <name> to <value>, optionally writing\n"
 				"    the resulting file to <outfile>.\n\n";
 	}
+	os << "  remove  <infile> <group name> [<outfile>]" << endl;
+	if (help) {
+		os << "\n    Removes a settings groups from the input file, optionally writing\n"
+				"    the resulting file to <outfile>.\n\n";
+	}
 	os << "  dump    <infile> [<name>]" << endl;
 	if (help) {
 		os << "\n    Dump raw data of variable <name>. If omitted, dump file contents.\n\n";
@@ -222,15 +227,23 @@ int do_list_get_dump_type(int argc, char** argv, const sp<settings>& settings)
 	return 0;
 }
 
-int do_set(int argc, char** argv, const sp<settings>& settings)
+int do_set_remove(int argc, char** argv, const sp<settings>& settings)
 {
-	if (argc != 4 && argc != 5) {
+	int n = argv[0] == "set"s ? 1 : 0;
+
+	if (argc != (3 + n) && argc != (4 + n)) {
+		cout << "argc=" << argc << endl;
 		return usage(false);
 	}
 
-	settings->set(argv[2], argv[3]);
-	logger::i() << argv[2] << " = " << settings->get(argv[2])->to_pretty() << endl;
-	write_file(argc == 5 ? argv[4] : argv[1], settings);
+	if (argv[0] == "set"s) {
+		settings->set(argv[2], argv[3]);
+		logger::i() << argv[2] << " = " << settings->get(argv[2])->to_pretty() << endl;
+	} else if (argv[0] == "remove"s) {
+		settings->remove(argv[2]);
+	}
+
+	write_file(argc == (4 + n) ? argv[3 + n] : argv[1], settings);
 	return 0;
 }
 
@@ -420,8 +433,8 @@ int do_main(int argc, char** argv)
 		return do_crypt(argc, argv, settings, key, password, pad);
 	} else if (cmd == "get" || cmd == "list" || cmd == "dump" || cmd == "type") {
 		return do_list_get_dump_type(argc, argv, settings);
-	} else if (cmd == "set") {
-		return do_set(argc, argv, settings);
+	} else if (cmd == "set" || cmd == "remove") {
+		return do_set_remove(argc, argv, settings);
 	} else if (cmd == "verify") {
 		return do_verify(argc, argv, settings);
 	} else if (cmd == "fix") {
