@@ -93,19 +93,31 @@ class nv_time_period : public nv_compound_def
 	}
 };
 
+class nv_ipstacks : public nv_bitmask<nv_u8>
+{
+	public:
+	nv_ipstacks() : nv_bitmask("ipstacks", names())
+	{}
+
+	static vector<string> names()
+	{
+		return { "IP1", "IP2", "IP3", "IP4", "IP5", "IP6", "IP7", "IP8" };
+	}
+};
+
+class nv_ipstack : public nv_enum<nv_u8>
+{
+	public:
+	nv_ipstack() : nv_enum("ipstack", nv_ipstacks::names())
+	{}
+};
+
 class nv_group_mlog : public nv_group
 {
 	public:
 	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_mlog, "MLog", "userif");
 
 	protected:
-	class nv_ipstacks : public nv_bitmask<nv_u8>
-	{
-		public:
-		nv_ipstacks() : nv_bitmask("ipstacks", {
-				"IP1", "IP2", "IP3", "IP4", "IP5", "IP6", "IP7", "IP8"
-		}) {}
-	};
 
 	class nv_remote_acc_methods : public nv_bitmask<nv_u8>
 	{
@@ -1616,6 +1628,83 @@ class nv_group_fact : public nv_group
 	}
 };
 
+class nv_group_docsis : public nv_group
+{
+	public:
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_docsis, 0xd0c20100, "docsis1")
+
+	protected:
+	virtual list definition(int type, const nv_version& ver) const override
+	{
+		if (type == fmt_dyn) {
+			return {
+				NV_VAR(nv_u32, "ds_frequency"),
+				NV_VAR(nv_u8, "us_channel"),
+				NV_VAR(nv_u16, "us_power"),
+				NV_VAR(nv_u32, "startup_ds_frequency"),
+				NV_VAR(nv_u8, "startup_us_channel"),
+				NV_VAR(nv_u8, "startup_context"),
+				NV_VAR(nv_bool, "docsis10_igmp_multicast_enabled"),
+				NV_VAR(nv_u16, ""),
+				NV_VAR(nv_u32, ""),
+				NV_VAR(nv_u8, ""),
+				NV_VAR(nv_u8, ""),
+				NV_VAR(nv_u8, ""),
+				NV_VAR(nv_u8, ""),
+				NV_VAR2(nv_enum<nv_u8>, "annex_mode_of_last_good_ds", "", {
+					"B", "A", "J", "other", "C"
+				}),
+			};
+		} else {
+			return {
+				NV_VAR2(nv_bitmask<nv_u32>, "features", nv_bitmask<nv_u32>::valvec {
+						"single_ds_channel",   // 0x00000001
+						"bpi",                 // 0x00000002
+						"concat",              // 0x00000004
+						"fragmentation",       // 0x00000008
+						"phs",                 // 0x00000010
+						"igmp",                // 0x00000020
+						"rate_shaping",        // 0x00000040
+						"",                    // 0x00000080
+						"",                    // 0x00000100
+						"time_of_day",         // 0x00000200
+						"config_file_tftp",    // 0x00000400
+						"canned_registration", // 0x00000800
+						"online_rng_rsp",      // 0x00001000
+						"",                    // 0x00002000
+						"bpi23_secure_sw_dload_disabled", // 0x00004000
+						"docsis_20_hack_for_1x_cmts", // 0x00008000
+						"",                    // 0x00010000
+						"force_config_file",   // 0x00020000
+						"ack_cel_technology",  // 0x00040000
+						"non_standard_upstream", // 0x00080000
+						"",                    // 0x00100000
+						"ds_header_detection", // 0x00200000
+						"scan_up_annex_a",     // 0x00400000
+				}),
+				NV_VAR(nv_u8, "upstream_queues_enabled"),
+				NV_VAR(nv_u8, "bpi_version"),
+				NV_VAR(nv_u32, "disabled_docsis_timers"),
+				NV_VAR(nv_u8, "concat_threshold"),
+				NV_VAR(nv_u8, "rate_shaping_time_interval"),
+				NV_VAR(nv_u32, ""),
+				NV_VAR(nv_ip4, "canned_ip_addr"),
+				NV_VAR(nv_ip4, "canned_ip_mask"),
+				NV_VAR(nv_ip4, "canned_gateway_ip"),
+				NV_VAR(nv_ip4, "canned_tftp_ip"),
+				NV_VAR(nv_fzstring<0x40>, "canned_cm_config_file"),
+				NV_VAR(nv_ip4, "time_server_ip"),
+				NV_VAR(nv_ip4, "log_server_ip"),
+				NV_VAR(nv_ipstack, "ipstack_number"),
+				NV_VAR(nv_u8, "max_ugs_queue_depth"),
+				NV_VAR(nv_u8, "max_concat_packets"),
+				NV_VAR(nv_p8list<nv_cdata<3>>, "ugs_queue"),
+				NV_VAR(nv_u16, "default_ranging_class"),
+			};
+		}
+	}
+};
+
 struct registrar {
 	registrar()
 	{
@@ -1645,6 +1734,7 @@ struct registrar {
 			NV_GROUP(nv_group_scie),
 			NV_GROUP(nv_group_fact),
 			NV_GROUP(nv_group_snmp),
+			NV_GROUP(nv_group_docsis),
 		};
 
 		for (auto g : groups) {
