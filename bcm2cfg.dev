@@ -9,8 +9,8 @@ Libs=
 PrivateResource=
 ResourceIncludes=
 MakeIncludes=
-Compiler=-std=c99_@@_-DWINVER=0x0600_@@_-D_WIN32_WINNT=0x0600_@@_-D__USE_MINGW_ANSI_STDIO=1_@@_-DVERSION="\"v0.9.5\""_@@_
-CppCompiler=-std=c++14_@@_-DWINVER=0x0600_@@_-D_WIN32_WINNT=0x0600_@@_-D__USE_MINGW_ANSI_STDIO=1_@@_-DVERSION="\"v0.9.5\""_@@_
+Compiler=-std=c99_@@_-DWINVER=0x0600_@@_-D_WIN32_WINNT=0x0600_@@_-D__USE_MINGW_ANSI_STDIO=1_@@_-DVERSION="\"v0.9.5.1\""_@@_
+CppCompiler=-std=c++14_@@_-DWINVER=0x0600_@@_-D_WIN32_WINNT=0x0600_@@_-D__USE_MINGW_ANSI_STDIO=1_@@_-DVERSION="\"v0.9.5.1\""_@@_
 Linker=-lws2_32_@@_
 IsCpp=1
 Icon=
