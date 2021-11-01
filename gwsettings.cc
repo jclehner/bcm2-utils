@@ -308,9 +308,11 @@ class permdyn : public encryptable_settings
 		string magic(0xba, '\0');
 
 		if (is.read(&magic[0], magic.size()) && magic.find_first_not_of('\xff') == string::npos) {
-			m_prefix = magic;
+			// because the first 16 bytes were read by settings::read()
+			m_prefix = magic + string(16, '\xff');
 		} else {
 			is.clear(ios::goodbit);
+			// FIXME beg-16?
 			is.seekg(0);
 			logger::d() << "no 202-byte 0xff prefix, seeking to " << beg << endl;
 		}
