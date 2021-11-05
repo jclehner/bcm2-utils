@@ -1666,7 +1666,7 @@ class nv_group_docsis : public nv_group
 						"igmp",                // 0x00000020
 						"rate_shaping",        // 0x00000040
 						"",                    // 0x00000080
-						"",                    // 0x00000100
+						"dhcp",                // 0x00000100
 						"time_of_day",         // 0x00000200
 						"config_file_tftp",    // 0x00000400
 						"canned_registration", // 0x00000800
