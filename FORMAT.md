@@ -80,20 +80,12 @@ is located. `wcount` is a write counter (which counts *down* from `0xffffffff`).
 
 ###### New style (BCM3390)
 
+On these devices, the CM firmware "nonvol" files are stored on a `jffs2` partition. The files are
+named `cm_perm` and `cm_dyn`, for `permnv` and `dynnv`, respectively.
 
-and the "new style" which is stored as a regular file on a `jffs2`
-partition, named `cm_perm.bin` and `cm_dyn.bin` for `permnv` and `dynnv`,
-respectively.
-
-
-
-| Offset | Type         | Name       | Comment            |
-|-------:|--------------|------------|--------------------|
-|    `0` | `byte[202]`  | `magic`    | all `\xff`         |
-|  `202` | `u32`        | `size`     |                    |
-|  `206` | `u32`        | `checksum` |                    |
-|  `210` |`byte[size-8]`| `data`     |                    |
-
+All data after the checksum is encrypted using AES-256-ECB, with a key that is unique to each
+device. It can be read from offset memory offset `0xd384bfe0`, from both the MIPS (=CM firmware)
+and ARM (=BOLT + Linux) side.
 
 ### GatewaySettings.bin (standard)
 
