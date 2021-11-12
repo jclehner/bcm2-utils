@@ -11,12 +11,16 @@ Header
 
 ### Permnv/dynnv
 
-| Offset | Type         | Name       | Comment            |
-|-------:|--------------|------------|--------------------|
-|    `0` | `byte[202]`  | `magic`    | all `\xff`         |
-|  `202` | `u32`        | `size`     |                    |
-|  `206` | `u32`        | `checksum` |                    |
-|  `210` |`byte[size-8]`| `data`     |                    |
+There are two variants. The "old style" is used on pre-BCM3390 chipsets,
+and the "new style" used on BCM3390 (and probably future chipsets).
+
+Both styles use the same header format:
+
+| Offset | Type         | Name       |
+|-------:|--------------|------------|
+|  `0`   | `u32`        | `size`     |
+|  `4`   | `u32`        | `checksum` |
+|  `8`   |`byte[size-8]`| `data`     |
 
 To calculate the checksum, `checksum` is first set to zero,
 then, starting at `size`, the following algorithm is employed:
@@ -56,6 +60,40 @@ it would be `~(0xaaaaaaaa + 0x0000bb00)` (assuming `uint32_t` rollover on overfl
 
 To simply check for a valid checksum, the `checksum` field is left as is. In this case,
 the result would be `0`, if the checksum is valid.
+
+###### Old style (pre BCM3390)
+
+Both `permnv` and `dynnv` reside in raw flash partitions. The actual header is always
+prefixed by 202 `\xff` bytes.
+
+A simple wear leveling mechanism is used: each time each time the data is modified by
+the firmware, it writes a new copy below the current one. In order to know which copy
+to use, the last 8 bytes form a footer:
+
+| Offset | Type         | Name       |
+|-------:|--------------|------------|
+|  `-8`  | `u32`        | `offset`   |
+|  `-4`  | `u32`        | `wcount`   |
+
+`offset` represents the *absolute* offset *within the partition* where the current copy
+is located. `wcount` is a write counter (which counts *down* from `0xffffffff`).
+
+###### New style (BCM3390)
+
+
+and the "new style" which is stored as a regular file on a `jffs2`
+partition, named `cm_perm.bin` and `cm_dyn.bin` for `permnv` and `dynnv`,
+respectively.
+
+
+
+| Offset | Type         | Name       | Comment            |
+|-------:|--------------|------------|--------------------|
+|    `0` | `byte[202]`  | `magic`    | all `\xff`         |
+|  `202` | `u32`        | `size`     |                    |
+|  `206` | `u32`        | `checksum` |                    |
+|  `210` |`byte[size-8]`| `data`     |                    |
+
 
 ### GatewaySettings.bin (standard)
 

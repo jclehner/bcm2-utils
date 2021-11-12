@@ -310,11 +310,18 @@ class permdyn : public encryptable_settings
 		if (is.read(&magic[0], magic.size()) && magic.find_first_not_of('\xff') == string::npos) {
 			// because the first 16 bytes were read by settings::read()
 			m_prefix = magic + string(16, '\xff');
+			m_old_style = true;
 		} else {
 			is.clear(ios::goodbit);
-			// FIXME beg-16?
-			is.seekg(0);
+			// see above for explanation
+			if (beg > 16) {
+				beg -= 16;
+			} else {
+				beg = 0;
+			}
+			is.seekg(beg);
 			logger::d() << "no 202-byte 0xff prefix, seeking to " << beg << endl;
+			m_old_style = false;
 		}
 
 		if (!m_size.read(is) || !m_checksum.read(is)) {
@@ -339,24 +346,15 @@ class permdyn : public encryptable_settings
 		m_footer = m_size.num() < buf.size() ? buf.substr(m_size.num()) : "";
 		m_raw_size = buf.size();
 
-		if (!m_format) {
-			if (m_footer.size() >= 8) {
-				uint32_t a, b;
-				a = ntoh(extract<uint32_t>(m_footer.substr(m_footer.size() - 8, 4)));
-				b = ntoh(extract<uint32_t>(m_footer.substr(m_footer.size() - 4, 4)));
+		if (m_old_style) {
+			uint32_t offset = ntoh(extract<uint32_t>(m_footer.substr(m_footer.size() - 8, 4)));
+			m_write_count = ntoh(extract<uint32_t>(m_footer.substr(m_footer.size() - 4, 4)));
 
-				if (a == 0x5544 && b == 0xfffffffe) {
-					m_format = nv_group::fmt_perm;
-				} else if ((a == 0x10000 && b == 0xfffffffe) || (a == 0x8000 && b == 0xfffffffc)) {
-					m_format = nv_group::fmt_dyn;
-				} else {
-					logger::t() << "a=0x" << to_hex(a) << ", b=0x" << to_hex(b) << endl;
-				}
-			}
+			m_footer.resize(m_footer.size() - 8);
+			m_raw_size -= 8;
 
-			if (!m_format) {
-				logger::w() << "failed to detect file format; please specify `-f perm` or `-f dyn`" << endl;
-			}
+			is.seekg(offset);
+			logger::d() << "seeking to offset " << offset << ", write count: " << (UINT32_MAX - m_write_count) << endl;
 		}
 
 		istringstream istr(buf.substr(0, m_size.num()));
@@ -443,6 +441,13 @@ class permdyn : public encryptable_settings
 			throw runtime_error("failed to write footer");
 		}
 
+		if (m_old_style) {
+			// TODO actually use a new offset?
+			if (!nv_u32::write(os, 0) || !nv_u32::write(os, m_write_count - 1)) {
+				throw runtime_error("failed to write wear-leveling data");
+			}
+		}
+
 		return os;
 	}
 
@@ -504,6 +509,8 @@ class permdyn : public encryptable_settings
 	uint32_t m_raw_size = 0;
 	bool m_checksum_valid = false;
 	bool m_magic_valid = false;
+	bool m_old_style = true;
+	uint32_t m_write_count = 0;
 };
 
 class gwsettings : public encryptable_settings
