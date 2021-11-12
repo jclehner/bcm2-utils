@@ -80,8 +80,8 @@ is located. `wcount` is a write counter (which counts *down* from `0xffffffff`).
 
 ###### New style (BCM3390)
 
-On these devices, the CM firmware "nonvol" files are stored on a `jffs2` partition. The files are
-named `cm_perm` and `cm_dyn`, for `permnv` and `dynnv`, respectively.
+On these devices, the CM firmware "nonvol" files are stored on a JFFS2 partition. The files are
+named `cm_perm.bin` and `cm_dyn.bin`, for `permnv` and `dynnv`, respectively.
 
 All data after the checksum is encrypted using AES-256-ECB, with a key that is unique to each
 device. It can be read from offset memory offset `0xd384bfe0`, from both the MIPS (=CM firmware)
