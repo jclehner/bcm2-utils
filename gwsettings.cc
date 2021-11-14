@@ -350,9 +350,6 @@ class permdyn : public encryptable_settings
 			uint32_t offset = ntoh(extract<uint32_t>(m_footer.substr(m_footer.size() - 8, 4)));
 			m_write_count = ntoh(extract<uint32_t>(m_footer.substr(m_footer.size() - 4, 4)));
 
-			m_footer.resize(m_footer.size() - 8);
-			m_raw_size -= 8;
-
 			is.seekg(offset);
 			logger::d() << "seeking to offset " << offset << ", write count: " << (UINT32_MAX - m_write_count) << endl;
 		}
@@ -421,30 +418,38 @@ class permdyn : public encryptable_settings
 			throw runtime_error("failed to write data");
 		}
 
-		string footer = m_footer;
-		ssize_t diff = (buf.size() + footer.size()) - m_raw_size;
-
-		if (diff < 0) {
-			// new size is smaller, pad with \xff
-			footer.insert(0, string(-diff, '\xff'));
-		} else if (diff) {
-			// new size is larger, so we truncate m_footer
-			if (diff < m_footer.size()) {
-				footer.erase(0, diff);
-			} else {
-				logger::w() << "growing file to fit new data" << endl;
-				footer.clear();
-			}
-		}
-
-		if (!os.write(footer.data(), footer.size())) {
-			throw runtime_error("failed to write footer");
-		}
-
 		if (m_old_style) {
-			// TODO actually use a new offset?
+			// 8 bytes for the wear leveling data
+			ssize_t diff = m_raw_size - ostr.tellp() - 8;
+
+			if (diff > 0) {
+				os << string(diff, '\xff');
+			} else if (diff < 0) {
+				throw user_error("file size exceeds maximum of " + ::to_string(m_raw_size));
+			}
+
 			if (!nv_u32::write(os, 0) || !nv_u32::write(os, m_write_count - 1)) {
 				throw runtime_error("failed to write wear-leveling data");
+			}
+		} else {
+			string footer = m_footer;
+			ssize_t diff = (buf.size() + footer.size()) - m_raw_size;
+
+			if (diff < 0) {
+				// new size is smaller, pad with \xff
+				footer.insert(0, string(-diff, '\xff'));
+			} else if (diff) {
+				// new size is larger, so we truncate m_footer
+				if (diff < m_footer.size()) {
+					footer.erase(0, diff);
+				} else {
+					logger::w() << "growing file to fit new data" << endl;
+					footer.clear();
+				}
+			}
+
+			if (!os.write(footer.data(), footer.size())) {
+				throw runtime_error("failed to write footer");
 			}
 		}
 
