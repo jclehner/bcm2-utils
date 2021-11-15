@@ -324,6 +324,17 @@ class permdyn : public encryptable_settings
 			m_old_style = false;
 		}
 
+		if (m_old_style) {
+			is.seekg(-8, is.end);
+
+			uint32_t offset;
+			nv_u32::read(is, offset);
+			nv_u32::read(is, m_write_count);
+
+			logger::d() << "data at 0x" << hex << offset << ", write count: " << (UINT32_MAX - m_write_count) << endl;
+			is.seekg(offset + m_prefix.size());
+		}
+
 		if (!m_size.read(is) || !m_checksum.read(is)) {
 			throw runtime_error("failed to read header");
 		}
@@ -345,14 +356,6 @@ class permdyn : public encryptable_settings
 
 		m_footer = m_size.num() < buf.size() ? buf.substr(m_size.num()) : "";
 		m_raw_size = buf.size();
-
-		if (m_old_style) {
-			uint32_t offset = ntoh(extract<uint32_t>(m_footer.substr(m_footer.size() - 8, 4)));
-			m_write_count = ntoh(extract<uint32_t>(m_footer.substr(m_footer.size() - 4, 4)));
-
-			is.seekg(offset);
-			logger::d() << "seeking to offset " << offset << ", write count: " << (UINT32_MAX - m_write_count) << endl;
-		}
 
 		istringstream istr(buf.substr(0, m_size.num()));
 		settings::read(istr);

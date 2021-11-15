@@ -600,6 +600,13 @@ class nv_num : public nv_val
 		return os.write(reinterpret_cast<const char*>(&swapped), sizeof(T));
 	}
 
+	static const T read(std::istream& in, T& num)
+	{
+		in.read(reinterpret_cast<char*>(&num), sizeof(T));
+		num = bcm2dump::ntoh(num);
+		return num;
+	}
+
 	protected:
 	T m_val;
 	bool m_hex = false;
