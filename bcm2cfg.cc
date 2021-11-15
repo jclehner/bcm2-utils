@@ -123,7 +123,7 @@ int usage(bool help = false)
 }
 
 sp<settings> read_file(const string& filename, int format, const sp<profile>& profile,
-		const string& key, const string& pw, bool raw)
+		const string& key, const string& pw)
 {
 	ifstream infile;
 	if (filename != "-") {
@@ -135,7 +135,7 @@ sp<settings> read_file(const string& filename, int format, const sp<profile>& pr
 
 	istream& in = filename != "-" ? infile : cin;
 
-	return settings::read(in, format, profile, key, pw, raw);
+	return settings::read(in, format, profile, key, pw);
 }
 
 void write_file(const string& filename, const sp<settings>& settings)
@@ -353,7 +353,7 @@ int do_main(int argc, char** argv)
 	int loglevel = logger::info;
 	string profile_name, password, key;
 	int opt = 0;
-	bool pad = false, raw = false;
+	bool pad = false;
 	int format = nv_group::fmt_unknown;
 
 	opterr = 0;
@@ -407,8 +407,6 @@ int do_main(int argc, char** argv)
 	} else if (cmd == "dump") {
 		// don't clobber the output
 		logger::no_stdout();
-	} else if (cmd == "fix") {
-		raw = true;
 	}
 
 	logger::loglevel(loglevel);
@@ -421,7 +419,7 @@ int do_main(int argc, char** argv)
 	}
 
 	sp<profile> profile = !profile_name.empty() ? profile::get(profile_name) : nullptr;
-	sp<settings> settings = read_file(argv[1], format, profile, key, password, raw);
+	sp<settings> settings = read_file(argv[1], format, profile, key, password);
 
 	if (cmd == "info") {
 		return do_info(argc, argv, settings);

@@ -46,11 +46,8 @@ class settings : public nv_compound
 	virtual std::string header_to_string() const = 0;
 	virtual bool is_valid() const = 0;
 
-	virtual void raw(bool raw)
-	{ m_is_raw = raw; }
-
 	static sp<settings> read(std::istream& is, int type, const csp<bcm2dump::profile>& profile,
-			const std::string& key, const std::string& password, bool raw);
+			const std::string& key, const std::string& password);
 
 	virtual std::ostream& write(std::ostream& is) const override;
 
@@ -77,8 +74,6 @@ class settings : public nv_compound
 	int m_format;
 
 	private:
-	std::string m_raw_data;
-	bool m_is_raw = false;
 	list m_groups;
 };
 
