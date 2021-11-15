@@ -1470,7 +1470,16 @@ class nv_group_scie : public nv_group
 	virtual list definition(int format, const nv_version& ver) const override
 	{
 		if (format == fmt_perm) {
-			return nv_group::definition(format, ver);
+			return {
+				NV_VAR(nv_u8, "ds_search_plan"),
+				NV_VAR(nv_u32, "" /*"comcast_led_mode"*/),
+				NV_VAR(nv_u8, ""),
+				NV_VAR(nv_u8, ""),
+				NV_VAR(nv_fzstring<0x100>, "hw_model"),
+				NV_VAR(nv_fzstring<0x100>, "hw_version"),
+				NV_VAR(nv_fzstring<0x100>, "hw_serial"),
+				NV_VAR(nv_fzstring<0x100>, "hw_cm_mac"),
+			};
 		}
 
 		return {
