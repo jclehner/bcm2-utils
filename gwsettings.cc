@@ -305,45 +305,62 @@ class permdyn : public encryptable_settings
 	virtual istream& read(istream& is) override
 	{
 		auto beg = is.tellg();
-		string magic(0xba, '\0');
 
-		if (is.read(&magic[0], magic.size()) && magic.find_first_not_of('\xff') == string::npos) {
-			// because the first 16 bytes were read by settings::read()
-			m_prefix = magic + string(16, '\xff');
-			m_old_style = true;
-		} else {
-			is.clear(ios::goodbit);
-			// see above for explanation
-			if (beg > 16) {
-				beg -= 16;
-			} else {
-				beg = 0;
-			}
-			is.seekg(beg);
-			logger::d() << "no 202-byte 0xff prefix, seeking to " << beg << endl;
-			m_old_style = false;
+		// TODO move this to settings::read()
+		is.seekg(-16, ios::cur);
+
+		m_magic_valid = false;
+
+		if (!m_size.read(is) || !m_checksum.read(is)) {
+			throw runtime_error("failed to read header");
 		}
 
-		if (m_old_style) {
-			is.seekg(-8, is.end);
+		if (m_size.num() == 0xffffffff && m_checksum.num() == 0xffffffff) {
+			// probably an old-style permnv/dynnv file, which starts
+			// with a prefix of 202 0xff bytes (of which we've already read 8).
+
+			string prefix(202 - 8, '\0');
+			if (!is.read(&prefix[0], prefix.size())) {
+				throw runtime_error("failed to read prefix");
+			}
+
+			if (prefix.find_first_not_of('\xff') != string::npos) {
+				return is;
+			}
+
+			m_magic_valid = true;
+			m_old_style = true;
+
+			// seek to the wear leveling data
+			is.seekg(-8, ios::end);
+			m_raw_size = is.tellg();
 
 			uint32_t offset;
 			nv_u32::read(is, offset);
 			nv_u32::read(is, m_write_count);
 
 			logger::d() << "data at 0x" << hex << offset << ", write count: " << (UINT32_MAX - m_write_count) << endl;
-			is.seekg(offset + m_prefix.size());
-		}
 
-		if (!m_size.read(is) || !m_checksum.read(is)) {
-			throw runtime_error("failed to read header");
-		}
+			// clear eofbit, and seek to the beginning of the settings group data
+			is.seekg(offset + 202);
 
-		m_magic_valid = true;
+			// re-read the checksum and size fields
+			if (!m_size.read(is) || !m_checksum.read(is)) {
+				throw runtime_error("failed to read header");
+			}
+		} else {
+			m_old_style = false;
+			// FIXME
+			m_magic_valid = true;
+		}
 
 		string buf = read_stream(is);
 		if (buf.size() < (m_size.num() - 8)) {
 			logger::w() << type() << ": read " << buf.size() << "b, expected at least " << m_size.num() - 8 << endl;
+			m_size_valid = false;
+		} else {
+			buf.resize(m_size.num() - 8);
+			m_size_valid = true;
 		}
 
 		// minus 8, since m_size includes itself (4 bytes) plus the checksum (also 4 bytes)
@@ -354,13 +371,8 @@ class permdyn : public encryptable_settings
 			logger::d() << type() << ": checksum mismatch: " << to_hex(checksum) << " / " << to_hex(m_checksum.num()) << endl;
 		}
 
-		m_footer = m_size.num() < buf.size() ? buf.substr(m_size.num()) : "";
-		m_raw_size = buf.size();
-
-		istringstream istr(buf.substr(0, m_size.num()));
+		istringstream istr(buf);
 		settings::read(istr);
-
-		auto unenc_groups = parts();
 
 		if (!key().empty()) {
 			// a key was specified, but we must check if the file is actually encrypted. compared with
@@ -369,6 +381,8 @@ class permdyn : public encryptable_settings
 			// we thus parse the data twice, once as-is, and once decrypted with the supplied key,
 			// and check which yields more settings groups. if there's only one group in both cases,
 			// do a sanity check on the version
+
+			auto unenc_groups = parts();
 
 			m_parts.clear();
 			istr.str(crypt_aes_256_ecb(istr.str(), key(), false));
@@ -403,14 +417,16 @@ class permdyn : public encryptable_settings
 		ostringstream ostr;
 		settings::write(ostr);
 
+		if (m_old_style) {
+			if (!(os << string(202, '\xff'))) {
+				throw runtime_error("failed to write prefix");
+			}
+		}
+
 		string buf = ostr.str();
 
 		if (!key().empty()) {
 			buf = crypt_aes_256_ecb(buf, key(), true);
-		}
-
-		if (!(os << m_prefix)) {
-			throw runtime_error("failed to write prefix");
 		}
 
 		if (!nv_u32::write(os, 8 + buf.size()) || !nv_u32::write(os, calc_checksum(buf))) {
@@ -422,8 +438,9 @@ class permdyn : public encryptable_settings
 		}
 
 		if (m_old_style) {
-			// 8 bytes for the wear leveling data
-			ssize_t diff = m_raw_size - ostr.tellp() - 8;
+			// 8 bytes for the wear leveling data, 202 bytes
+			// for the prefix
+			ssize_t diff = m_raw_size - ostr.tellp() - 210;
 
 			if (diff > 0) {
 				os << string(diff, '\xff');
@@ -434,26 +451,6 @@ class permdyn : public encryptable_settings
 			if (!nv_u32::write(os, 0) || !nv_u32::write(os, m_write_count - 1)) {
 				throw runtime_error("failed to write wear-leveling data");
 			}
-		} else {
-			string footer = m_footer;
-			ssize_t diff = (buf.size() + footer.size()) - m_raw_size;
-
-			if (diff < 0) {
-				// new size is smaller, pad with \xff
-				footer.insert(0, string(-diff, '\xff'));
-			} else if (diff) {
-				// new size is larger, so we truncate m_footer
-				if (diff < m_footer.size()) {
-					footer.erase(0, diff);
-				} else {
-					logger::w() << "growing file to fit new data" << endl;
-					footer.clear();
-				}
-			}
-
-			if (!os.write(footer.data(), footer.size())) {
-				throw runtime_error("failed to write footer");
-			}
 		}
 
 		return os;
@@ -462,7 +459,7 @@ class permdyn : public encryptable_settings
 	virtual string header_to_string() const override
 	{
 		return group_header_to_string(m_format, to_hex(m_checksum.num()), m_checksum_valid,
-				m_size.num(), true, "", false, "", false, "");
+				m_size.num(), m_size_valid, "", false, "", false, "");
 	}
 
 	virtual bool padded() const override
@@ -511,13 +508,12 @@ class permdyn : public encryptable_settings
 
 	nv_u32 m_size;
 	nv_u32 m_checksum;
-	string m_prefix;
-	string m_footer;
 	string m_key;
 	uint32_t m_raw_size = 0;
 	bool m_checksum_valid = false;
 	bool m_magic_valid = false;
 	bool m_old_style = true;
+	bool m_size_valid = false;
 	uint32_t m_write_count = 0;
 };
 
