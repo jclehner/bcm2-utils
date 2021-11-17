@@ -66,17 +66,14 @@ the result would be `0`, if the checksum is valid.
 Both `permnv` and `dynnv` reside in raw flash partitions. The actual header is always
 prefixed by 202 `\xff` bytes.
 
-A simple wear leveling mechanism is used: each time each time the data is modified by
-the firmware, it writes a new copy below the current one. In order to know which copy
-to use, the last 8 bytes form a footer:
+The partition usually contains 2 copies, one primary (starting at offset 0), and
+one backup copy, located at an offset specified in a footer in the the partition's
+last 8 bytes:
 
-| Offset | Type         | Name       |
-|-------:|--------------|------------|
-|  `-8`  | `u32`        | `offset`   |
-|  `-4`  | `u32`        | `wcount`   |
-
-`offset` represents the *absolute* offset *within the partition* where the current copy
-is located. `wcount` is a write counter (which counts *down* from `0xffffffff`).
+| Offset | Type         | Name                               |
+|-------:|--------------|------------------------------------|
+|  `-8`  | `u32`        | `backup_offset`                    |
+|  `-4`  | `u32`        | `?` (potentially write counter )   |
 
 ###### New style (BCM3390)
 

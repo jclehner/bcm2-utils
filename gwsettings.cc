@@ -304,10 +304,10 @@ class permdyn : public encryptable_settings
 
 	virtual istream& read(istream& is) override
 	{
-		auto beg = is.tellg();
-
 		// TODO move this to settings::read()
 		is.seekg(-16, ios::cur);
+
+		auto beg = is.tellg();
 
 		m_magic_valid = false;
 
@@ -331,23 +331,30 @@ class permdyn : public encryptable_settings
 			m_magic_valid = true;
 			m_old_style = true;
 
-			// seek to the wear leveling data
+			// seek to the backup location footer
 			is.seekg(-8, ios::end);
 			m_raw_size = is.tellg();
 
-			uint32_t offset;
-			nv_u32::read(is, offset);
-			nv_u32::read(is, m_write_count);
+			nv_u32::read(is, m_backup_offset);
+			nv_u32::read(is, m_unk_bitmask);
 
-			logger::d() << "data at 0x" << hex << offset << ", write count: " << (UINT32_MAX - m_write_count) << endl;
+			if (m_backup_offset > m_raw_size || m_backup_offset == 0xffffffff) {
+				logger::d() << "invalid backup offset: " << hex << m_backup_offset << endl;
+				m_backup_offset = 0;
+				m_unk_bitmask = 0xffffffff;
+			} else {
+				logger::d() << "backup offset " << hex << m_backup_offset << ", bitmask " << hex << m_unk_bitmask << endl;
+			}
 
-			// clear eofbit, and seek to the beginning of the settings group data
-			is.seekg(offset + 202);
+			// and seek to the beginning of the settings group data
+			is.seekg(beg + streampos(202));
 
 			// re-read the checksum and size fields
 			if (!m_size.read(is) || !m_checksum.read(is)) {
 				throw runtime_error("failed to read header");
 			}
+
+			// TODO try reading from the backup
 		} else {
 			m_old_style = false;
 			// FIXME
@@ -412,16 +419,11 @@ class permdyn : public encryptable_settings
 		return is;
 	}
 
-	virtual ostream& write(ostream& os) const override
+
+	ostream& write(ostream& os, bool primary) const
 	{
 		ostringstream ostr;
 		settings::write(ostr);
-
-		if (m_old_style) {
-			if (!(os << string(202, '\xff'))) {
-				throw runtime_error("failed to write prefix");
-			}
-		}
 
 		string buf = ostr.str();
 
@@ -429,31 +431,84 @@ class permdyn : public encryptable_settings
 			buf = crypt_aes_256_ecb(buf, key(), true);
 		}
 
-		if (!nv_u32::write(os, 8 + buf.size()) || !nv_u32::write(os, calc_checksum(buf))) {
-			throw runtime_error("failed to write header");
+		ostr.str("");
+
+		if (m_old_style) {
+			ostr << string(202, '\xff');
 		}
 
-		if (!os.write(buf.data(), buf.size())) {
-			throw runtime_error("failed to write data");
+		nv_u32::write(ostr, 8 + buf.size());
+		nv_u32::write(ostr, calc_checksum(buf));
+
+		ostr.write(buf.data(), buf.size());
+
+		if (!(os << ostr.str())) {
+			throw runtime_error("failed to write settings data");
 		}
 
 		if (m_old_style) {
-			// 8 bytes for the wear leveling data, 202 bytes
-			// for the prefix
-			ssize_t diff = m_raw_size - ostr.tellp() - 210;
-
-			if (diff > 0) {
-				os << string(diff, '\xff');
-			} else if (diff < 0) {
-				throw user_error("file size exceeds maximum of " + ::to_string(m_raw_size));
+			if (!primary) {
+				return os;
 			}
 
-			if (!nv_u32::write(os, 0) || !nv_u32::write(os, m_write_count - 1)) {
-				throw runtime_error("failed to write wear-leveling data");
+			size_t offset = ostr.tellp();
+
+			// 8 bytes for the footer
+			ssize_t diff = m_raw_size - offset;
+
+			// we've written the primary data, but still need to write the backup data.
+			// first, check if it would even fit!
+
+			if (offset < diff) {
+				// backup data fits, now check if we can reuse the backup offset
+				if (offset > m_backup_offset) {
+					// we can't. we could probably just use `offset`, but all firmwares
+					// seem to include some padding in between. some appear to align the
+					// offset address to 0x1000 (or 0x100?).
+
+					if (align_left(offset, 0x1000) < diff) {
+						offset = align_right(offset, 0x1000);
+					} else if (align_left(offset, 0x100) < diff) {
+						offset = align_right(offset, 0x100);
+					}
+
+					logger::d() << "moved backup offset: " << m_backup_offset << " -> " << offset << endl;
+				} else {
+					logger::d() << "reusing backup offset " << m_backup_offset << endl;
+					offset = m_backup_offset;
+				}
+
+				if (!(os << string(offset - ostr.tellp(), '\xff'))) {
+					throw runtime_error("failed to write padding 1");
+				}
+
+				// write the backup data
+				write(os, false);
+				diff -= offset;
+			} else {
+				logger::i() << "no space to fit backup data" << endl;
+				offset = 0;
+			}
+
+			if (diff < 0) {
+				throw user_error("file size exceeds maximum of " + ::to_string(m_raw_size));
+			} else if (diff) {
+				if (!(os << string(diff, '\xff'))) {
+					throw runtime_error("failed to write padding 2");
+				}
+			}
+
+			if (!nv_u32::write(os, offset) || !nv_u32::write(os, m_unk_bitmask)) {
+				throw runtime_error("failed to write footer");
 			}
 		}
 
 		return os;
+	}
+
+	virtual ostream& write(ostream& os) const override
+	{
+		return write(os, true);
 	}
 
 	virtual string header_to_string() const override
@@ -509,12 +564,13 @@ class permdyn : public encryptable_settings
 	nv_u32 m_size;
 	nv_u32 m_checksum;
 	string m_key;
+	uint32_t m_backup_offset = 0;
+	uint32_t m_unk_bitmask = 0;
 	uint32_t m_raw_size = 0;
 	bool m_checksum_valid = false;
 	bool m_magic_valid = false;
 	bool m_old_style = true;
 	bool m_size_valid = false;
-	uint32_t m_write_count = 0;
 };
 
 class gwsettings : public encryptable_settings
