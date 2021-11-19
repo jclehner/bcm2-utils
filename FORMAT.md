@@ -89,7 +89,7 @@ The offset of the active settings data, and the write counter is also determined
 by this "bitmask", using the following formulas:
 
 ```
-segment_size = -int32_t(segment_bitmask)
+segment_size = -int16_t(segment_bitmask)
 write_count = log2(segment_size) - 1
 segment_offset = segment_size * min(write_count, 16)
 ```
