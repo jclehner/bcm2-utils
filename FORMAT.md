@@ -61,21 +61,37 @@ it would be `~(0xaaaaaaaa + 0x0000bb00)` (assuming `uint32_t` rollover on overfl
 To simply check for a valid checksum, the `checksum` field is left as is. In this case,
 the result would be `0`, if the checksum is valid.
 
-###### Old style (pre BCM3390)
+##### Old style (pre BCM3390)
 
 Both `permnv` and `dynnv` reside in raw flash partitions. The actual header is always
 prefixed by 202 `\xff` bytes.
 
-The partition usually contains 2 copies, one primary (starting at offset 0), and
-one backup copy, located at an offset specified in a footer in the the partition's
-last 8 bytes:
+As part of a backup and wear-leveling mechanism, each partition actually contains
+multiple copies of the data. The partition's 8 last bytes form a footer, that is used
+by the firmware to determine which copy is the active one.
 
 | Offset | Type         | Name                               |
 |-------:|--------------|------------------------------------|
-|  `-8`  | `u32`        | `backup_offset`                    |
-|  `-4`  | `u32`        | `?` (potentially write counter )   |
+|  `-8`  | `u32`        | `segment_size`                     |
+|  `-4`  | `i32`        | `segment_bitmask`                  |
 
-###### New style (BCM3390)
+`segment_size` is the total size of the active segment, including the 202-byte
+prefix (see above), plus padding.
+
+The name `segment_bitmask` is a bit of a misnomer, but it is referred to as such
+by the firmware. For a partition that's never been written, the value is `0xfff8`
+(i.e. `-8`). Each time new data is written to the device, this value is multiplied
+by `2`, so after the first write, it's `0xfff0` (`-16`), then `0xffe0` (`-32`), and
+so on.
+
+The offset of the most recently written settings data is also determined by this
+"bitmask", using the following "formula":
+
+```
+segment_offset = segment_size * (log2(-segment_bitmask) - 1)
+```
+
+##### New style (BCM3390)
 
 On these devices, the CM firmware "nonvol" files are stored on a JFFS2 partition. The files are
 named `cm_perm.bin` and `cm_dyn.bin`, for `permnv` and `dynnv`, respectively.
