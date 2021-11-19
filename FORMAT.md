@@ -86,7 +86,7 @@ by `2`, so after the first write, it's `0xfff0` (`-16`), then `0xffe0` (`-32`), 
 so on.
 
 The offset of the most recently written settings data is also determined by this
-"bitmask", using the following "formula":
+"bitmask", using the following formula:
 
 ```
 segment_offset = segment_size * (log2(-segment_bitmask) - 1)
