@@ -85,11 +85,12 @@ by the firmware. For a partition that's never been written, the value is `0xfffc
 by `2`, so after the first write, it's `0xfff8` (`-8`), then `0xfff0` (`-16`), and
 so on.
 
-The offset of the active settings data is also determined by this
-"bitmask", using the following formula:
+The offset of the active settings data, and the write counter is also determined
+by this "bitmask", using the following formulas:
 
 ```
-segment_offset = segment_size * (log2(-segment_bitmask) - 1)
+write_count = log2(-segment_bitmask) - 1
+segment_offset = segment_size * write_count
 ```
 
 ##### New style (BCM3390)
