@@ -73,7 +73,8 @@ by the firmware to determine which copy is the active one.
 | Offset | Type         | Name                               |
 |-------:|--------------|------------------------------------|
 |  `-8`  | `u32`        | `segment_size`                     |
-|  `-4`  | `i32`        | `segment_bitmask`                  |
+|  `-4`  | `byte[2]`    | (unused)                           |
+|  `-4`  | `i16`        | `segment_bitmask`                  |
 
 `segment_size` is the total size of the active segment, including the 202-byte
 prefix (see above), plus padding.
