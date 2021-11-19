@@ -85,7 +85,7 @@ by the firmware. For a partition that's never been written, the value is `0xfff8
 by `2`, so after the first write, it's `0xfff0` (`-16`), then `0xffe0` (`-32`), and
 so on.
 
-The offset of the most recently written settings data is also determined by this
+The offset of the active settings data is also determined by this
 "bitmask", using the following formula:
 
 ```
