@@ -90,7 +90,7 @@ by this "bitmask", using the following formulas:
 
 ```
 write_count = log2(-segment_bitmask) - 1
-segment_offset = segment_size * write_count
+segment_offset = segment_size * min(write_count, 16)
 ```
 
 ##### New style (BCM3390)
