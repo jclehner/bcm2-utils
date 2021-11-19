@@ -80,9 +80,9 @@ by the firmware to determine which copy is the active one.
 prefix (see above), plus padding.
 
 The name `segment_bitmask` is a bit of a misnomer, but it is referred to as such
-by the firmware. For a partition that's never been written, the value is `0xfff8`
-(i.e. `-8`). Each time new data is written to the device, this value is multiplied
-by `2`, so after the first write, it's `0xfff0` (`-16`), then `0xffe0` (`-32`), and
+by the firmware. For a partition that's never been written, the value is `0xfffc`
+(i.e. `-4`). Each time new data is written to the device, this value is multiplied
+by `2`, so after the first write, it's `0xfff8` (`-8`), then `0xfff0` (`-16`), and
 so on.
 
 The offset of the active settings data is also determined by this
