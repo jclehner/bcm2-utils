@@ -36,6 +36,25 @@ string gws_checksum(string buf, const csp<profile>& p)
 	return hash_md5(buf + (p ? p->md5_key() : ""));
 }
 
+unsigned log2(unsigned num)
+{
+	unsigned ret = 0;
+	while (num >>= 1) {
+		++ret;
+	}
+
+	return ret;
+}
+
+unsigned pow2(unsigned num)
+{
+	unsigned ret = 2;
+	while (num--) {
+		ret <<= 1;
+	}
+	return ret;
+}
+
 string gws_crypt(const string& buf, const string& key, int type, bool encrypt)
 {
 	if (type == BCM2_CFG_ENC_AES256_ECB) {
@@ -331,27 +350,54 @@ class permdyn : public encryptable_settings
 			m_magic_valid = true;
 			m_old_style = true;
 
-			// seek to the backup location footer
+			// seek to the footer
 			is.seekg(-8, ios::end);
 			m_raw_size = is.tellg();
 
-			nv_u32::read(is, m_backup_offset);
-			nv_u32::read(is, m_unk_bitmask);
+			uint32_t segment_size;
+			uint32_t segment_bitmask;
 
-			if (m_backup_offset > m_raw_size || m_backup_offset == 0xffffffff) {
-				logger::d() << "invalid backup offset: " << hex << m_backup_offset << endl;
-				m_backup_offset = 0;
-				m_unk_bitmask = 0xffffffff;
+			nv_u32::read(is, segment_size);
+			nv_u32::read(is, segment_bitmask);
+
+			unsigned segment_index = -int32_t(segment_bitmask);
+
+			streampos offset = 0;
+
+			if (segment_size > m_raw_size || segment_size == 0xffffffff) {
+				logger::w() << "read invalid segment size: 0x" << to_hex(segment_size) << endl;
 			} else {
-				logger::d() << "backup offset " << hex << m_backup_offset << ", bitmask " << hex << m_unk_bitmask << endl;
+				m_write_count = log2(segment_index) - 1;
+				if (pow2(m_write_count) != segment_index) {
+					logger::w() << "read invalid segment bitmask: 0x" << to_hex(segment_bitmask) << endl;
+					m_write_count = 0;
+				} else {
+					offset = segment_size * min(m_write_count, 16u);
+					logger::d() << "write count: " << m_write_count << ", offset: " << offset << endl;
+				}
 			}
 
-			// and seek to the beginning of the settings group data
-			is.seekg(beg + streampos(202));
+			if ((beg + offset) >= m_raw_size) {
+				logger::w() << "segment offset " << offset << " exceeds maximum size " << m_raw_size << endl;
+				offset = 0;
+			}
 
-			// re-read the checksum and size fields
-			if (!m_size.read(is) || !m_checksum.read(is)) {
-				throw runtime_error("failed to read header");
+			// seek to the beginning of the settings group data
+			is.seekg(beg + offset + streampos(202));
+
+			for (int i = 0; i < 2; ++i) {
+				// re-read the checksum and size fields
+				if (!m_size.read(is) || !m_checksum.read(is)) {
+					throw runtime_error("failed to read header");
+				}
+
+				if (!i && (m_size.num() == 0xffffffff || m_size.num() > m_raw_size)) {
+					// at least try to read the first copy, if we've messed up the calculations above
+					logger::w() << "read invalid data size " << m_size.num() << "; retrying at offset 0" << endl;
+					is.seekg(beg + streampos(202));
+				} else {
+					break;
+				}
 			}
 
 			// TODO try reading from the backup
@@ -420,7 +466,7 @@ class permdyn : public encryptable_settings
 	}
 
 
-	ostream& write(ostream& os, bool primary) const
+	virtual ostream& write(ostream& os) const override
 	{
 		ostringstream ostr;
 		settings::write(ostr);
@@ -442,73 +488,63 @@ class permdyn : public encryptable_settings
 
 		ostr.write(buf.data(), buf.size());
 
-		if (!(os << ostr.str())) {
-			throw runtime_error("failed to write settings data");
-		}
+		os << ostr.str();
 
 		if (m_old_style) {
-			if (!primary) {
-				return os;
-			}
+			// currently, this function simply writes a file that pretends to be
+			// a) a nonvol file that has been written just once
+			// b) uses the same data for both the primary and backup
+			//
+			// TODO actually append our data
 
-			size_t offset = ostr.tellp();
+			// set offset of the backup data to the end of the primary data
+			size_t segment_size = ostr.tellp();
 
-			// 8 bytes for the footer
-			ssize_t diff = m_raw_size - offset;
+			// 8 bytes for the footer are already subtracted
+			ssize_t diff = m_raw_size - segment_size;
 
 			// we've written the primary data, but still need to write the backup data.
 			// first, check if it would even fit!
 
-			if (offset < diff) {
-				// backup data fits, now check if we can reuse the backup offset
-				if (offset > m_backup_offset) {
-					// we can't. we could probably just use `offset`, but all firmwares
-					// seem to include some padding in between. some appear to align the
-					// offset address to 0x1000 (or 0x100?).
+			if (segment_size < diff) {
+				// backup data actually fits. we could probably just use `segment_size`, but
+				// all firmwares seem to include at least some padding in between, and
+				// some of those align the offset to 0x1000 (or 0x100?).
 
-					if (align_left(offset, 0x1000) < diff) {
-						offset = align_right(offset, 0x1000);
-					} else if (align_left(offset, 0x100) < diff) {
-						offset = align_right(offset, 0x100);
-					}
-
-					logger::d() << "moved backup offset: " << m_backup_offset << " -> " << offset << endl;
-				} else {
-					logger::d() << "reusing backup offset " << m_backup_offset << endl;
-					offset = m_backup_offset;
+				if (align_left(segment_size, 0x1000) < diff) {
+					segment_size = align_right(segment_size, 0x1000);
+				} else if (align_left(segment_size, 0x100) < diff) {
+					segment_size = align_right(segment_size, 0x100);
 				}
 
-				if (!(os << string(offset - ostr.tellp(), '\xff'))) {
-					throw runtime_error("failed to write padding 1");
-				}
+				// write padding between segments
+				os << string(segment_size - ostr.tellp(), '\xff');
 
-				// write the backup data
-				write(os, false);
-				diff -= offset;
+				// write backup segment
+				os << ostr.str();
+
+				diff -= segment_size;
 			} else {
 				logger::i() << "no space to fit backup data" << endl;
-				offset = 0;
 			}
 
 			if (diff < 0) {
-				throw user_error("file size exceeds maximum of " + ::to_string(m_raw_size));
-			} else if (diff) {
-				if (!(os << string(diff, '\xff'))) {
-					throw runtime_error("failed to write padding 2");
-				}
+				throw runtime_error("file size exceeds maximum of " + ::to_string(m_raw_size));
 			}
 
-			if (!nv_u32::write(os, offset) || !nv_u32::write(os, m_unk_bitmask)) {
-				throw runtime_error("failed to write footer");
-			}
+			// pad to size
+			os << string(diff, '\xff');
+
+			nv_u32::write(os, segment_size);
+			// pretend that this is a file that has been written once
+			nv_u32::write(os, 0xfffffffc);
+		}
+
+		if (!os) {
+			throw runtime_error("write error");
 		}
 
 		return os;
-	}
-
-	virtual ostream& write(ostream& os) const override
-	{
-		return write(os, true);
 	}
 
 	virtual string header_to_string() const override
@@ -564,8 +600,7 @@ class permdyn : public encryptable_settings
 	nv_u32 m_size;
 	nv_u32 m_checksum;
 	string m_key;
-	uint32_t m_backup_offset = 0;
-	uint32_t m_unk_bitmask = 0;
+	unsigned m_write_count = 0;
 	uint32_t m_raw_size = 0;
 	bool m_checksum_valid = false;
 	bool m_magic_valid = false;
