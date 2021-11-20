@@ -770,8 +770,12 @@ istream& nv_group::read(istream& is)
 			throw e;
 		}
 
-		logger::w() << "failed to parse group " << name() << endl;
-		logger::d() << e.what() << endl;
+		// groups under this size are empty
+		if (m_size.num() > 6 + (is_versioned() ? 2 : 0)) {
+			logger::w() << "failed to parse group " << name() << endl;
+			logger::d() << e.what() << endl;
+		}
+
 		m_format = fmt_unknown;
 
 		is.clear();
