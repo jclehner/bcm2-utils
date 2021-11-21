@@ -1313,7 +1313,9 @@ class nv_group_halif : public nv_group
 	virtual list definition(int format, const nv_version& ver) const override
 	{
 		if (format == fmt_dyn) {
-			return nv_group::definition(format, ver);
+			return {
+				NV_VAR(nv_bool, "fap_bypass_enabled"),
+			};
 		}
 
 		return {
