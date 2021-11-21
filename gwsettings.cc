@@ -365,11 +365,11 @@ class permdyn : public encryptable_settings
 			streampos offset = 0;
 
 			if (segment_size > m_raw_size || segment_size == 0xffffffff) {
-				logger::w() << "read invalid segment size: 0x" << to_hex(segment_size) << endl;
+				logger::w() << "invalid segment size: 0x" << to_hex(segment_size) << endl;
 			} else {
 				m_write_count = log2(segment_index) - 1;
 				if (pow2(m_write_count) != segment_index) {
-					logger::w() << "read invalid segment bitmask: 0x" << to_hex(segment_bitmask) << endl;
+					logger::w() << "invalid segment bitmask: 0x" << to_hex(segment_bitmask) << endl;
 					m_write_count = 0;
 				} else {
 					offset = segment_size * min(m_write_count, 16u);
@@ -393,7 +393,7 @@ class permdyn : public encryptable_settings
 
 				if (!i && (m_size.num() == 0xffffffff || m_size.num() > m_raw_size)) {
 					// at least try to read the first copy, if we've messed up the calculations above
-					logger::w() << "read invalid data size " << m_size.num() << "; retrying at offset 0" << endl;
+					logger::w() << "invalid data size " << m_size.num() << "; retrying at offset 0" << endl;
 					is.seekg(beg + streampos(202));
 				} else {
 					break;
