@@ -358,7 +358,7 @@ int do_main(int argc, char** argv)
 
 	opterr = 0;
 
-	while ((opt = getopt(argc, argv, "hP:p:k:f:zvq")) != -1) {
+	while ((opt = getopt(argc, argv, "+hP:p:k:f:zvq")) != -1) {
 		switch (opt) {
 		case 'v':
 			loglevel = max(loglevel - 1, logger::trace);
