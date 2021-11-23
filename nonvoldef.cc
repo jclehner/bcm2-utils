@@ -99,7 +99,7 @@ class nv_ipstacks : public nv_bitmask<nv_u8>
 	nv_ipstacks() : nv_bitmask("ipstacks", names())
 	{}
 
-	static vector<string> names()
+	static valvec names()
 	{
 		return { "IP1", "IP2", "IP3", "IP4", "IP5", "IP6", "IP7", "IP8" };
 	}
@@ -109,6 +109,13 @@ class nv_ipstack : public nv_enum<nv_u8>
 {
 	public:
 	nv_ipstack() : nv_enum("ipstack", nv_ipstacks::names())
+	{}
+};
+
+class nv_annex_mode : public nv_enum<nv_u8>
+{
+	public:
+	nv_annex_mode() : nv_enum("annex_mode", valvec { "B", "A", "J", "other", "C" })
 	{}
 };
 
@@ -1315,11 +1322,21 @@ class nv_group_halif : public nv_group
 		if (format == fmt_dyn) {
 			return {
 				NV_VAR(nv_bool, "fap_bypass_enabled"),
+				NV_VAR2(nv_bitmask<nv_u16>, "eth_auto_power_down_reg", "", nv_bitmask<nv_u16>::valvec {
+						// actually a 4-bit integer, that is multiplied by 84 to give milliseconds
+						"wakeup_timer_select_0",
+						"wakeup_timer_select_1",
+						"wakeup_timer_select_2",
+						"wakeup_timer_select_3",
+						// not set means a timeout of 2.7 seconds
+						"auto_power_down_5400ms",
+						"auto_power_down_enabled",
+				}),
 			};
 		}
 
 		return {
-			NV_VAR2(nv_bitmask<nv_u32>, "interfaces", "interfaces", {
+			NV_VAR2(nv_bitmask<nv_u32>, "interfaces", "", nv_bitmask<nv_u32>::valvec {
 					"docsis",
 					"ethernet",
 					"hpna",
@@ -1347,13 +1364,33 @@ class nv_group_halif : public nv_group
 			NV_VAR(nv_mac, "ip2_mac"),
 			NV_VAR(nv_mac, "rg_mac"),
 			NV_VAR(nv_mac, "ip4_mac"),
-			NV_VAR(nv_data, "", 5),
+			NV_VAR(nv_u8, ""),
+			NV_VAR(nv_u32, "default_hal_debug_zones"),
 			NV_VAR(nv_u8, "board_rev"),
 			NV_VAR(nv_u16, "usb_vid", true),
 			NV_VAR(nv_u16, "usb_pid", true),
 			NV_VAR(nv_mac, "usb_mac"),
 			//NV_VAR(nv_bool, "usb_rndis"),
-			NV_VAR(nv_data, "", 0x18),
+			NV_VAR2(nv_bitmask<nv_u8>, "features1", "", nv_bitmask<nv_u8>::valvec {
+					"auto_negotiate",
+					"full_duplex",
+					"reject_cam_disabled",
+			}),
+			NV_VAR(nv_u16, "link_speed_mbps"),
+			NV_VAR(nv_u32, "hpna_msg_level"),
+			NV_VAR(nv_u8, "ds_tuner_type"),
+			NV_VAR(nv_u8, "us_amp_type"),
+			NV_VAR(nv_u32, "ds_reference_freq"),
+			NV_VAR(nv_u32, "us_reference_freq"),
+			NV_VAR(nv_u32, "phy_input_freq"),
+			NV_VAR(nv_annex_mode, "annex_mode"),
+			NV_VAR2(nv_bitmask<nv_u8>, "features2", "", nv_bitmask<nv_u8>::valvec {
+					"watchdog",
+					"bluetooth_master",
+					"remote_flash_access",
+					"fpm_token_depletion_watchdog_disabled",
+			}),
+			NV_VAR(nv_u8, "watchdog_timeout"),
 			NV_VAR(nv_mac, "bluetooth_local_mac"),
 			NV_VAR(nv_mac, "bluetooth_remote_mac"),
 			//NV_VAR(nv_bool, "bluetooth_master"),
@@ -1362,6 +1399,38 @@ class nv_group_halif : public nv_group
 			NV_VAR(nv_mac, "mta_mac"),
 			NV_VAR(nv_mac, "veth_mac"),
 			NV_VAR(nv_mac, "ip8_mac"),
+			//NV_VAR(nv_u32, ""),
+			NV_VAR(nv_u8, "spreader_scale"),
+			NV_VAR(nv_u32, "us_sample_freq"),
+			NV_VAR2(nv_bitmask<nv_u8>, "features3", "", nv_bitmask<nv_u8>::valvec {
+					"1024qam",
+					"docsis20_clipping",
+					"proprietary_scdma_code_matrix",
+					"advance_map_run_ahead_disabled"
+					"",
+					"",
+					"",
+					"us_priority_queue_disabled",
+			}),
+			NV_VAR(nv_u8, "ds_agi", true),
+			NV_VAR(nv_u8, "ds_agt", true),
+			NV_VAR(nv_u16, "stathr", true),
+			NV_VAR(nv_u32, "stagi", true),
+			NV_VAR(nv_u32, "stpga1", true),
+			NV_VAR(nv_u32, "stagt", true),
+			NV_VAR(nv_u16, "stabw1", true),
+			NV_VAR(nv_u16, "stabw2", true),
+			// actually a struct: { u16 bufsize, u16 buf_count }
+			NV_VAR(nv_p8list<nv_cdata<4>>, "bcmalloc_settings"),
+			NV_VAR(nv_u8, "num_shack_tries"),
+			NV_VAR(nv_bool, "usb_rndis_driver"),
+			NV_VAR(nv_bool, "power_save"),
+			NV_VAR(nv_bool, "optimized_3420_freq_map"),
+			NV_VAR(nv_bool, "high_output_pa"),
+			NV_VAR(nv_u8, ""),
+			NV_VAR2(nv_enum<nv_u8>, "diplexer_type", "", { "lowsplit", "midsplit", "" }),
+			NV_VAR(nv_u8, "enabled_tuner_count"),
+			NV_VAR(nv_bool, "cm_tuner_wideband"),
 		};
 	}
 };
@@ -1662,9 +1731,7 @@ class nv_group_docsis : public nv_group
 				NV_VAR(nv_u8, ""),
 				NV_VAR(nv_u8, ""),
 				NV_VAR(nv_u8, ""),
-				NV_VAR2(nv_enum<nv_u8>, "annex_mode_of_last_good_ds", "", {
-					"B", "A", "J", "other", "C"
-				}),
+				NV_VAR(nv_annex_mode, "annex_mode_of_last_good_ds"),
 			};
 		} else {
 			return {
