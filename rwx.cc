@@ -1359,14 +1359,9 @@ void rwx::dump(uint32_t offset, uint32_t length, std::ostream& os, bool resume)
 			logger::i() << "nothing to resume" << endl;
 			return;
 		} else {
-			uint32_t overlap = limits_read().max * 2;
-			completed = align_left(completed, overlap);
-			if (completed >= overlap) {
-				completed -= overlap;
-				offset += completed;
-				length -= completed;
-				logger::v() << "resuming at offset 0x" + to_hex(offset) << endl;
-			}
+			offset += completed;
+			logger::v() << "resuming at offset 0x" + to_hex(offset) << endl;
+			os.seekp(completed, ios::cur);
 		}
 	}
 
