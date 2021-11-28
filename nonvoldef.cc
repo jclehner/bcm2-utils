@@ -241,8 +241,12 @@ class nv_group_cmap : public nv_group
 			};
 		} else {
 			return {
-				NV_VAR2(nv_enum<nv_u32>, "serial_console_mode", "serial_console_mode",
-						{ "disabled", "ro", "rw", "factory" }),
+				NV_VAR2(nv_enum<nv_u32>, "serial_console_mode", "", {
+						"disabled", "ro", "rw", "factory"
+				}),
+				NV_VAR2(nv_bitmask<nv_u32>, "features", "", {
+						"aux_serial_console",
+				}),
 			};
 		};
 	}
@@ -1531,6 +1535,25 @@ class nv_group_wigu : public nv_group
 		};
 	}
 };
+// TCH = Technicolor
+class nv_group_tch : public nv_group
+{
+	public:
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_tch, "TCH ", "tch")
+
+	virtual list definition(int format, const nv_version& ver) const override
+	{
+		if (format == fmt_perm) {
+			return nv_group::definition(format, ver);
+		}
+
+		return {
+			NV_VAR2(nv_enum<nv_u32>, "serial_console_mode", "", {
+					"rw", "ro", "disabled"
+			}),
+		};
+	}
+};
 
 // Scie / SA = Scientific Atlanta
 class nv_group_scie : public nv_group
@@ -1813,6 +1836,7 @@ struct registrar {
 			NV_GROUP(nv_group_fact),
 			NV_GROUP(nv_group_snmp),
 			NV_GROUP(nv_group_docsis),
+			NV_GROUP(nv_group_tch),
 		};
 
 		for (auto g : groups) {

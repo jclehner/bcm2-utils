@@ -223,6 +223,9 @@ class parsing_rwx : public rwx
 	virtual string parse_chunk_line(const string& line, uint32_t offset) = 0;
 	// called if a chunk was not successfully read
 	virtual void on_chunk_retry(uint32_t offset, uint32_t length) {}
+
+	bcm2dump::sp<cmdline_interface> interface() const
+	{ return dynamic_pointer_cast<cmdline_interface>(m_intf); }
 };
 
 string parsing_rwx::read_special(uint32_t offset, uint32_t length)
@@ -250,7 +253,7 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 
 	logger::t() << "read_chunk_impl: consuming lines" << endl;
 
-	m_intf->foreach_line_raw([this, &chunk, &pos, &length, &retries] (const string& line) {
+	interface()->foreach_line_raw([this, &chunk, &pos, &length, &retries] (const string& line) {
 		throw_if_interrupted();
 		string tline = trim(line);
 		if (!is_ignorable_line(tline)) {
@@ -282,7 +285,7 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 	logger::t() << "read_chunk_impl: done reading lines" << endl;
 
 	// consume any more output
-	m_intf->wait_quiet(20);
+	interface()->wait_quiet(20);
 
 	if (length && (chunk.size() != length)) {
 		string msg = "read incomplete chunk 0x" + to_hex(offset)
@@ -291,7 +294,7 @@ string parsing_rwx::read_chunk_impl(uint32_t offset, uint32_t length, uint32_t r
 			// if the dump is still underway, we need to wait for it to finish
 			// before issuing the next command. wait for up to 10 seconds.
 
-			if (m_intf->wait_ready()) {
+			if (interface()->wait_ready()) {
 				logger::d() << endl << msg << "; retrying" << endl;
 				on_chunk_retry(offset, length);
 				return read_chunk_impl(offset, length, retries + 1);
@@ -315,7 +318,7 @@ class bfc_ram : public parsing_rwx
 
 	virtual limits limits_write() const override
 	{
-		if (m_intf->is_privileged()) {
+		if (interface()->is_privileged()) {
 			return limits(4, 1, 4);
 		} else {
 			return limits(1, 1, 1);
@@ -335,28 +338,28 @@ class bfc_ram : public parsing_rwx
 
 bool bfc_ram::exec_impl(uint32_t offset)
 {
-	return m_intf->run("/call func -a 0x" + to_hex(offset), "Calling function 0x");
+	return interface()->run("/call func -a 0x" + to_hex(offset), "Calling function 0x");
 };
 
 bool bfc_ram::write_chunk(uint32_t offset, const string& chunk)
 {
-	if (m_intf->is_privileged()) {
+	if (interface()->is_privileged()) {
 		uint32_t val = chunk.size() == 4 ? ntoh(extract<uint32_t>(chunk)) : chunk[0];
-		return m_intf->run("/write_memory -s " + to_string(chunk.size()) + " 0x" +
+		return interface()->run("/write_memory -s " + to_string(chunk.size()) + " 0x" +
 				to_hex(offset, 0) + " 0x" + to_hex(val, 0), "Writing");
 	} else {
 		// diag writemem only supports writing bytes
-		return m_intf->run("/system/diag writemem 0x" + to_hex(offset, 0) + " 0x" +
+		return interface()->run("/system/diag writemem 0x" + to_hex(offset, 0) + " 0x" +
 				to_hex(chunk[0] & 0xff, 0), "Writing");
 	}
 }
 
 void bfc_ram::do_read_chunk(uint32_t offset, uint32_t length)
 {
-	if (m_intf->is_privileged()) {
-		m_intf->writeln("/read_memory -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
+	if (interface()->is_privileged()) {
+		interface()->writeln("/read_memory -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
 	} else {
-		m_intf->writeln("/system/diag readmem -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
+		interface()->writeln("/system/diag readmem -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
 	}
 }
 
@@ -444,7 +447,7 @@ class bfc_flash2 : public bfc_ram
 	{
 		bfc_ram::init(offset, length, write);
 
-		auto ver = m_intf->version();
+		auto ver = interface()->version();
 		m_cfg = ver.codecfg();
 		uint32_t buflen = m_cfg["buflen"];
 
@@ -488,7 +491,7 @@ class bfc_flash2 : public bfc_ram
 	void patch(const func& f)
 	{
 		for (auto p : f.patches()) {
-			if (p->addr && !write_chunk(p->addr | m_intf->profile()->kseg1(), to_buf(hton(p->word)))) {
+			if (p->addr && !write_chunk(p->addr | interface()->profile()->kseg1(), to_buf(hton(p->word)))) {
 				throw runtime_error("failed to patch word at 0x" + to_hex(p->addr));
 			}
 		}
@@ -496,7 +499,7 @@ class bfc_flash2 : public bfc_ram
 
 	void call(const string& cmd, const string& name, unsigned timeout = 100)
 	{
-		m_intf->run(cmd, timeout);
+		interface()->run(cmd, timeout);
 	}
 
 	void call_read(uint32_t offset, uint32_t length)
@@ -538,7 +541,7 @@ class bfc_flash2 : public bfc_ram
 
 	string mkcmd(const func& f, vector<uint32_t> a = {})
 	{
-		string ret = "/call func -a 0x" + to_hex(f.addr() | m_intf->profile()->kseg1());
+		string ret = "/call func -a 0x" + to_hex(f.addr() | interface()->profile()->kseg1());
 		add_args(ret, a);
 		return ret;
 	}
@@ -588,7 +591,7 @@ class bfc_flash : public parsing_rwx
 
 rwx::limits bfc_flash::limits_read() const
 {
-	auto v = m_intf->version();
+	auto v = interface()->version();
 	auto readsize = v.get_opt_num("bfc:flash_readsize", 0);
 	if (readsize) {
 		return { readsize, readsize, readsize };
@@ -604,7 +607,7 @@ void bfc_flash::init(uint32_t, uint32_t, bool write)
 	}
 
 	for (unsigned pass = 0; pass < 2; ++pass) {
-		auto lines = m_intf->run("/flash/open " + m_partition.altname(), 5000);
+		auto lines = interface()->run("/flash/open " + m_partition.altname(), 5000);
 
 		bool opened = false;
 
@@ -621,8 +624,8 @@ void bfc_flash::init(uint32_t, uint32_t, bool write)
 		} else if (pass == 0) {
 			logger::d() << "reinitializing flash driver" << endl;
 			cleanup();
-			m_intf->run("/flash/deinit", "Deinitializing");
-			m_intf->run("/flash/init", 5000);
+			interface()->run("/flash/deinit", "Deinitializing");
+			interface()->run("/flash/init", 5000);
 		} else {
 			throw runtime_error("failed to open partition " + m_partition.name());
 		}
@@ -631,14 +634,14 @@ void bfc_flash::init(uint32_t, uint32_t, bool write)
 
 void bfc_flash::cleanup()
 {
-	m_intf->run("/flash/close", "driver closed");
+	interface()->run("/flash/close", "driver closed");
 }
 
 bool bfc_flash::write_chunk(uint32_t offset, const std::string& chunk)
 {
 	offset = to_partition_offset(offset);
 	uint32_t val = chunk.size() == 4 ? ntoh(extract<uint32_t>(chunk)) : chunk[0];
-	return m_intf->run("/flash/write " + to_string(chunk.size()) + " 0x"
+	return interface()->run("/flash/write " + to_string(chunk.size()) + " 0x"
 			+ to_hex(offset) + " 0x" + to_hex(val), "successfully written");
 }
 
@@ -646,9 +649,9 @@ void bfc_flash::do_read_chunk(uint32_t offset, uint32_t length)
 {
 	offset = to_partition_offset(offset);
 	if (use_direct_read()) {
-		m_intf->writeln("/flash/readDirect " + to_string(length) + " " + to_string(offset));
+		interface()->writeln("/flash/readDirect " + to_string(length) + " " + to_string(offset));
 	} else {
-		m_intf->writeln("/flash/read 4 " + to_string(length) + " " + to_string(offset));
+		interface()->writeln("/flash/read 4 " + to_string(length) + " " + to_string(offset));
 	}
 }
 
@@ -712,7 +715,7 @@ uint32_t bfc_flash::to_partition_offset(uint32_t offset) const
 
 bool bfc_flash::use_direct_read() const
 {
-	auto v = m_intf->version();
+	auto v = interface()->version();
 
 	if (v.has_opt("bfc:flash_read_direct")) {
 		return v.get_opt_num("bfc:flash_read_direct");
@@ -727,7 +730,7 @@ bool bfc_flash::use_direct_read() const
 
 void bfc_flash::on_chunk_retry(uint32_t offset, uint32_t length)
 {
-	auto v = m_intf->version();
+	auto v = interface()->version();
 
 	if (v.get_opt_num("bfc:flash_reinit_on_retry", false)) {
 		cleanup();
@@ -767,9 +770,9 @@ class bootloader_ram : public parsing_rwx
 void bootloader_ram::init(uint32_t offset, uint32_t length, bool write)
 {
 	if (!write) {
-		m_intf->write("r");
+		interface()->write("r");
 	} else {
-		m_intf->writeln();
+		interface()->writeln();
 	}
 
 	m_write = write;
@@ -778,33 +781,33 @@ void bootloader_ram::init(uint32_t offset, uint32_t length, bool write)
 void bootloader_ram::cleanup()
 {
 	if (!m_write) {
-		m_intf->run("\r");
+		interface()->run("\r");
 	} else {
-		m_intf->writeln();
+		interface()->writeln();
 	}
 }
 
 bool bootloader_ram::write_chunk(uint32_t offset, const string& chunk)
 {
 	try {
-		if (!m_intf->run("w", "Write memory.", true)) {
+		if (!interface()->run("w", "Write memory.", true)) {
 			return false;
 		}
 
-		m_intf->writeln(to_hex(offset, 0));
+		interface()->writeln(to_hex(offset, 0));
 		uint32_t val = ntoh(extract<uint32_t>(chunk));
-		m_intf->writeln(to_hex(val));
+		interface()->writeln(to_hex(val));
 		return true;
 	} catch (const exception& e) {
 		// ensure that we're in a sane state
-		m_intf->run("\r");
+		interface()->run("\r");
 		return false;
 	}
 }
 
 void bootloader_ram::do_read_chunk(uint32_t offset, uint32_t length)
 {
-	m_intf->writeln("0x" + to_hex(offset, 0));
+	interface()->writeln("0x" + to_hex(offset, 0));
 }
 
 bool bootloader_ram::is_ignorable_line(const string& line)
@@ -831,9 +834,9 @@ string bootloader_ram::parse_chunk_line(const string& line, uint32_t offset)
 
 bool bootloader_ram::exec_impl(uint32_t offset)
 {
-	m_intf->run("");
-	if (m_intf->run("j", "address (hex):", true)) {
-		m_intf->writeln(to_hex(offset));
+	interface()->run("");
+	if (interface()->run("j", "address (hex):", true)) {
+		interface()->writeln(to_hex(offset));
 		return true;
 	}
 	return false;
@@ -939,9 +942,9 @@ class code_rwx : public parsing_rwx
 				line += ":" + to_hex(chunk.substr(i + k * 4, 4));
 			}
 
-			m_intf->writeln(line);
+			interface()->writeln(line);
 
-			line = trim(m_intf->readln());
+			line = trim(interface()->readln());
 			if (line.empty() || line[0] != ':') {
 				throw runtime_error("expected offset, got '" + line + "'");
 			}
@@ -956,7 +959,7 @@ class code_rwx : public parsing_rwx
 
 		if (!space().is_ram()) {
 			// FIXME
-			m_intf->wait_ready(60);
+			interface()->wait_ready(60);
 		}
 
 		return true;
@@ -1006,8 +1009,8 @@ class code_rwx : public parsing_rwx
 
 	void init(uint32_t offset, uint32_t length, bool write) override
 	{
-		const profile::sp& profile = m_intf->profile();
-		auto cfg = m_intf->version().codecfg();
+		const profile::sp& profile = interface()->profile();
+		auto cfg = interface()->version().codecfg();
 
 		if (cfg["buflen"] && length > cfg["buflen"]) {
 			throw user_error("requested length exceeds buffer size ("
@@ -1106,10 +1109,10 @@ class code_rwx : public parsing_rwx
 
 	bcm2_write_args get_write_args(uint32_t offset, uint32_t length)
 	{
-		auto profile = m_intf->profile();
+		auto profile = interface()->profile();
 		uint32_t kseg1 = profile->kseg1();
-		auto cfg = m_intf->version().codecfg();
-		auto funcs = m_intf->version().functions(m_space.name());
+		auto cfg = interface()->version().codecfg();
+		auto funcs = interface()->version().functions(m_space.name());
 
 		auto fl_write = funcs["write"];
 		auto fl_erase = funcs["erase"];
@@ -1157,10 +1160,10 @@ class code_rwx : public parsing_rwx
 
 	bcm2_read_args get_read_args(uint32_t offset, uint32_t length)
 	{
-		auto profile = m_intf->profile();
+		auto profile = interface()->profile();
 		uint32_t kseg1 = profile->kseg1();
-		auto cfg = m_intf->version().codecfg();
-		auto funcs = m_intf->version().functions(m_space.name());
+		auto cfg = interface()->version().codecfg();
+		auto funcs = interface()->version().functions(m_space.name());
 
 		auto fl_read = funcs["read"];
 
@@ -1247,7 +1250,7 @@ class bfc_cmcfg : public parsing_rwx
 
 void bfc_cmcfg::do_read_chunk(uint32_t offset, uint32_t length)
 {
-	m_intf->writeln("/docsis_ctl/cfg_hex_show");
+	interface()->writeln("/docsis_ctl/cfg_hex_show");
 }
 
 bool bfc_cmcfg::is_ignorable_line(const string& line)
@@ -1553,7 +1556,7 @@ void rwx::write(uint32_t offset, const string& buf, uint32_t length)
 						msg += " (" + what + ")";
 					}
 
-					if (++retries < 5 /*&& wait_for_interface(m_intf)*/) {
+					if (++retries < 5 /*&& wait_for_interface(interface())*/) {
 						logger::d() << endl << msg << "; retrying" << endl;
 						//on_chunk_retry(offset_w, chunk.size());
 						continue;

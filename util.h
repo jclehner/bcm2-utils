@@ -65,6 +65,26 @@ namespace bcm2dump {
 
 typedef void (*sigh_type)(int);
 
+#if 0
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define DEF_BSWAP(type, func) \
+	template<> type cpu_to_be(type num) \
+	{ return num; } \
+	template<> type cpu_to_le(type num) \
+	{ return func(num); }
+#else
+#define DEF_BSWAP(type, func) \
+	template<> type cpu_to_be(type num) \
+	{ return func(num); } \
+	template<> type cpu_to_le(type num) \
+	{ return num; }
+#endif
+
+DEF_BSWAP(uint16_t, __builtin_bswap16)
+DEF_BSWAP(uint32_t, __builtin_bswap32)
+DEF_BSWAP(uint64_t, __builtin_bswap64)
+#endif
+
 std::string trim(std::string str);
 std::vector<std::string> split(const std::string& str, char delim, bool empties = true, size_t limit = 0);
 

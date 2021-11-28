@@ -113,7 +113,7 @@ class telnet
 	virtual bool login(const string& user, const string& pw) = 0;
 };
 
-class bfc : public interface
+class bfc : public cmdline_interface
 {
 	public:
 	virtual string name() const override
@@ -307,7 +307,7 @@ bool bfc::is_crash_line(const string& line) const
 		|| starts_with(line, ">>> YIKES... ");
 }
 
-class bootloader : public interface
+class bootloader : public cmdline_interface
 {
 	public:
 	virtual string name() const override
@@ -526,9 +526,9 @@ void bfc_telnet::elevate_privileges()
 	bfc::elevate_privileges();
 }
 
-interface::sp do_detect_interface(const io::sp &io)
+sp<cmdline_interface> do_detect_interface(const io::sp &io)
 {
-	interface::sp intf = make_shared<bfc_telnet>();
+	sp<cmdline_interface> intf = make_shared<bfc_telnet>();
 	if (intf->is_active(io)) {
 		return intf;
 	}
@@ -546,7 +546,7 @@ interface::sp do_detect_interface(const io::sp &io)
 	throw runtime_error("interface auto-detection failed");
 }
 
-interface::sp detect_interface(const io::sp &io)
+sp<cmdline_interface> detect_interface(const io::sp &io)
 {
 	auto intf = do_detect_interface(io);
 	logger::d() << "detected interface: " << intf->name() << endl;
@@ -638,7 +638,7 @@ void detect_profile_from_magics(const interface::sp& intf, const profile::sp& pr
 }
 }
 
-bool interface::wait_ready(unsigned timeout)
+bool cmdline_interface::wait_ready(unsigned timeout)
 {
 	call("");
 	return foreach_line_raw([this] (const string& line) {
@@ -649,13 +649,13 @@ bool interface::wait_ready(unsigned timeout)
 	}, timeout);
 }
 
-bool interface::wait_quiet(unsigned timeout) const
+bool cmdline_interface::wait_quiet(unsigned timeout) const
 {
 	foreach_line_raw([] (const string&) { return false; }, timeout, true);
 	return true;
 }
 
-bool interface::run(const string& cmd, const string& expect, bool stop_on_match)
+bool cmdline_interface::run(const string& cmd, const string& expect, bool stop_on_match)
 {
 	call(cmd);
 	bool match = false;
@@ -674,7 +674,7 @@ bool interface::run(const string& cmd, const string& expect, bool stop_on_match)
 	return match;
 }
 
-vector<string> interface::run(const string& cmd, unsigned timeout)
+vector<string> cmdline_interface::run(const string& cmd, unsigned timeout)
 {
 	call(cmd);
 	vector<string> lines;
@@ -687,7 +687,7 @@ vector<string> interface::run(const string& cmd, unsigned timeout)
 	return lines;
 }
 
-bool interface::foreach_line_raw(function<bool(const string&)> f, unsigned timeout, bool restart) const
+bool cmdline_interface::foreach_line_raw(function<bool(const string&)> f, unsigned timeout, bool restart) const
 {
 	mstimer t;
 
@@ -717,7 +717,7 @@ bool interface::foreach_line_raw(function<bool(const string&)> f, unsigned timeo
 	return false;
 }
 
-bool interface::foreach_line(function<bool(const string&)> f, unsigned timeout) const
+bool cmdline_interface::foreach_line(function<bool(const string&)> f, unsigned timeout) const
 {
 	bool prompt = false;
 	bool stopped = foreach_line_raw([this, &prompt, &f] (const string& line) {
@@ -735,7 +735,7 @@ bool interface::foreach_line(function<bool(const string&)> f, unsigned timeout) 
 	return stopped ? (!prompt) : false;
 }
 
-string interface::readln(unsigned timeout) const
+string cmdline_interface::readln(unsigned timeout) const
 {
 	string line = m_io->readln(timeout ? timeout : this->timeout());
 

@@ -44,9 +44,6 @@ class interface : public std::enable_shared_from_this<interface>
 
 	virtual std::string name() const = 0;
 
-	std::vector<std::string> run(const std::string& cmd, unsigned timeout = 0);
-	bool run(const std::string& cmd, const std::string& expect, bool stop_on_match = false);
-
 	virtual void set_profile(const profile::sp& profile, const version& version)
 	{
 		set_profile(profile);
@@ -64,6 +61,39 @@ class interface : public std::enable_shared_from_this<interface>
 
 	virtual bool has_version() const
 	{ return !m_version.name().empty(); }
+
+	virtual bool is_privileged() const
+	{ return true; }
+
+	virtual void elevate_privileges() {}
+
+	static interface::sp detect(const io::sp& io, const profile::sp& sp = nullptr);
+	static interface::sp create(const std::string& specl, const std::string& profile = "");
+
+	virtual bcm2_interface id() const = 0;
+
+	protected:
+	void initialize(const profile::sp& profile);
+
+	virtual void initialize_impl()
+	{}
+
+	virtual void detect_profile()
+	{}
+
+	virtual void detect_version()
+	{}
+
+	protected:
+	profile::sp m_profile;
+	version_type m_version;
+};
+
+class cmdline_interface : public interface
+{
+	public:
+	std::vector<std::string> run(const std::string& cmd, unsigned timeout = 0);
+	bool run(const std::string& cmd, const std::string& expect, bool stop_on_match = false);
 
 	virtual bool is_ready(bool passive = false) = 0;
 	virtual bool wait_ready(unsigned timeout = 5000);
@@ -83,11 +113,6 @@ class interface : public std::enable_shared_from_this<interface>
 		return true;
 	}
 
-	virtual bool is_privileged() const
-	{ return true; }
-
-	virtual void elevate_privileges() {}
-
 	virtual void writeln(const std::string& str = "")
 	{ m_io->writeln(str); }
 
@@ -102,17 +127,9 @@ class interface : public std::enable_shared_from_this<interface>
 	virtual bool pending(unsigned timeout = 0) const
 	{ return m_io->pending(timeout ? timeout : this->timeout()); }
 
-	static interface::sp detect(const io::sp& io, const profile::sp& sp = nullptr);
-	static interface::sp create(const std::string& specl, const std::string& profile = "");
-
-	virtual bcm2_interface id() const = 0;
-
-
 	protected:
 	virtual void call(const std::string& cmd)
 	{ writeln(cmd); }
-
-	void initialize(const profile::sp& profile);
 
 	virtual bool is_crash_line(const std::string& line) const
 	{ return false; }
@@ -122,16 +139,9 @@ class interface : public std::enable_shared_from_this<interface>
 	virtual uint32_t timeout() const
 	{ return 50; }
 
-	virtual void detect_profile()
-	{}
-
-	virtual void initialize_impl()
-	{}
-
 	std::shared_ptr<io> m_io;
-	profile::sp m_profile;
-	version_type m_version;
 };
+
 }
 
 #endif

@@ -327,9 +327,13 @@ int do_run(int argc, char** argv, const string& profile)
 	}
 
 	auto intf = interface::create(argv[1], profile);
+	auto cli = dynamic_pointer_cast<cmdline_interface>(intf);
+	if (!cli) {
+		throw user_error("not a commandline interface");
+	}
 
 	for (int i = 2; i < argc; ++i) {
-		for (auto line : intf->run(argv[i])) {
+		for (auto line : cli->run(argv[i])) {
 			cout << trim(line) << endl;
 		}
 	}
