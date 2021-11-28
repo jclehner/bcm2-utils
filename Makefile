@@ -30,6 +30,12 @@ bcm2cfg_OBJ = util.o nonvol2.o bcm2cfg.o nonvoldef.o \
 psextract_OBJ = util.o ps.o psextract.o
 t_nonvol_OBJ = util.o nonvol2.o t_nonvol.o $(profile_OBJ)
 
+ifeq ($(WITH_SNMP), 1)
+	bcm2dump_OBJ += snmp.o
+	CFLAGS += -DBCM2DUMP_WITH_SNMP
+	LDFLAGS += -lsnmp
+endif
+
 bcm2dump = bcm2dump$(BINEXT)
 bcm2cfg = bcm2cfg$(BINEXT)
 psextract = psextract$(BINEXT)

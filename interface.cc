@@ -23,6 +23,11 @@
 #include <set>
 #include "interface.h"
 #include "rwx.h"
+
+#ifdef BCM2DUMP_WITH_SNMP
+#include "snmp.h"
+#endif
+
 using namespace std;
 
 namespace bcm2dump {
@@ -793,7 +798,7 @@ interface::sp interface::create(const string& spec, const string& profile_name)
 	}
 
 	string type;
-	vector<string> tokens = split(spec, ':', false);
+	vector<string> tokens = split(spec, ':', false, 2);
 	if (tokens.size() == 2) {
 		type = tokens[0];
 		tokens.erase(tokens.begin());
@@ -835,6 +840,14 @@ interface::sp interface::create(const string& spec, const string& profile_name)
 
 			intf->initialize(profile);
 			return intf;
+		} else if (type == "snmp") {
+#ifdef BCM2DUMP_WITH_SNMP
+			auto intf = snmp::detect(tokens[0]);
+			intf->initialize(profile);
+			return intf;
+#else
+			throw user_error("bcm2dump was built without snmp support");
+#endif
 		}
 	} catch (const bad_lexical_cast& e) {
 		throw invalid_argument("invalid " + type + " interface: " + e.what());

@@ -27,6 +27,10 @@
 #include "rwx.h"
 #include "ps.h"
 
+#ifdef BCM2DUMP_WITH_SNMP
+#include "snmp.h"
+#endif
+
 #define BFC_FLASH_READ_DIRECT
 
 using namespace std;
@@ -1618,7 +1622,22 @@ rwx::sp rwx::create(const interface::sp& intf, const string& type, bool safe)
 		} else {
 			return create_rwx<bfc_flash>(intf, space);
 		}
+#ifdef BCM2DUMP_WITH_SNMP
+	} else if (intf->name() == "snmp") {
+		auto p = dynamic_pointer_cast<snmp>(intf);
+		if (!p) {
+			throw runtime_error("non-snmp interface");
+		}
+
+		auto ret = p->create_rwx(space, safe);
+		// FIXME this should be moved to create_rwx
+		ret->set_interface(intf);
+		ret->set_addrspace(space);
+		return ret;
 	}
+#else
+	}
+#endif
 
 	throw invalid_argument("no such rwx: " + intf->name() + "," + type + ((safe ? "," : ",un") + string("safe")));
 }
