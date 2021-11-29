@@ -209,42 +209,108 @@ class progress_listener
 	progress m_pg;
 };
 
-int do_script(int argc, char** argv, const string& profile)
+unsigned parse_width(const string& str)
 {
-	if (argc < 2) {
+	auto width = lexical_cast<unsigned>(str, 0);
+	if (!width || width == 3 || width > 4) {
+		throw user_error("invalid width: " + to_string(width));
+	}
+
+	return width;
+}
+
+bool run_script_command(vector<string> args, sp<rwx> rwx)
+{
+	if (args.empty()) {
+		return true;
+	}
+
+	if (args[0] == "read") {
+		if (args.size() < 2 || args.size() > 3) {
+			throw user_error("usage: read <address> [<size>]");
+		}
+
+		auto addr = lexical_cast<uint32_t>(args[1], 0);
+		auto width = (args.size() == 3 ? parse_width(args[2]) : 4);
+
+		string buf = rwx->read(addr, width);
+		uint32_t result;
+
+		if (width == 4) {
+			result = ntoh(extract<uint32_t>(buf));
+		} else if (width == 2) {
+			result = ntoh(extract<uint16_t>(buf));
+		} else {
+			result = buf[0];
+		}
+
+		cout << to_hex(result, width * 2) << endl;
+	} else if (args[0] == "write") {
+		if (args.size() != 4) {
+			throw user_error("usage: write <address> <size> <value>");
+		}
+
+		auto addr = lexical_cast<uint32_t>(args[1], 0);
+		auto width = parse_width(args[2]);
+		auto value = lexical_cast<uint32_t>(args[3]);
+
+		string buf;
+
+		if (width == 4) {
+			buf = to_buf(hton(value));
+		} else if (width == 2) {
+			buf = to_buf(hton(uint16_t(value & 0xffff)));
+		} else {
+			buf += char(value & 0xff);
+		}
+
+		rwx->write(addr, buf);
+	} else if (args[0] == "exec") {
+		if (args.size() != 2) {
+			throw user_error("usage: exec <address>");
+		}
+
+		rwx->exec(lexical_cast<uint32_t>(args[1], 0));
+	} else if (args[0] == "quit" || args[0] == "exit") {
+		return false;
+	} else {
+		throw user_error("invalid command: " + args[0]);
+	}
+
+	return true;
+}
+
+int do_script(int argc, char** argv, int opts, const string& profile)
+{
+	if (argc < 3) {
 		usage(false);
 		return 1;
 	}
 
 	auto intf = interface::create(argv[1], profile);
-	rwx::sp rwx = rwx::create(intf, "ram", true);
+	auto rwx = rwx::create(intf, argv[2], opts & opt_safe);
 
-	// TODO implement script file support
-	istream& in = cin;
-	string line;
+	if (argc == 3) {
+		// we're in interactive mode
+		string line;
+		while (cout << "bcm2dump> " << flush, getline(cin, line)) {
+			auto args = split(line, ' ');
 
-	while (cout << "bcm2dump> " << flush, getline(in, line)) {
-		auto tok = split(line, ' ');
-
-		try {
-			if (tok[0] == "space" && tok.size() == 2) {
-				rwx = rwx::create(intf, tok[1]);
-			} else if (tok[0] == "write32" && tok.size() == 3) {
-				string buf = to_buf(hton(lexical_cast<uint32_t>(tok[2], 0)));
-				auto addr = lexical_cast<uint32_t>(tok[1], 0);
-				rwx->write(addr, buf);
-			} else if (tok[0] == "read32" && tok.size() == 2) {
-				auto addr = lexical_cast<uint32_t>(tok[1], 0);
-				string buf = rwx->read(addr, 4);
-				cout << to_hex(addr) << " = " << to_hex(ntoh(extract<uint32_t>(buf))) << endl;
-			} else if (tok[0] == "exit" || tok[0] == "quit") {
-				break;
-			} else {
-				cout << "error: bad command" << endl;
+			try {
+				if (!run_script_command(args, rwx)) {
+					break;
+				}
+			} catch (const exception& e) {
+				logger::e() << "error: " << e.what() << endl;
 			}
-		} catch (const exception& e) {
-			cerr << e.what() << endl;
 		}
+	} else {
+		vector<string> args;
+		for (int i = 3; i < argc; ++i) {
+			args.push_back(argv[i]);
+		}
+
+		run_script_command(args, rwx);
 	}
 
 	return 0;
@@ -528,7 +594,7 @@ int do_main(int argc, char** argv)
 	argv += optind;
 	argc -= optind;
 
-	if (cmd == "run") {
+	if (cmd == "run" || cmd == "script") {
 		logger::no_stdout();
 	}
 
@@ -545,7 +611,7 @@ int do_main(int argc, char** argv)
 	} else if (cmd == "scan") {
 		return do_scan(argc, argv, opts, profile);
 	} else if (cmd == "script") {
-		return do_script(argc, argv, profile);
+		return do_script(argc, argv, opts, profile);
 	} else {
 		usage(false);
 		return 1;
