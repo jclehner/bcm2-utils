@@ -1,3 +1,5 @@
+#ifndef BCM2DUMP_SNMP_H
+#define BCM2DUMP_SNMP_H
 #include <net-snmp/net-snmp-config.h>
 #include <net-snmp/net-snmp-includes.h>
 #include "interface.h"
@@ -10,7 +12,7 @@ class snmp : public interface
 	public:
 	struct var
 	{
-		var(const std::string& str, u_char type)
+		var(const std::string& str, u_char type = ASN_OCTET_STR)
 		: str(str), type(type)
 		{}
 
@@ -43,9 +45,10 @@ class snmp : public interface
 	virtual rwx::sp create_rwx(const addrspace& space, bool safe) const;
 
 	protected:
-	//virtual void initialize_impl() override;
+	virtual void initialize_impl() override;
 
 	private:
 	snmp_session* m_ss;
 };
 }
+#endif

@@ -9,6 +9,8 @@ struct snmp_lib {
 	{ init_snmp("bcm2dump"); }
 } lib;
 
+const string cd_engr_enable = "1.3.6.1.4.1.4413.2.99.1.1.1.2.1.2.1";
+
 const string cd_engr_base = "1.3.6.1.4.1.4413.2.99.1.1.3.1";
 const string cd_engr_mem_addr = cd_engr_base + ".1.0";
 const string cd_engr_mem_size = cd_engr_base + ".2.0";
@@ -98,6 +100,12 @@ snmp::snmp(string peer)
 	if (!m_ss) {
 		throw runtime_error("snmp_open");
 	}
+}
+
+void snmp::initialize_impl()
+{
+	string pw = m_version.get_opt_str("snmp:engr_enable_pw", "password");
+	set(cd_engr_enable, { pw });
 }
 
 snmp::var snmp::get(const std::string& oid) const
