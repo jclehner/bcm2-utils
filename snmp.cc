@@ -171,8 +171,10 @@ void snmp::set(const vector<pair<string, var>>& values)
 	int status = snmp_synch_response(m_ss, pdu, &response);
 	cleaner c { [&response]() { snmp_free_pdu(response); }};
 
-	if (status != STAT_SUCCESS || response->errstat != SNMP_ERR_NOERROR) {
-		throw runtime_error("snmp::set failed: " + string(snmp_errstring(response->errstat)));
+	if (status != STAT_SUCCESS) {
+		throw runtime_error("snmp::set failed: status=" + to_string(status));
+	} else if (response->errstat != SNMP_ERR_NOERROR) {
+		throw runtime_error("snmp::set failed: "s + snmp_errstring(response->errstat));
 	}
 }
 
