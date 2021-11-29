@@ -1364,6 +1364,7 @@ void rwx::dump(uint32_t offset, uint32_t length, std::ostream& os, bool resume)
 			return;
 		} else {
 			offset += completed;
+			length -= completed;
 			logger::v() << "resuming at offset 0x" + to_hex(offset) << endl;
 			os.seekp(completed, ios::cur);
 		}
