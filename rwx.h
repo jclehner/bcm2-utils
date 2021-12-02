@@ -140,6 +140,7 @@ class rwx //: public rwx_writer
 	static void throw_if_interrupted()
 	{
 		if (was_interrupted()) {
+			s_sigint = 0;
 			throw interrupted();
 		}
 	}
