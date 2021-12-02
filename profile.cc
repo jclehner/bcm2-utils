@@ -17,6 +17,7 @@
  *
  */
 
+#include <algorithm>
 #include <iostream>
 #include <cstring>
 #include <cctype>
@@ -681,7 +682,13 @@ string get_profile_names(unsigned width, unsigned indent)
 		names += indstr;
 	}
 
-	for (auto p : profile::list()) {
+	auto profiles = profile::list();
+
+	sort(profiles.begin(), profiles.end(), [](const profile::sp& a, const profile::sp& b) {
+			return a->name() < b->name();
+	});
+
+	for (auto p : profiles) {
 		string n = p->name();
 
 		if ((w + indent + n.size() + 2) > width) {
