@@ -94,13 +94,13 @@ enum bcm2_mem
 enum bcm2_arch
 {
 	BCM2_UNKNOWN = 0,
-	BCM2_3345,
-	BCM2_3368,
-	BCM2_3380,
-	BCM2_3382,
-	BCM2_3383,
-	BCM2_3384,
-	BCM2_3390,
+	BCM2_3345 = 0x3345,
+	BCM2_3368 = 0x3368,
+	BCM2_3380 = 0x3380,
+	BCM2_3382 = 0x3382,
+	BCM2_3383 = 0x3383,
+	BCM2_3384 = 0x3384,
+	BCM2_3390 = 0x3390,
 };
 
 struct bcm2_partition {
@@ -516,6 +516,7 @@ class profile
 	virtual std::vector<addrspace> spaces() const = 0;
 	virtual const addrspace& space(const std::string& name, bcm2_interface intf) const = 0;
 	virtual const addrspace& ram() const = 0;
+	virtual bcm2_arch arch() const = 0;
 
 	virtual std::string md5_key() const = 0;
 

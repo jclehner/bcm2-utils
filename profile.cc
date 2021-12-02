@@ -144,6 +144,9 @@ class profile_wrapper : public profile
 	virtual uint16_t blsig() const override
 	{ return m_p->blsig; }
 
+	virtual bcm2_arch arch() const override
+	{ return m_p->arch; }
+
 	virtual vector<const bcm2_magic*> magics() const override
 	{ return m_magic; }
 
