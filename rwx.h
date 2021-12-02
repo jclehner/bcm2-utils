@@ -65,10 +65,15 @@ class rwx //: public rwx_writer
 	void dump(uint32_t offset, uint32_t length, std::ostream& os, bool resume = false);
 	std::string read(uint32_t offset, uint32_t length);
 
+	uint32_t read32(uint32_t offset)
+	{ return read_num<uint32_t>(offset); }
 
 	void write(const std::string& spec, std::istream& is);
 	void write(uint32_t offset, std::istream& is, uint32_t length = 0);
 	void write(uint32_t offset, const std::string& buf, uint32_t length = 0);
+
+	void write32(uint32_t offset, uint32_t value)
+	{ write_num(offset, value); }
 
 	void exec(uint32_t offset);
 
@@ -175,7 +180,6 @@ class rwx //: public rwx_writer
 	addrspace::part m_partition;
 	addrspace m_space;
 
-
 	class scoped_cleaner
 	{
 		public:
@@ -195,6 +199,13 @@ class rwx //: public rwx_writer
 	{ return scoped_cleaner(this); }
 
 	private:
+	// XXX for now, we always assume big-endian!
+	template<class T> void write_num(uint32_t offset, T value)
+	{ write(offset, to_buf(hton(value))); }
+
+	template<class T> T read_num(uint32_t offset)
+	{ return ntoh(extract<T>(read(offset, sizeof(T)))); }
+
 	static void handle_sigint(int signal)
 	{ s_sigint = 1; }
 
@@ -205,7 +216,6 @@ class rwx //: public rwx_writer
 	static sigh_type s_sighandler_orig;
 	static volatile sig_atomic_t s_sigint;
 };
-
 
 }
 #endif

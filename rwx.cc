@@ -1284,6 +1284,114 @@ string bfc_cmcfg::parse_chunk_line(const string& line, uint32_t)
 
 	return linebuf;
 }
+
+class bfc_vflash : public rwx
+{
+	public:
+	virtual limits limits_read() const override
+	{ return { 4, 4, 0x10000 }; }
+
+	virtual limits limits_write() const override
+	{ return { 0, 0, 0 }; }
+
+	virtual unsigned capabilities() const override
+	{ return cap_read; }
+
+	virtual void set_interface(const interface::sp& intf) override
+	{
+		rwx::set_interface(intf);
+		m_ram = rwx::create(intf, "ram");
+
+		auto v = intf->version();
+		m_cpuc_reg_request = v.get_opt_num("vflash:cpuc_reg_request", 0xd3800044);
+		m_mbox_reg_cmstate = v.get_opt_num("vflash:mbox_reg_cmstate", 0xd3800084);
+		m_mbox_reg_imgreq = v.get_opt_num("vflash:mbox_reg_imgreq", 0xd3800090);
+		m_mbox_reg_imgbuf = v.get_opt_num("vflash:mbox_reg_imgbuf", 0xd3800094);
+		m_cmstate_for_image = v.get_opt_num("vflash:cmstate_for_image", 7);
+	}
+
+	static bool is_supported(const interface::sp& intf, const addrspace& space)
+	{
+		if (intf->profile()->arch() != BCM2_3390) {
+			return false;
+		}
+
+		if (space.name() != "flash1") {
+			return false;
+		}
+
+		return true;
+	}
+
+	protected:
+	virtual void init(uint32_t offset, uint32_t length, bool write)
+	{
+		auto part = space().partition(offset);
+
+		if (sscanf(part.name().c_str(), "cmrun%u", &m_image) != 1) {
+			throw invalid_argument("only cmrun partitions are supported");
+		}
+
+		m_cmstate_saved = m_ram->read32(m_mbox_reg_cmstate);
+		m_ram->write32(m_mbox_reg_cmstate, m_cmstate_for_image);
+	}
+
+	virtual void cleanup() override
+	{
+		m_ram->write32(m_mbox_reg_cmstate, m_cmstate_saved);
+	}
+
+	virtual std::string read_chunk(uint32_t offset, uint32_t length) override
+	{
+		unsigned block = (offset / limits_read().max) + 1;
+
+		m_ram->write32(m_cpuc_reg_request, 0x20);
+		m_ram->write32(m_mbox_reg_imgreq, block | (((m_image & 0xffff) - 1) << 31));
+
+		mstimer t;
+
+		do {
+			if (m_ram->read32(m_cpuc_reg_request) & 0x20) {
+				auto buffer = m_ram->read32(m_mbox_reg_imgbuf);
+				if (buffer == 0xffffffff) {
+					throw runtime_error("error retrieving block " + to_string(block));
+				}
+
+#if 1
+				string chunk;
+
+				const unsigned n = 32;
+				auto remaining = length;
+
+				for (uint32_t i = 0; i < length; i += n) {
+					auto size = min(n, remaining);
+					chunk += m_ram->read(0xa0000000 | (buffer + i), size);
+					remaining -= n;
+					update_progress(offset + i, size);
+				}
+#else
+				string chunk = m_ram->read(0xa0000000 | buffer, length);
+#endif
+				return chunk;
+			}
+		} while (t.elapsed() < 5000);
+
+		throw runtime_error("timeout retrieving block " + to_string(block));
+	}
+
+	virtual std::string read_special(uint32_t, uint32_t) override
+	{ throw runtime_error(__func__); }
+
+	private:
+	sp m_ram;
+	unsigned m_image;
+	uint32_t m_cmstate_saved;
+	uint32_t m_cpuc_reg_request;
+	uint32_t m_mbox_reg_cmstate;
+	uint32_t m_mbox_reg_imgreq;
+	uint32_t m_mbox_reg_imgbuf;
+	uint32_t m_cmstate_for_image;
+};
 }
 
 unsigned rwx::s_count = 0;
@@ -1620,6 +1728,8 @@ rwx::sp rwx::create(const interface::sp& intf, const string& type, bool safe)
 			return create_rwx<bfc_ram>(intf, space);
 		} else if (!safe && bfc_flash2::is_supported(intf, space.name())) {
 			return create_rwx<bfc_flash2>(intf, space);
+		} else if (!safe && bfc_vflash::is_supported(intf, space)) {
+			return create_rwx<bfc_vflash>(intf, space);
 		} else {
 			return create_rwx<bfc_flash>(intf, space);
 		}
@@ -1628,6 +1738,10 @@ rwx::sp rwx::create(const interface::sp& intf, const string& type, bool safe)
 		auto p = dynamic_pointer_cast<snmp>(intf);
 		if (!p) {
 			throw runtime_error("non-snmp interface");
+		}
+
+		if (!safe && bfc_vflash::is_supported(intf, space)) {
+			return create_rwx<bfc_vflash>(intf, space);
 		}
 
 		auto ret = p->create_rwx(space, safe);

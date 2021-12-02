@@ -475,6 +475,11 @@ bool addrspace::check_range(uint32_t offset, uint32_t length, const string& name
 		return true;
 	}
 
+	// XXX hack
+	if (is_ram() && (offset & (m_kseg1 >> 1))) {
+		return true;
+	}
+
 	string msg;
 
 	if (!(offset % alignment())) {
