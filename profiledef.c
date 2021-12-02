@@ -1068,6 +1068,47 @@ struct bcm2_profile bcm2_profiles[] = {
 			},
 		},
 	},
+	{
+		.name = "cga4233",
+		.pretty = "Technicolor CGA4233",
+		.arch = BCM2_3390,
+		.baudrate = 115200,
+		.pssig = 0xd012, // but CGA4233DE uses 0x0000
+		.kseg1mask = 0x20000000,
+		.magic = {
+			{ 0x80000844, { 0xd0, 0x12 }, 2 },
+		},
+		.spaces = {
+			{
+				.name = "ram",
+				.min = 0x80000000
+			},
+			{
+				.name = "flash0",
+				.size = 0x400000,
+				.parts = {
+					{ "bolt",      0x000000, 0x100000 },
+					{ "macaddr",   0x100000, 0x020000 },
+					{ "nvram0",    0x120000, 0x020000 },
+					{ "nvram1",    0x140000, 0x020000 },
+					{ "devtree0",  0x160000, 0x020000 },
+					{ "devtree1",  0x180000, 0x020000 },
+					{ "cmnonvol0", 0x1a0000, 0x060000 },
+					{ "cmnonvol1", 0x200000, 0x060000 },
+					{ "rgnonvol0", 0x260000, 0x0d0000 },
+					{ "rgnonvol1", 0x330000, 0x070000 },
+				},
+			},
+			{
+				.name = "flash1",
+				.size = 512 * 1024 * 1024,
+				.parts = {
+					{ "cmrun0" },
+					{ "cmrun1" },
+				}
+			},
+		}
+	},
 	// end marker
 	{ .name = "" },
 };
