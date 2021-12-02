@@ -33,7 +33,7 @@ class snmp_bfc_ram : public rwx
 	{ return { 4, 4, 4 }; }
 
 	virtual limits limits_write() const override
-	{ return { 4, 4, 4}; }
+	{ return { 1, 4, 4}; }
 
 	virtual unsigned capabilities() const override
 	{ return cap_rw; }
@@ -56,10 +56,17 @@ class snmp_bfc_ram : public rwx
 
 	virtual bool write_chunk(uint32_t offset, const std::string& chunk) override
 	{
-		auto value = hton(extract<uint32_t>(chunk));
-		run_mem_command(offset, sizeof(value), true, value);
+		uint32_t value;
+		if (chunk.size() == 4) {
+			value = hton(extract<uint32_t>(chunk));
+		} else if (chunk.size() == 1) {
+			value = chunk[0] & 0xff;
+		} else {
+			throw invalid_argument("invalid chunk size");
+		}
+		run_mem_command(offset, chunk.size(), true, value);
 		// FIXME this shouldn't be here
-		update_progress(offset, sizeof(value));
+		update_progress(offset, chunk.size());
 		return true;
 	}
 
