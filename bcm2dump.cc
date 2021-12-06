@@ -252,7 +252,7 @@ bool run_script_command(vector<string> args, sp<rwx> rwx)
 
 		auto addr = lexical_cast<uint32_t>(args[1], 0);
 		auto width = parse_width(args[2]);
-		auto value = lexical_cast<uint32_t>(args[3]);
+		auto value = lexical_cast<uint32_t>(args[3], 0);
 
 		string buf;
 
