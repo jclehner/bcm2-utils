@@ -1307,7 +1307,8 @@ class bfc_vflash : public rwx
 		m_mbox_reg_cmstate = v.get_opt_num("vflash:mbox_reg_cmstate", 0xd3800084);
 		m_mbox_reg_imgreq = v.get_opt_num("vflash:mbox_reg_imgreq", 0xd3800090);
 		m_mbox_reg_imgbuf = v.get_opt_num("vflash:mbox_reg_imgbuf", 0xd3800094);
-		m_cmstate_for_image = v.get_opt_num("vflash:cmstate_for_image", 7);
+		m_cmstate_value = v.get_opt_num("vflash:cmstate_value", 7);
+		m_request_value = v.get_opt_num("vflash:request_value", 0x20);
 	}
 
 	static bool is_supported(const interface::sp& intf, const addrspace& space)
@@ -1316,7 +1317,7 @@ class bfc_vflash : public rwx
 			return false;
 		}
 
-		if (space.name() != "flash1") {
+		if (space.name() != "flash1" && space.name() != "flash") {
 			return false;
 		}
 
@@ -1333,7 +1334,7 @@ class bfc_vflash : public rwx
 		}
 
 		m_cmstate_saved = m_ram->read32(m_mbox_reg_cmstate);
-		m_ram->write32(m_mbox_reg_cmstate, m_cmstate_for_image);
+		m_ram->write32(m_mbox_reg_cmstate, m_cmstate_value);
 	}
 
 	virtual void cleanup() override
@@ -1345,13 +1346,13 @@ class bfc_vflash : public rwx
 	{
 		unsigned block = (offset / limits_read().max) + 1;
 
-		m_ram->write32(m_cpuc_reg_request, 0x20);
+		m_ram->write32(m_cpuc_reg_request, m_request_value);
 		m_ram->write32(m_mbox_reg_imgreq, block | (((m_image & 0xffff) - 1) << 31));
 
 		mstimer t;
 
 		do {
-			if (m_ram->read32(m_cpuc_reg_request) & 0x20) {
+			if (m_ram->read32(m_cpuc_reg_request) & m_request_value) {
 				auto buffer = m_ram->read32(m_mbox_reg_imgbuf);
 				if (buffer == 0xffffffff) {
 					throw runtime_error("error retrieving block " + to_string(block));
@@ -1390,7 +1391,8 @@ class bfc_vflash : public rwx
 	uint32_t m_mbox_reg_cmstate;
 	uint32_t m_mbox_reg_imgreq;
 	uint32_t m_mbox_reg_imgbuf;
-	uint32_t m_cmstate_for_image;
+	uint32_t m_cmstate_value;
+	uint32_t m_request_value;
 };
 }
 
