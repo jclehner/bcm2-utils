@@ -1089,18 +1089,22 @@ struct bcm2_profile bcm2_profiles[] = {
 				.blocksize = 0x10000,
 				.parts = {
 					{ "bolt",           0x000000, 0x100000 },
-						{ "fsbl",       0x000000, 0x010000 },
-						{ "memsys1",    0x010000, 0x008000 },
-						{ "memsys2",    0x018000, 0x008000 },
-						{ "shmoo",      0x020000, 0x001000 },
-						{ "boardlist",  0x021000, 0x001000 },
-						{ "unknown",    0x022000, 0x001000 },
-						{ "ssbl",       0x230000, 0x06d000 },
+#if 1
+					// sub-partitions within "bolt"
+					{ "fsbl",           0x000000, 0x010000 },
+					{ "memsys1",        0x010000, 0x008000 },
+					{ "memsys2",        0x018000, 0x008000 },
+					{ "shmoo",          0x020000, 0x001000 },
+					{ "boardlist",      0x021000, 0x001000 },
+					{ "unknown",        0x022000, 0x001000 },
+					{ "ssbl",           0x230000, 0x06d000 },
+#endif
 					{ "cmnonvol1",      0x090000, 0x060000 },
 					{ "SSBL_ALT",       0x100000, 0x040000 },
 					{ "Stage2Locked",   0x140000, 0x090000 },
 					{ "macaddr",        0x1d0000, 0x030000 },
 					{ "BootConfig",     0x200000, 0x000400 },
+					// "BootConDSM test utility config"
 					{ "BootCon",        0x200400, 0x000400 },
 					{ "Trackers",       0x201000, 0x001000 },
 					{ "DDC",            0x202000, 0x002800 },
