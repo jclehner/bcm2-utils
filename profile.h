@@ -155,10 +155,12 @@ struct bcm2_addrspace {
 	// size of this address space. can be 0 to disable size
 	// check
 	uint32_t size;
+	// eraseblock size, for flash
+	uint32_t blocksize;
 	// 0 = automatic (4 for memory, 1 for everything else)
 	unsigned alignment;
 	// partitions within this address space
-	struct bcm2_partition parts[16];
+	struct bcm2_partition parts[32];
 	// read functions to read from this address space (can
 	// be left blank for ram segment)
 	struct bcm2_func read[BCM2_INTF_NUM];
