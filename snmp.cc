@@ -36,17 +36,36 @@ class snmp_bfc_ram : public rwx
 	{ return { 1, 4, 4}; }
 
 	virtual unsigned capabilities() const override
-	{ return cap_rw; }
+	{ return m_capabilities; }
+
+	virtual void set_interface(const interface::sp& intf) override
+	{
+		rwx::set_interface(intf);
+
+		try {
+			// check for exec support
+			run_mem_command(0, 4, CMD_EXEC, 0);
+			m_capabilities |= cap_exec;
+		} catch (const exception& e) {
+			logger::d() << e.what() << endl;
+		}
+	}
 
 	protected:
+	enum {
+		CMD_READ = 0,
+		CMD_WRITE = 1,
+		CMD_EXEC = 99
+	};
+
 	virtual std::string read_chunk(uint32_t offset, uint32_t length) override
 	{
-		run_mem_command(offset, length, false);
+		run_mem_command(offset, length, CMD_READ);
 		// data is a 32-bit int that represents the data at this offset
 		auto data = intf()->get(cd_engr_mem_data);
 		// FIXME this shouldn't be here
 		update_progress(offset, length);
-		return to_buf(hton<uint32_t>(data.integer));		
+		return to_buf(hton<uint32_t>(data.integer));
 	}
 
 	virtual std::string read_special(uint32_t offset, uint32_t length) override
@@ -64,25 +83,31 @@ class snmp_bfc_ram : public rwx
 		} else {
 			throw invalid_argument("invalid chunk size");
 		}
-		run_mem_command(offset, chunk.size(), true, value);
+		run_mem_command(offset, chunk.size(), CMD_WRITE, value);
 		// FIXME this shouldn't be here
 		update_progress(offset, chunk.size());
 		return true;
 	}
 
+	virtual bool exec_impl(uint32_t offset) override
+	{
+		run_mem_command(offset, 4, CMD_EXEC, 0);
+		return true;
+	}
+
 	private:
-	void run_mem_command(uint32_t offset, uint32_t length, bool write, uint32_t value = 0)
+	void run_mem_command(uint32_t offset, uint32_t length, uint32_t command, uint32_t value = 0)
 	{
 		vector<pair<string, snmp::var>> vars {
 			{ cd_engr_mem_addr, { offset, ASN_UNSIGNED }},
 			{ cd_engr_mem_size, { length, ASN_UNSIGNED } },
 		};
 
-		if (write) {
+		if (command != CMD_READ) {
 			vars.push_back({ cd_engr_mem_data, { value, ASN_UNSIGNED }});
 		}
 
-		vars.push_back({ cd_engr_mem_cmd, { write ? 1 : 0, ASN_INTEGER }});
+		vars.push_back({ cd_engr_mem_cmd, { command, ASN_INTEGER }});
 
 		intf()->set(vars);
 	}
@@ -91,6 +116,8 @@ class snmp_bfc_ram : public rwx
 	{
 		return dynamic_pointer_cast<snmp>(m_intf);
 	}
+
+	unsigned m_capabilities = cap_rw;
 };
 }
 
