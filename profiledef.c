@@ -1097,7 +1097,7 @@ struct bcm2_profile bcm2_profiles[] = {
 					{ "shmoo",          0x020000, 0x001000 },
 					{ "boardlist",      0x021000, 0x001000 },
 					{ "unknown",        0x022000, 0x001000 },
-					{ "ssbl",           0x230000, 0x06d000 },
+					{ "ssbl",           0x023000, 0x06d000 },
 #endif
 					{ "cmnonvol1",      0x090000, 0x060000 },
 					{ "SSBL_ALT",       0x100000, 0x040000 },
