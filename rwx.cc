@@ -1325,7 +1325,7 @@ class bfc_vflash : public rwx
 	}
 
 	protected:
-	virtual void init(uint32_t offset, uint32_t length, bool write)
+	virtual void init(uint32_t offset, uint32_t length, bool write) override
 	{
 		auto part = space().partition(offset);
 
