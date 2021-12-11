@@ -52,7 +52,8 @@ struct bcm2_profile bcm2_profiles[] = {
 			{
 				.name = "ram",
 				.parts = {
-						{ "bootloader", 0xbfc00000, 0 }
+						{ "bootloader", 0xbfc00000, 0    },
+						{ "ukey",       0xd384bfe0, 0x20 },
 				},
 			},
 			// this hack enables us to use the bfc_flash dumper on
@@ -1081,7 +1082,11 @@ struct bcm2_profile bcm2_profiles[] = {
 		.spaces = {
 			{
 				.name = "ram",
-				.min = 0x80000000
+				.min = 0x80000000,
+				.parts = {
+						{ "bootloader", 0xbfc00000, 0    },
+						{ "ukey",       0xd384bfe0, 0x20 },
+				},
 			},
 			{
 				.name = "flash0",
