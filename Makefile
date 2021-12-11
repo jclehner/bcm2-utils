@@ -8,11 +8,13 @@ CFLAGS += -Wall -Wno-sign-compare -g -DVERSION=\"$(VERSION)\"
 CXXFLAGS += $(CFLAGS) -std=c++14 -Wnon-virtual-dtor
 PREFIX ?= /usr/local
 UNAME ?= $(shell uname)
+SNMPLIB = -lsnmp
 
 MIPS ?= mips-linux-gnu-
 
 ifeq ($(UNAME),Darwin)
 	CFLAGS +=
+	SNMPLIB=-lnetsnmp
 else ifneq (,$(findstring MINGW,$(MSYSTEM)))
 	CFLAGS += -D_WIN32_WINNT=_WIN32_WINNT_VISTA
 	LDFLAGS += -lws2_32 -static
@@ -33,7 +35,7 @@ t_nonvol_OBJ = util.o nonvol2.o t_nonvol.o $(profile_OBJ)
 ifeq ($(WITH_SNMP), 1)
 	bcm2dump_OBJ += snmp.o
 	CFLAGS += -DBCM2DUMP_WITH_SNMP
-	LDFLAGS += -lsnmp
+	LDFLAGS += $(SNMPLIB)
 endif
 
 bcm2dump = bcm2dump$(BINEXT)
