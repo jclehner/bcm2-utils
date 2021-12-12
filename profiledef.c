@@ -1093,7 +1093,7 @@ struct bcm2_profile bcm2_profiles[] = {
 				.size = 0x400000,
 				.blocksize = 0x10000,
 				.parts = {
-					{ "bolt",           0x000000, 0x100000 },
+					{ "bolt",           0x000000, 0x090000 },
 #if 1
 					// sub-partitions within "bolt"
 					{ "fsbl",           0x000000, 0x010000 },
