@@ -413,6 +413,9 @@ class addrspace
 		uint32_t size() const
 		{ return m_p->size; }
 
+		uint32_t end() const
+		{ return offset() + size(); }
+
 		std::string altname() const
 		{ return m_p->altname[0] ? m_p->altname : name(); }
 

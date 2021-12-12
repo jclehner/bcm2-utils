@@ -442,7 +442,7 @@ addrspace::addrspace(const bcm2_addrspace* a, const profile& p)
 	if (m_p->size) {
 		m_size = m_p->size;
 		if (m_kseg1 && (m_p->min + m_size) > (m_p->min | m_kseg1)) {
-			throw invalid_argument(p.name() + ": " + name() 
+			throw invalid_argument(p.name() + ": " + name()
 					+ ": size extends into kseg1");
 		}
 	} else {
@@ -460,6 +460,15 @@ addrspace::addrspace(const bcm2_addrspace* a, const profile& p)
 		check_range(part->offset, part->size, string("partition ") + part->name);
 		m_partitions.push_back(part);
 	}
+
+	sort(m_partitions.begin(), m_partitions.end(), [](const class part& a, const class part& b) {
+			if (a.offset() == b.offset()) {
+				// put parent partitions first
+				return a.size() > b.size();
+			}
+
+			return a.offset() < b.offset();
+	});
 
 	parse_funcs(*this, p, m_p->read, m_read_funcs);
 	parse_funcs(*this, p, m_p->write, m_write_funcs);
@@ -571,11 +580,11 @@ void profile::print_to_stdout(bool verbose) const
 	cout << string(name().size() + 2 + pretty().size(), '=') << endl;
 
 	//cout << row("baudrate", 12, baudrate()) << endl;
-	cout << row("pssig", 12, "0x" + to_hex(pssig())) << endl;
-	cout << row("blsig", 12, "0x" + to_hex(blsig())) << endl;
+	cout << row("pssig", 20, "0x" + to_hex(pssig())) << endl;
+	cout << row("blsig", 20, "0x" + to_hex(blsig())) << endl;
 
 	for (auto space : spaces()) {
-		cout << endl << rpad(space.name(), 12) << "  0x" << to_hex(space.min());
+		cout << endl << rpad(space.name(), 20) << "  0x" << to_hex(space.min());
 		if (space.size()) {
 			cout << " - 0x" << to_hex(space.min() + space.size() - 1);
 			cout << "  (" << lpad(to_pretty_size(space.size()), 9) << ")  ";
@@ -589,14 +598,36 @@ void profile::print_to_stdout(bool verbose) const
 			cout << "RO";
 		}
 
-		cout << endl << string(54, '-') << endl;
+		cout << endl << string(62, '-') << endl;
 
 		if (space.partitions().empty()) {
 			cout << "(no partitions defined)" << endl;
 		}
 
+		bool child = false;
+		uint32_t parent_offset = 0;
+		uint32_t parent_end = 0;
+
 		for (auto part : space.partitions()) {
-				cout << rpad(part.name(), 12) << "  0x" << to_hex(part.offset());
+				//cout << rpad(part.name(), 20) << "  0x" << to_hex(part.offset());
+
+				if (child && (part.offset() > parent_end || part.end() > parent_end)) {
+					child = false;
+					parent_offset = part.offset();
+					parent_end = part.end();
+				} else if (part.offset() >= parent_offset && part.end() < parent_end) {
+					child = true;
+				} else {
+					parent_offset = part.offset();
+					parent_end = part.end();
+				}
+
+				if (child) {
+					cout << "- ";
+				}
+
+				cout << rpad(part.name(), child ? 18 : 20) << "  0x" << to_hex(part.offset());
+
 				if (part.size()) {
 					cout << " - 0x" << to_hex(part.offset() + part.size() - 1) << "  ("
 							<< lpad(to_pretty_size(part.size()), 9) << ")";
