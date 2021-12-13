@@ -1285,7 +1285,7 @@ string bfc_cmcfg::parse_chunk_line(const string& line, uint32_t)
 	return linebuf;
 }
 
-class bfc_vflash : public rwx
+class bfc_bootassist : public rwx
 {
 	public:
 	virtual limits limits_read() const override
@@ -1303,12 +1303,12 @@ class bfc_vflash : public rwx
 		m_ram = rwx::create(intf, "ram");
 
 		auto v = intf->version();
-		m_cpuc_reg_request = v.get_opt_num("vflash:cpuc_reg_request", 0xd3800044);
-		m_mbox_reg_cmstate = v.get_opt_num("vflash:mbox_reg_cmstate", 0xd3800084);
-		m_mbox_reg_imgreq = v.get_opt_num("vflash:mbox_reg_imgreq", 0xd3800090);
-		m_mbox_reg_imgbuf = v.get_opt_num("vflash:mbox_reg_imgbuf", 0xd3800094);
-		m_cmstate_value = v.get_opt_num("vflash:cmstate_value", 7);
-		m_request_value = v.get_opt_num("vflash:request_value", 0x20);
+		m_cpuc_reg_request = v.get_opt_num("bootassist:cpuc_reg_request", 0xd3800044);
+		m_mbox_reg_cmstate = v.get_opt_num("bootassist:mbox_reg_cmstate", 0xd3800084);
+		m_mbox_reg_imgreq = v.get_opt_num("bootassist:mbox_reg_imgreq", 0xd3800090);
+		m_mbox_reg_imgbuf = v.get_opt_num("bootassist:mbox_reg_imgbuf", 0xd3800094);
+		m_cmstate_value = v.get_opt_num("bootassist:cmstate_value", 7);
+		m_request_value = v.get_opt_num("bootassist:request_value", 0x20);
 	}
 
 	static bool is_supported(const interface::sp& intf, const addrspace& space)
@@ -1730,8 +1730,8 @@ rwx::sp rwx::create(const interface::sp& intf, const string& type, bool safe)
 			return create_rwx<bfc_ram>(intf, space);
 		} else if (!safe && bfc_flash2::is_supported(intf, space.name())) {
 			return create_rwx<bfc_flash2>(intf, space);
-		} else if (!safe && bfc_vflash::is_supported(intf, space)) {
-			return create_rwx<bfc_vflash>(intf, space);
+		} else if (!safe && bfc_bootassist::is_supported(intf, space)) {
+			return create_rwx<bfc_bootassist>(intf, space);
 		} else {
 			return create_rwx<bfc_flash>(intf, space);
 		}
@@ -1742,8 +1742,8 @@ rwx::sp rwx::create(const interface::sp& intf, const string& type, bool safe)
 			throw runtime_error("non-snmp interface");
 		}
 
-		if (!safe && bfc_vflash::is_supported(intf, space)) {
-			return create_rwx<bfc_vflash>(intf, space);
+		if (!safe && bfc_bootassist::is_supported(intf, space)) {
+			return create_rwx<bfc_bootassist>(intf, space);
 		}
 
 		auto ret = p->create_rwx(space, safe);
