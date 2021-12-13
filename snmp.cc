@@ -4,11 +4,6 @@ using namespace std;
 
 namespace bcm2dump {
 namespace {
-struct snmp_lib {
-	snmp_lib()
-	{ init_snmp("bcm2dump"); }
-} lib;
-
 const string cd_engr_enable = "1.3.6.1.4.1.4413.2.99.1.1.1.2.1.2.1";
 
 const string cd_engr_base = "1.3.6.1.4.1.4413.2.99.1.1.3.1";
@@ -119,10 +114,17 @@ class snmp_bfc_ram : public rwx
 
 	unsigned m_capabilities = cap_rw;
 };
+
+bool snmp_initialized = false;
 }
 
 snmp::snmp(string peer)
 {
+	if (!snmp_initialized) {
+		init_snmp("bcm2dump");
+		snmp_initialized = true;
+	}
+
 	snmp_session session;
 	snmp_sess_init(&session);
 	session.peername = &peer[0];
