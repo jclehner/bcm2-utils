@@ -1141,8 +1141,8 @@ struct bcm2_profile bcm2_profiles[] = {
 		.kseg1mask = 0x20000000,
 		.cfg_flags = BCM2_CFG_ENC_AES256_ECB | BCM2_CFG_PAD_ZEROBLK |
 			BCM2_CFG_FMT_GWS_PAD_OPTIONAL,
-#if 0
-		.cfg_md5key = "544d4d5f544337323030000000000000",
+#if 1
+		.cfg_md5key = "544d4d5f544337323130000000000000",
 #endif
 		.cfg_keyfun = &keyfun_tc7200,
 		.cfg_defkeys = {
@@ -1192,11 +1192,11 @@ struct bcm2_profile bcm2_profiles[] = {
 			{
 				.intf = BCM2_INTF_BFC,
 				.options = {
-					BCM2_VAL_U32("bfc:conthread_priv_off", 0x74),
+//					BCM2_VAL_U32("bfc:conthread_priv_off", 0x74),
 					BCM2_VAL_STR("bfc:su_password", "brcm"),
 					BCM2_VAL_U32("bfc:flash_reinit_on_retry", true),
 					BCM2_VAL_U32("bfc:flash_read_direct", true),
-					BCM2_VAL_U32("bfc:flash_readsize", 8192),
+					BCM2_VAL_U32("bfc:flash_readsize", 2048),
 				},
 			},
 #if 0
