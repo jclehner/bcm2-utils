@@ -1133,6 +1133,90 @@ struct bcm2_profile bcm2_profiles[] = {
 			},
 		}
 	},
+	{
+		.name = "tc7210",
+		.pretty = "Technicolor TC7210",
+		.arch = BCM2_3384,
+		.baudrate = 115200,
+		.kseg1mask = 0x20000000,
+		.cfg_flags = BCM2_CFG_ENC_AES256_ECB | BCM2_CFG_PAD_ZEROBLK |
+			BCM2_CFG_FMT_GWS_PAD_OPTIONAL,
+#if 0
+		.cfg_md5key = "544d4d5f544337323030000000000000",
+#endif
+		.cfg_keyfun = &keyfun_tc7200,
+		.cfg_defkeys = {
+			"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+			"0001020304050607080910111213141516171819202122232425262728293031"
+		},
+		.magic = {
+			{ 0x80000818, "2.5.0beta1" }			
+		},
+		.spaces = {
+			{
+				.name = "ram",
+				.min = 0x80000000,
+				.size = 256 * 1024 * 1024,
+#if 0
+				.parts = {
+					{ "bootloader", 0x80000000, 0x010000 },
+					{ "image",   0x85f00000, 0x6c0000 },
+					{ "linux",      0x87000000, 0x480000 }
+				}
+#endif
+			},
+			{
+				.name = "nvram",
+				.size = 0x100000,
+				.parts = {
+					{ "bootloader", 0x00000, 0x10000 },
+					{ "permnv",     0x10000, 0x20000, "perm" },
+					{ "unknown",    0x30000, 0x90000 },
+					{ "dynnv",      0xc0000, 0x40000, "dyn" }
+				},
+			},
+			{
+				.name = "flash",
+				.size = 128 * 1024 * 1024,
+				.parts = {
+					{ "linuxapps", 0x0000000, 0x2c00000, "image3e" },
+					{ "image1",    0x2c00000, 0x1000000 },
+					{ "image2",    0x3c00000, 0x1000000 },
+					{ "linux",     0x4c00000, 0x0800000, "image3" },
+					{ "linuxkfs",  0x5400000, 0x2000000, "" },
+					{ "dhtml",     0x7400000, 0x0c00000 },
+				},
+			},
+		},
+		.versions = { 
+			{
+				.intf = BCM2_INTF_BFC,
+				.options = {
+					BCM2_VAL_U32("bfc:conthread_priv_off", 0x74),
+					BCM2_VAL_STR("bfc:su_password", "brcm"),
+					BCM2_VAL_U32("bfc:flash_reinit_on_retry", true),
+					BCM2_VAL_U32("bfc:flash_read_direct", true),
+					BCM2_VAL_U32("bfc:flash_readsize", 8192),
+				},
+			},
+#if 0
+			{
+				.version = "2.5.0beta1",
+				.intf = BCM2_INTF_BFC,
+				.magic = { 0x80000818, "2.5.0beta1" },
+				.spaces = {
+						{
+							.name = "flash",
+							.open = { 0x803f72e4, BCM2_ARGS_OE },
+							.read = { 0x803f6d90, BCM2_READ_FUNC_BOL,
+									.patch = {{ 0x803f6f3c, 0x10000018 }},
+							}
+						},
+				}
+			},
+#endif			
+		},
+	},
 	// end marker
 	{ .name = "" },
 };
