@@ -23,10 +23,13 @@ Partially supported:
 * Motorola MG7550
 * Motorola MB7420
 * Sagemcom F@ST 3686 AC
+* Technicolor TC7210
 
 Devices _not_ listed above may still be supported, but with less features! It should be easy to add support for other devices. Some pointers can be found [below](#writing-a-device-profile).
 
 Binaries for macOS and Windows are available [here](https://github.com/jclehner/bcm2-utils/releases).
+
+For Arch-based Linux distros, there's [a package](https://aur.archlinux.org/packages/bcm2-utils-git) on the Arch User Repository. 
 
 ## bcm2dump
 ```
