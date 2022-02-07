@@ -1141,7 +1141,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		.kseg1mask = 0x20000000,
 		.cfg_flags = BCM2_CFG_ENC_AES256_ECB | BCM2_CFG_PAD_ZEROBLK |
 			BCM2_CFG_FMT_GWS_PAD_OPTIONAL,
-		.cfg_md5key = "544d4d5f544337323130000000000000",
+		.cfg_md5key = "544d4d5f544337323030000000000000",
 		.cfg_keyfun = &keyfun_tc7200,
 		.cfg_defkeys = {
 			"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
