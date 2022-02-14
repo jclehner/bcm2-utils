@@ -1136,6 +1136,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "tc7210",
 		.pretty = "Technicolor TC7210",
+		.pssig = 0xa82c,
 		.arch = BCM2_3384,
 		.baudrate = 115200,
 		.kseg1mask = 0x20000000,
