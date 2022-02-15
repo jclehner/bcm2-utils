@@ -1137,6 +1137,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		.name = "tc7210",
 		.pretty = "Technicolor TC7210",
 		.pssig = 0xa82c,
+		.blsig = 0x3384,
 		.arch = BCM2_3384,
 		.baudrate = 115200,
 		.kseg1mask = 0x20000000,
@@ -1149,20 +1150,16 @@ struct bcm2_profile bcm2_profiles[] = {
 			"0001020304050607080910111213141516171819202122232425262728293031"
 		},
 		.magic = {
-			{ 0x80000818, "2.5.0beta1" }			
+			{ 0x80000818, "2.5.0beta1" }
 		},
 		.spaces = {
 			{
 				.name = "ram",
 				.min = 0x80000000,
 				.size = 256 * 1024 * 1024,
-#if 0
 				.parts = {
-					{ "bootloader", 0x80000000, 0x010000 },
-					{ "image",   0x85f00000, 0x6c0000 },
-					{ "linux",      0x87000000, 0x480000 }
-				}
-#endif
+					{ "bootloader", 0x83f80000, 0x010000 },
+				},
 			},
 			{
 				.name = "nvram",
@@ -1187,7 +1184,7 @@ struct bcm2_profile bcm2_profiles[] = {
 				},
 			},
 		},
-		.versions = { 
+		.versions = {
 			{
 				.intf = BCM2_INTF_BFC,
 				.options = {
@@ -1200,22 +1197,6 @@ struct bcm2_profile bcm2_profiles[] = {
 					BCM2_VAL_U32("bfc:flash_readsize", 2048),
 				},
 			},
-#if 0
-			{
-				.version = "2.5.0beta1",
-				.intf = BCM2_INTF_BFC,
-				.magic = { 0x80000818, "2.5.0beta1" },
-				.spaces = {
-						{
-							.name = "flash",
-							.open = { 0x803f72e4, BCM2_ARGS_OE },
-							.read = { 0x803f6d90, BCM2_READ_FUNC_BOL,
-									.patch = {{ 0x803f6f3c, 0x10000018 }},
-							}
-						},
-				}
-			},
-#endif			
 		},
 	},
 	// end marker
