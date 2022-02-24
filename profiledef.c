@@ -136,6 +136,15 @@ struct bcm2_profile bcm2_profiles[] = {
 		},
 	},
 	{
+		.name = "cg3100",
+		.pretty = "Netgear CG3100",
+		.cfg_flags = BCM2_CFG_FMT_GWS_FULL_ENC | BCM2_CFG_ENC_SUB_16x16 | BCM2_CFG_FMT_GWS_CLEN_PREFIX | BCM2_CFG_PAD_01BLK,
+		.cfg_md5key = "3250736c633b752865676d64302d2778",
+		.spaces = {
+				{ .name = "ram" },
+		},
+	},
+	{
 		.name = "cg3101",
 		.pretty = "Netgear CG3101",
 		.pssig = 0xa0e7,
