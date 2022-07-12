@@ -162,6 +162,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "cbw383zn",
 		.pretty = "NetMASTER CBW-383ZN",
+		.baudrate = 115200,
 		.arch = BCM2_3383,
 		.pssig = 0x8364,
 		.blsig = 0x3383,
@@ -219,6 +220,13 @@ struct bcm2_profile bcm2_profiles[] = {
 				.version = "2.4.0",
 				.intf = BCM2_INTF_BLDR,
 				.magic = { 0x83f8a9ac, "2.4.0" },
+				.printf = 0x83f88174,
+				.spaces = {
+					{
+						.name = "flash",
+						.read = { 0x83f810e4, BCM2_READ_FUNC_OBL }
+					}
+				}
 			},
 		},
 	},
