@@ -346,7 +346,7 @@ bool bootloader::check_for_prompt(const string& line) const
 		return false;
 	}
 
-	wait_quiet(20);
+	wait_quiet(200);
 	return true;
 }
 
