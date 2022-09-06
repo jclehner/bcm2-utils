@@ -1317,7 +1317,7 @@ class bfc_bootassist : public rwx
 			return false;
 		}
 
-		if (space.name() != "flash1" && space.name() != "flash") {
+		if (space.name() != "flash1") {
 			return false;
 		}
 
