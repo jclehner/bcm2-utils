@@ -41,15 +41,16 @@ endif
 bcm2dump = bcm2dump$(BINEXT)
 bcm2cfg = bcm2cfg$(BINEXT)
 psextract = psextract$(BINEXT)
+bcm2boltenv = bcm2boltenv$(BINEXT)
 
 define PackageRelease
-	$(STRIP) bcm2cfg$(2) bcm2dump$(2) psextract$(2)
-	zip bcm2utils-$(VERSION)-$(1).zip README.md bcm2cfg$(2) bcm2dump$(2) psextract$(2)
+	$(STRIP) bcm2cfg$(2) bcm2dump$(2) psextract$(2) bcm2boltenv$(2)
+	zip bcm2utils-$(VERSION)-$(1).zip README.md bcm2cfg$(2) bcm2dump$(2) psextract$(2) bcm2boltenv$(2)
 endef
 
 .PHONY: all clean mrproper
 
-all: $(bcm2dump) $(bcm2cfg) $(psextract)
+all: $(bcm2dump) $(bcm2cfg) $(psextract) $(bcm2boltenv)
 
 release: clean all
 
@@ -67,6 +68,7 @@ ifeq ($(MSYSTEM), MINGW32)
 release-mingw32: release release-win32-extbuild
 endif
 
+
 $(bcm2cfg): $(bcm2cfg_OBJ)
 	$(CXX) $(CXXFLAGS) $(bcm2cfg_OBJ) -o $@ $(bcm2cfg_LIBS) $(LDFLAGS)
 
@@ -75,6 +77,9 @@ $(bcm2dump): $(bcm2dump_OBJ)
 
 $(psextract): $(psextract_OBJ)
 	$(CXX) $(CXXFLAGS) $(psextract_OBJ) -o $@ $(LDFLAGS)
+
+$(bcm2boltenv): bcm2boltenv.o util.o
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
 t_nonvol: $(t_nonvol_OBJ)
 	$(CXX) $(CXXFLAGS) $(t_nonvol_OBJ) -o $@ $(LDFLAGS)
@@ -112,3 +117,4 @@ install: all
 	install -m 755 $(bcm2cfg) $(PREFIX)/bin
 	install -m 755 $(bcm2dump) $(PREFIX)/bin
 	install -m 755 $(psextract) $(PREFIX)/bin
+	install -m 755 $(bcm2boltenv) $(PREFIX)/bin
