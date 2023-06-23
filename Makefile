@@ -3,8 +3,8 @@ CXX ?= $(CROSS)g++
 STRIP = $(CROSS)strip
 OBJCOPY = $(CROSS)objcopy
 LIBS ?=
-VERSION = $(shell git describe --always)
-CFLAGS += -Wall -Wno-sign-compare -g -DVERSION=\"$(VERSION)\"
+VERSION = $(shell git describe --always || cat version.txt)
+CFLAGS += -Wall -Wno-sign-compare -g '-DVERSION="$(VERSION)"'
 CXXFLAGS += $(CFLAGS) -std=c++14 -Wnon-virtual-dtor
 PREFIX ?= /usr/local
 UNAME ?= $(shell uname)
