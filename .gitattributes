@@ -1,2 +1,3 @@
 *.dev text eol=crlf
 * text eol=lf
+version.txt export-subst
