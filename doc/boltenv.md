@@ -1,6 +1,10 @@
 BOLT environment variable store
 ===============================
 
+This format is used by Broadcom's BOLT bootloader on ARM platforms. The environment variables
+are stored on a separate flash partition. Note that this partition may be encrypted using a
+device-specific unique key.
+
 Numbers are stored in little-endian, unless otherwise noted.
 
 | Offset | Type     | Name        | Comment                                     |
@@ -14,7 +18,7 @@ Numbers are stored in little-endian, unless otherwise noted.
 | 24     | u32      | checksum    |                                             |
 | 28     | u8[size] | variables   |                                             |
 
-The data is made up of multiple blocks, each preceeded by a one byte type specifier.
+The data is made up of multiple blocks, each preceded by a one byte type specifier.
 A type specifier of `0x00` means end of data. The following types are currently known:
 
 ###### Type `0x01` (short variable)
@@ -26,11 +30,11 @@ A type specifier of `0x00` means end of data. The following types are currently 
 | 2      | u8         | flags       | Bitmask: `0x01` = temporary, `0x02` = ro    |
 | 3      | u8[size-1] | data        |                                             |
 
-The `data` field contains a `name=value` string, where everything up to the first
-`=` sign is interpreted as the variable name. The code of Broadcom's `boltenv` tool doesn't
-put any limitations on the characters used as the variable name.
+The `data` field contains a `name=value` string, where everything up to the first `=` sign is
+interpreted as the variable name. The code of Broadcom's `boltenv` tool doesn't make any effort
+to validate the characters used as the variable name.
 
-Variables marked temporary aren't saved when the variable store is commited to storage.
+Variables marked temporary aren't saved when the variable store is committed to storage.
 
 ###### Type `0x02` (long variable?)
 

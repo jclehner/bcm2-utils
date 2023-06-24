@@ -1,1 +1,1 @@
-Moved to [doc/firmware.md](doc/firmware.md)
+Moved to [doc/programstore.md](doc/programstore.md)
