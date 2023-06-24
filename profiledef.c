@@ -1216,6 +1216,61 @@ struct bcm2_profile bcm2_profiles[] = {
 			},
 		},
 	},
+	{
+		.name = "tm902s",
+		.pretty = "Arris TM902S",
+		.arch = BCM2_338221,
+		.baudrate = 115200,
+		.pssig = 0xb802,
+		.blsig = 0x3382,
+		.magic = {
+			{ 0x82f00000, "\xb8\x02" }
+		},
+		.spaces = {
+			{
+				.name = "ram",
+				.min = 0x80000000,
+				.size = 64 * 1024 * 1024,
+				.parts = {
+					{ "image",      0x82f00000, 0x3e0000 },
+					{ "bootloader", 0x83f80000, 0x020000 },
+				}
+			},
+			{
+				.name = "flash",
+				.size = 8 * 1024 * 1024,
+				.parts = {
+					{ "bootloader", 0x000000, 0x008000 },
+					{ "unknown",    0x008000, 0x008000 },
+					{ "permnv",     0x010000, 0x010000, "perm" },
+					{ "image1",     0x020000, 0x3e0000 },
+					{ "image2",     0x400000, 0x3e0000 },
+					{ "dynnv",      0x7e0000, 0x010000, "dyn" }
+				}
+			},
+		},
+		.versions = {
+			{
+				.intf = BCM2_INTF_BLDR,
+				.rwcode = 0x83f00000,
+				.buffer = 0x82f10000
+			},
+			{
+				.version = "2.3.1",
+				.intf = BCM2_INTF_BLDR,
+				.magic = { 0x83f89f4c, "2.3.1" },
+				.printf = 0x83f878f4,
+				.spaces = {
+					{
+						.name = "flash",
+						.read = { 0x83f80d2c, .mode = BCM2_READ_FUNC_OBL },
+						.write = { 0x83f80bb4, 0 },
+						.erase = { 0x83f80f1c, BCM2_ERASE_FUNC_OS },
+					},
+				},
+			},
+		},
+	},
 	// end marker
 	{ .name = "" },
 };
