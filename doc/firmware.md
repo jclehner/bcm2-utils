@@ -12,7 +12,7 @@ CPU for running Linux, while the CM firmware itself still runs on a MIPS core.
 
 ## File format
 
-Non-ProgramStore files can be extracted using the `psextract`utility (still work in progress).
+Non-ProgramStore files can be extracted using the `psextract` utility (still work in progress).
 
 Firmware files are usually encapsulated in Broadcom's [ProgramStore](https://github.com/Broadcom/aeolus/tree/master/ProgramStore) format,
 which uses a 92-byte header. Since
@@ -47,8 +47,7 @@ See the corresponding [source file](https://github.com/Broadcom/aeolus/blob/mast
 Firmware files are may be preceeded by a code-signing certificate. In these files,
 the actual data is preceeded by [ASN.1](https://en.wikipedia.org/wiki/Abstract_Syntax_Notation_One) encoded data,
 and usually starts with `0x30 0x82` (`SEQUENCE`, 2 byte length field follows). For example, if a file starts
-with `0x30 0x82 0x06 0x0d`, skip to offset `4 + 0x60d`. Usually, there is a two-byte padding of `0x00 0x00` before
-the actual image.
+with `0x30 0x82 0x06 0x0d`, skip to offset `4 + 0x60d`, where you should find the end-of-data marker `0x00 0x00`.
 
 ###### Monolithic image
 
@@ -57,7 +56,7 @@ Some firmware files are so-called monolithic images, which contain multiple imag
 
 | Offset | Type     | Name  | Comment                                     |
 |-------:|----------|-------|---------------------------------------------|
-| 0      | u32      | magic-| `0x4d4f4e4f` (`MONO`)                       |
+| 0      | u32      | magic | `0x4d4f4e4f` (`MONO`)                       |
 | 4      | u16      | sig   | Device-dependent signature (similar to ProgramStore signature) |
 | 6      | byte     | vmaj  | Major version                               |
 | 7      | byte     | vmin  | Minor version
@@ -70,18 +69,18 @@ The exact meaning of the image numbers specified im `images` varies, depending
 on the platform, although though `0` is usually the bootloader. Below are
 examples for the BCM338x and BCM3390 platforms:
 
-| n      | BCM338{3,4}   | BCM3390      |
-|-------:|---------------|--------------|
-| 0      | `bootloader`  | `BOOTL` |
-| 1      | `image1`      | `DOCSIS` |
-| 2      | `image2`      | `SVM` |
-| 3      | `linux`       | `RG` |
-| 4      | `linuxapps`   | `STB` |
-| 5      | `permv`       | `APPS` |
-| 6      | `dhtml`       | `BOLT` |
+| n      | BCM338{3,4}   | BCM3390   |
+|-------:|---------------|-----------|
+| 0      | `bootloader`  | `BOOTL`   |
+| 1      | `image1`      | `DOCSIS`  |
+| 2      | `image2`      | `SVM`     |
+| 3      | `linux`       | `RG`      |
+| 4      | `linuxapps`   | `STB`     |
+| 5      | `permv`       | `APPS`    |
+| 6      | `dhtml`       | `BOLT`    |
 | 7      | `dynnv`       | `DEVTREE` |
-| 8      | `linuxkfs`    | `HYP` |
-| 9      | N/A           | `KERNEL` |
+| 8      | `linuxkfs`    | `HYP`     |
+| 9      | N/A           | `KERNEL`  |
 
 ###### ProgramStore image
 
