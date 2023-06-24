@@ -7,8 +7,9 @@ firmware is essentially just one big application, running in RAM, without a file
 Some devices contain two processors with shared RAM, where Linux runs on the other processor, providing
 NAS or media server features. An interface exists for passing commands between the two systems.
 
-While previous Broadcom chipsets were MIPS only, the BCM3390 SoC appears to use an ARM Cortex-A15 quad-core
-CPU for running Linux, while the CM firmware itself still runs on a MIPS core.
+While previous Broadcom chipsets were MIPS only, the BCM3390 SoC uses an ARM Cortex-A15 quad-core
+CPU for running Linux (used for all routing aspects), while the CM firmware itself still runs on a
+MIPS core (handling all DOCSIS related stuff).
 
 ## File format
 
