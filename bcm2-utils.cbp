@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="bcm2-utils" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="bcm2cfg">
+				<Option output="bcm2cfg" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add option="-Wall -Wno-sign-compare" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+			<Target title="bcm2dump">
+				<Option output="bcm2dump" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add option="-Wall -Wno-sign-compare" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+			<Target title="psextract">
+				<Option output="psextract" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add option="-Wall -Wno-sign-compare" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+			<Target title="bcm2boltenv">
+				<Option output="bcm2boltenv" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add option="-Wall -Wno-sign-compare" />
+					<Add directory="include" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<VirtualTargets>
+			<Add alias="all" targets="bcm2cfg;bcm2dump;psextract;bcm2boltenv;" />
+		</VirtualTargets>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add option="-std=c++14" />
+			<Add option="-std=c99" />
+			<Add option="-m32" />
+			<Add option='-DVERSION=&quot;\&quot;v0.9.6\&quot;&quot;' />
+			<Add option="-DWINVER=0x0600" />
+			<Add option="-D_WIN32_WINNT=0x0600" />
+			<Add option="-D__USE_MINGW_ANSI_STDIO" />
+		</Compiler>
+		<Linker>
+			<Add option="-O2" />
+			<Add option="-static" />
+			<Add option="-m32" />
+			<Add option="-lws2_32" />
+		</Linker>
+		<Unit filename="asmdef.h">
+			<Option target="bcm2cfg" />
+			<Option target="bcm2dump" />
+		</Unit>
+		<Unit filename="bcm2boltenv.cc">
+			<Option target="bcm2boltenv" />
+		</Unit>
+		<Unit filename="bcm2cfg.cc">
+			<Option target="bcm2cfg" />
+		</Unit>
+		<Unit filename="bcm2dump.cc">
+			<Option target="bcm2dump" />
+		</Unit>
+		<Unit filename="crypto.cc">
+			<Option target="bcm2cfg" />
+			<Option target="bcm2dump" />
+		</Unit>
+		<Unit filename="crypto.h">
+			<Option target="bcm2cfg" />
+			<Option target="bcm2dump" />
+		</Unit>
+		<Unit filename="gwsettings.cc">
+			<Option target="bcm2cfg" />
+		</Unit>
+		<Unit filename="gwsettings.h">
+			<Option target="bcm2cfg" />
+		</Unit>
+		<Unit filename="interface.cc">
+			<Option target="bcm2dump" />
+		</Unit>
+		<Unit filename="interface.h">
+			<Option target="bcm2dump" />
+		</Unit>
+		<Unit filename="io.cc">
+			<Option target="bcm2dump" />
+		</Unit>
+		<Unit filename="io.h">
+			<Option target="bcm2dump" />
+		</Unit>
+		<Unit filename="nonvol2.cc">
+			<Option target="bcm2cfg" />
+		</Unit>
+		<Unit filename="nonvol2.h">
+			<Option target="bcm2cfg" />
+		</Unit>
+		<Unit filename="nonvoldef.cc">
+			<Option target="bcm2cfg" />
+		</Unit>
+		<Unit filename="nonvoldef.h">
+			<Option target="bcm2cfg" />
+		</Unit>
+		<Unit filename="profile.cc">
+			<Option target="bcm2cfg" />
+			<Option target="bcm2dump" />
+		</Unit>
+		<Unit filename="profile.h">
+			<Option target="bcm2cfg" />
+			<Option target="bcm2dump" />
+		</Unit>
+		<Unit filename="profiledef.c">
+			<Option compilerVar="CC" />
+			<Option target="bcm2cfg" />
+			<Option target="bcm2dump" />
+		</Unit>
+		<Unit filename="progress.c">
+			<Option compilerVar="CC" />
+			<Option target="bcm2dump" />
+		</Unit>
+		<Unit filename="progress.h">
+			<Option target="bcm2dump" />
+		</Unit>
+		<Unit filename="ps.cc">
+			<Option target="bcm2dump" />
+			<Option target="psextract" />
+		</Unit>
+		<Unit filename="ps.h">
+			<Option target="bcm2dump" />
+			<Option target="psextract" />
+		</Unit>
+		<Unit filename="psextract.cc">
+			<Option target="psextract" />
+		</Unit>
+		<Unit filename="rwcode2.c">
+			<Option compilerVar="CC" />
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="rwcode2.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="rwcode2.inc">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="rwx.cc">
+			<Option target="bcm2dump" />
+		</Unit>
+		<Unit filename="rwx.h">
+			<Option target="bcm2dump" />
+		</Unit>
+		<Unit filename="snmp.cc">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="snmp.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="util.cc">
+			<Option target="bcm2cfg" />
+			<Option target="bcm2dump" />
+			<Option target="psextract" />
+		</Unit>
+		<Unit filename="util.h">
+			<Option target="bcm2cfg" />
+			<Option target="bcm2dump" />
+			<Option target="psextract" />
+		</Unit>
+		<Extensions />
+	</Project>
+</CodeBlocks_project_file>
