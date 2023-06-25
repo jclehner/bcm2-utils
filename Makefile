@@ -12,9 +12,10 @@ SNMPLIB = -lsnmp
 MIPS ?= mips-linux-gnu-
 
 ifeq ($(OS),Windows_NT)
-	CFLAGS += -D_WIN32_WINNT=_WIN32_WINNT_VISTA
-	LDFLAGS += -lws2_32 -static
+	CFLAGS += -D_WIN32_WINNT=_WIN32_WINNT_VISTA -Iinclude
+	LDFLAGS += -lws2_32 -static-libstdc++ -static-libgcc
 	BINEXT = .exe
+	CC = gcc
 else ifeq ($(shell uname),Darwin)
 	CFLAGS +=
 	SNMPLIB=-lnetsnmp
@@ -43,7 +44,7 @@ psextract = psextract$(BINEXT)
 bcm2boltenv = bcm2boltenv$(BINEXT)
 
 define PackageRelease
-	zip bcm2utils-$(VERSION)-$(1).zip README.md bcm2cfg$(2) bcm2dump$(2) psextract$(2) bcm2boltenv$(2)
+	zip bcm2utils-$(VERSION)-$(1).zip README.md $(bcm2dump) $(bcm2cfg) $(psextract) $(bcm2boltenv)
 endef
 
 .PHONY: all clean mrproper
