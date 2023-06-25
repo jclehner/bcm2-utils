@@ -17,6 +17,9 @@
  *
  */
 
+
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 #include <stdexcept>
 #include <cstring>
 #include "crypto.h"
