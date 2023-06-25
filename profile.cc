@@ -653,12 +653,12 @@ void profile::parse_opt_override(const string& str)
 		val.type = BCM2_TYPE_STR;
 	} else if (tok[1].size() > 2 && tok[1][1] == ':') {
 		switch (tok[1][0]) {
-			case 'n':
-				val.type = BCM2_TYPE_U32;
-				break;
 			case 'x':
 				hex = true;
 				// fall through
+			case 'n':
+				val.type = BCM2_TYPE_U32;
+				break;
 			case 's':
 				val.type = BCM2_TYPE_STR;
 				break;
