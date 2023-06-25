@@ -100,6 +100,7 @@ enum bcm2_arch
 	BCM2_3368 = 0x3368,
 	BCM2_3380 = 0x3380,
 	BCM2_3382 = 0x3382,
+	BCM2_338221 = 0x338221,
 	BCM2_3383 = 0x3383,
 	BCM2_3384 = 0x3384,
 	BCM2_3390 = 0x3390,
@@ -221,7 +222,7 @@ struct bcm2_version {
 	uint32_t rwcode;
 	// location in memory where we can store read images
 	uint32_t buffer;
-	// length of buffer (if 0, buffer will be checked 
+	// length of buffer (if 0, buffer will be checked
 	// against "ram" address space)
 	uint32_t buflen;
 	// address of a function that behaves like printf:
@@ -264,7 +265,7 @@ struct bcm2_profile {
 	// settings regarding the config dump format
 	uint32_t cfg_flags;
 	// a key that is appended to the configuration file data
-	// before calculating its checksum. specify as a hex string 
+	// before calculating its checksum. specify as a hex string
 	char cfg_md5key[65];
 	// default encryption keys for backups without a password
 	char cfg_defkeys[8][65];
