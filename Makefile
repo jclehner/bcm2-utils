@@ -7,18 +7,17 @@ VERSION = $(shell git describe --always || cat version.txt)
 CFLAGS += -Wall -Wno-sign-compare -g '-DVERSION="$(VERSION)"'
 CXXFLAGS += $(CFLAGS) -std=c++14 -Wnon-virtual-dtor
 PREFIX ?= /usr/local
-UNAME ?= $(shell uname)
 SNMPLIB = -lsnmp
 
 MIPS ?= mips-linux-gnu-
 
-ifeq ($(UNAME),Darwin)
-	CFLAGS +=
-	SNMPLIB=-lnetsnmp
-else ifneq (,$(findstring MINGW,$(MSYSTEM)))
+ifeq ($(OS),Windows_NT)
 	CFLAGS += -D_WIN32_WINNT=_WIN32_WINNT_VISTA
 	LDFLAGS += -lws2_32 -static
 	BINEXT = .exe
+else ifeq ($(shell uname),Darwin)
+	CFLAGS +=
+	SNMPLIB=-lnetsnmp
 else
 	bcm2cfg_LIBS += -lcrypto
 endif
@@ -44,7 +43,6 @@ psextract = psextract$(BINEXT)
 bcm2boltenv = bcm2boltenv$(BINEXT)
 
 define PackageRelease
-	$(STRIP) bcm2cfg$(2) bcm2dump$(2) psextract$(2) bcm2boltenv$(2)
 	zip bcm2utils-$(VERSION)-$(1).zip README.md bcm2cfg$(2) bcm2dump$(2) psextract$(2) bcm2boltenv$(2)
 endef
 
@@ -53,6 +51,7 @@ endef
 all: $(bcm2dump) $(bcm2cfg) $(psextract) $(bcm2boltenv)
 
 release: clean all
+	$(STRIP) bcm2cfg$(BINEXT) bcm2dump$(BINEXT) psextract$(BINEXT) bcm2boltenv$(BINEXT)
 
 release-linux:
 	LDFLAGS="-static-libstdc++ -static-libgcc" make release
@@ -108,7 +107,7 @@ check: t_nonvol
 	./t_nonvol
 
 clean:
-	rm -f t_nonvol $(bcm2cfg) $(bcm2dump) $(psextract) *.o
+	rm -f t_nonvol $(bcm2cfg) $(bcm2dump) $(psextract) $(bcm2boltenv) *.o
 
 mrproper: clean
 	rm -f *.inc
