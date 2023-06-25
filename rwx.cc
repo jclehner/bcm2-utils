@@ -1072,7 +1072,7 @@ class code_rwx : public parsing_rwx
 			progress_init(&pg, m_loadaddr, code.size());
 
 			if (m_prog_l && !quick) {
-				logger::i("updating code at 0x%08x (%lu b)\n", m_loadaddr, code.size());
+				logger::i("updating code at 0x%08x (%u b)\n", m_loadaddr, static_cast<unsigned>(code.size()));
 			}
 
 			for (unsigned pass = 0; pass < 2; ++pass) {
@@ -1772,4 +1772,3 @@ rwx::sp rwx::create_special(const interface::sp& intf, const string& type)
 	throw invalid_argument("no such special rwx: " + intf->name() + "," + type);
 }
 }
-

@@ -515,7 +515,7 @@ int do_scan(int argc, char** argv, int opts, const string& profile)
 	}
 
 	if (!imgs.empty()) {
-		logger::i("\n\ndetected %lu image(s) in range %s:0x%08x-0x%08x:\n", imgs.size(), argv[2], start, start + length);
+		logger::i("\n\ndetected %u image(s) in range %s:0x%08x-0x%08x:\n", static_cast<unsigned>(imgs.size()), argv[2], start, start + length);
 	}
 
 	for (auto img : imgs) {
