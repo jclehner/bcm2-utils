@@ -370,7 +370,7 @@ int do_dump(int argc, char** argv, int opts, const string& profile)
 int do_write_exec(int argc, char** argv, int opts, const string& profile)
 {
 	bool exec = (argv[0] == "exec"s);
-	uint32_t entry, loadaddr;
+	uint32_t entry = 0, loadaddr = 0;
 
 	if ((!exec && argc != 5) || (exec && argc != 4)) {
 		usage(false);
