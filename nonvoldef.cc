@@ -1806,6 +1806,52 @@ class nv_group_docsis : public nv_group
 	}
 };
 
+class nv_group_arris : public nv_group
+{
+	public:
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_arris, "ARRI", "arris")
+
+	class arris_nvm : public nv_compound
+	{
+		public:
+		NV_COMPOUND_DEF_CTOR_AND_TYPE(arris_nvm, "arris-nvm");
+
+		virtual list definition() const override
+		{
+			return {
+				NV_VAR(nv_cdata<7>, ""),
+				NV_VAR(nv_bool, "factory_mode_enabled"),
+				NV_VAR(nv_bool, "watchdog_enabled"),
+				NV_VAR(nv_cdata<235>, ""),
+				NV_VAR(nv_u32, "boost_bitmap", true),
+				NV_VAR(nv_cdata<25>, ""),
+				NV_VAR(nv_u8, ""),
+				NV_VAR(nv_u8, ""),
+				NV_VAR(nv_fstring<64>, "product_name"),
+				NV_VAR(nv_bool, "serial_console_enabled")
+			};
+		}
+	};
+
+	protected:
+	virtual list definition(int format, const nv_version& ver) const override
+	{
+		if (format == fmt_dyn) {
+			return {
+				NV_VAR(nv_u8, "standby_mode", true),
+				NV_VAR(nv_p8list<nv_u32>, "ds_frequencies"),
+				NV_VAR(nv_u8, ""),
+				NV_VAR(nv_u8, ""),
+				NV_VAR(NV_ARRAY(nv_u32, 2), "mta_dev_persistent_line"),
+				NV_VAR(arris_nvm, "nvm"),
+				NV_VAR(nv_bool, "led_invert")
+			};
+		} else {
+			return nv_group::definition(format, ver);
+		}
+	}
+};
+
 struct registrar {
 	registrar()
 	{
@@ -1837,6 +1883,7 @@ struct registrar {
 			NV_GROUP(nv_group_snmp),
 			NV_GROUP(nv_group_docsis),
 			NV_GROUP(nv_group_tch),
+			NV_GROUP(nv_group_arris),
 		};
 
 		for (auto g : groups) {
