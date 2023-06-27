@@ -1241,11 +1241,12 @@ struct bcm2_profile bcm2_profiles[] = {
 				.size = 8 * 1024 * 1024,
 				.blocksize = 64 * 1024,
 				.parts = {
-					{ "bootloader", 0x000000, 0x010000 },
+					{ "bootloader", 0x000000, 0x008000 },
+					{ "permnv_alt", 0x008000, 0x008000, "perm" },
 					{ "permnv",     0x010000, 0x010000, "perm" },
 					{ "image1",     0x020000, 0x3e0000 },
 					{ "image2",     0x400000, 0x3e0000 },
-					{ "unknown",    0x7e0000, 0x010000 },
+					{ "dynnv_alt",  0x7e0000, 0x010000, "dyn" },
 					{ "dynnv",      0x7f0000, 0x010000, "dyn" }
 				}
 			},
