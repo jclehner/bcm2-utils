@@ -9,7 +9,7 @@ Numbers are stored in little-endian, unless otherwise noted.
 
 | Offset | Type     | Name        | Comment                                     |
 |-------:|----------|-------------|---------------------------------------------|
-| 0      | u32      | tlv_cheat   | Always `0x1a01`                             |
+| 0      | u8[4]    | tlv_cheat   | Always `[ 0x01, 0x1a, 0x00, 0x00 ]`         |
 | 4      | u32      | magic       | Always `0xbabefeed`                         |
 | 8      | u32      | ?           |                                             |
 | 12     | u32      | ?           |                                             |
@@ -20,6 +20,11 @@ Numbers are stored in little-endian, unless otherwise noted.
 
 The data is made up of multiple blocks, each preceded by a one byte type specifier.
 A type specifier of `0x00` means end of data. The following types are currently known:
+
+The `tlv_cheat` name reflects the fact that, in a Broadcom-specific TLV encoding,
+`0x01` stands for a `char` type, and `0x1a` is the size of the two following `0x00`
+bytes plus the header (starting at `magic`).
+
 
 ###### Type `0x01` (short variable)
 
