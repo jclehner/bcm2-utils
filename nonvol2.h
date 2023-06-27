@@ -520,6 +520,9 @@ class nv_num : public nv_val
 	public:
 	typedef T num_type;
 
+	static constexpr T min = MIN;
+	static constexpr T max = MAX;
+
 	explicit nv_num(bool hex = false) : m_val(0), m_hex(hex) {}
 	nv_num(T val, bool hex) : m_val(val), m_hex(hex) { m_set = true; }
 
