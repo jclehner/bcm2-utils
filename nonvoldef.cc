@@ -1811,20 +1811,29 @@ class nv_group_arris : public nv_group
 	public:
 	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_arris, "ARRI", "arris")
 
-	class arris_nvm : public nv_compound
+	class arris_dyn_nvm : public nv_compound
 	{
 		public:
-		NV_COMPOUND_DEF_CTOR_AND_TYPE(arris_nvm, "arris-nvm");
+		NV_COMPOUND_DEF_CTOR_AND_TYPE(arris_dyn_nvm, "arris-dyn-nvm");
 
 		virtual list definition() const override
 		{
+			typedef nv_u8_m<30> preset_count_type;
+
 			return {
 				NV_VAR(nv_cdata<7>, ""),
 				NV_VAR(nv_bool, "factory_mode_enabled"),
 				NV_VAR(nv_bool, "watchdog_enabled"),
-				NV_VAR(nv_cdata<235>, ""),
+				NV_VAR(nv_cdata<107>, ""),
+				NV_VAR(preset_count_type, "preset_count"),
+				NV_VAR(nv_cdata<3>, ""), // just padding
+				NV_VAR(NV_ARRAY(nv_u32, preset_count_type::max), "presets"),
+				NV_VAR(nv_cdata<1>, ""),
 				NV_VAR(nv_u32, "boost_bitmap", true),
-				NV_VAR(nv_cdata<25>, ""),
+				NV_VAR(nv_cdata<24>, ""),
+				NV_VAR2(nv_enum<nv_u8>, "dual_mode_discovered_market", "", nv_enum<nv_u8>::valvec {
+						"annex_b", "annex_a",
+				}),
 				NV_VAR(nv_u8, ""),
 				NV_VAR(nv_u8, ""),
 				NV_VAR(nv_fstring<64>, "product_name"),
@@ -1843,8 +1852,7 @@ class nv_group_arris : public nv_group
 				NV_VAR(nv_u8, ""),
 				NV_VAR(nv_u8, ""),
 				NV_VAR(NV_ARRAY(nv_u32, 2), "mta_dev_persistent_line"),
-				NV_VAR(arris_nvm, "nvm"),
-				NV_VAR(nv_bool, "led_invert")
+				NV_VAR(arris_dyn_nvm, "nvm"),
 			};
 		} else {
 			return nv_group::definition(format, ver);
