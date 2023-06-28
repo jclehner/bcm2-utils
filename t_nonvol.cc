@@ -90,7 +90,7 @@ void test_group()
 		"\xf0\x0f\x55\x55\xaa\xaa"s // nv_array<nv_i16, 3>
 		;
 
-	patch(data1, 0, htons(data1.size()));
+	patch(data1, 0, h_to_bes(data1.size()));
 
 	sp<nv_group> group;
 	stringstream istr(data1);
@@ -259,11 +259,11 @@ template<class T> void test_int_type()
 	sp<T> val = make_shared<T>();
 
 	for (unsigned i = 0; i != 1000; ++i) {
-		NT n = hton(rand());
+		NT n = h_to_be(rand());
 		string data(reinterpret_cast<char*>(&n), sizeof(n));
 		unserialize(data, val);
 
-		if (val->num() != ntoh(n)) {
+		if (val->num() != be_to_h(n)) {
 			throw failed_test(val->type() + " " + to_string(n) + ": unexpected value " + to_string(val->num()));
 		}
 

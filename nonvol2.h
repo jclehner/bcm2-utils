@@ -268,7 +268,7 @@ template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 			if (!m_count && !is.read(reinterpret_cast<char*>(&m_count), sizeof(I))) {
 				return is;
 			}
-			m_count = bcm2dump::ntoh(m_count);
+			m_count = bcm2dump::be_to_h(m_count);
 		}
 
 		// FIXME ugly workaround for parsing an array of elements with non-constant width
@@ -290,7 +290,7 @@ template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 	virtual std::ostream& write(std::ostream& os) const override
 	{
 		if (L) {
-			I count = bcm2dump::hton(m_count);
+			I count = bcm2dump::h_to_be(m_count);
 			if (!os.write(reinterpret_cast<const char*>(&count), sizeof(I))) {
 				return os;
 			}
@@ -575,7 +575,9 @@ class nv_num : public nv_val
 	virtual std::istream& read(std::istream& is) override
 	{
 		if (is.read(reinterpret_cast<char*>(&m_val), sizeof(T))) {
-			m_val = bcm2dump::ntoh(m_val);
+			if (sizeof(T) > 1) {
+				m_val = bcm2dump::be_to_h(m_val);
+			}
 			m_set = true;
 		}
 
@@ -599,18 +601,43 @@ class nv_num : public nv_val
 
 	static std::ostream& write(std::ostream& os, const T& num)
 	{
-		T swapped = bcm2dump::hton(num);
+		T swapped = bcm2dump::h_to_be(num);
 		return os.write(reinterpret_cast<const char*>(&swapped), sizeof(T));
 	}
 
-	static const T read(std::istream& in, T& num)
+	static T read(std::istream& in, T& num)
 	{
-		in.read(reinterpret_cast<char*>(&num), sizeof(T));
-		num = bcm2dump::ntoh(num);
+		return read(in, num, nullptr);
+	}
+
+	static T read_num(std::istream& in)
+	{
+		T num;
+		bool success = false;
+		read(in, num, &success);
+		if (!success) {
+			throw std::runtime_error("failed to read number");
+		}
 		return num;
 	}
 
 	protected:
+	static T read(std::istream& in, T& num, bool* p_success)
+	{
+		bool success = !!in.read(reinterpret_cast<char*>(&num), sizeof(T));
+		if (success) {
+			if (sizeof(T) > 1) {
+				num = bcm2dump::be_to_h(num);
+			}
+		}
+
+		if (p_success) {
+			*p_success = success;
+		}
+
+		return num;
+	}
+
 	T m_val;
 	bool m_hex = false;
 };

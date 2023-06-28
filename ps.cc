@@ -33,7 +33,7 @@ ps_header& ps_header::parse(const string& buf)
 	memcpy(&m_raw, buf.data(), sizeof(m_raw));
 	uint16_t hcs = crc16_ccitt(&m_raw, sizeof(m_raw) - 8) ^ 0xffff;
 
-	m_valid = (hcs == ntoh(m_raw.hcs));
+	m_valid = (hcs == be_to_h(m_raw.hcs));
 	return *this;
 }
 

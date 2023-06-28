@@ -150,9 +150,9 @@ int connect_nonblock(int fd, sockaddr* addr, socklen_t len)
 void set_port(sockaddr* sa, uint16_t port)
 {
 	if (sa->sa_family == AF_INET) {
-		reinterpret_cast<sockaddr_in*>(sa)->sin_port = htons(port);
+		reinterpret_cast<sockaddr_in*>(sa)->sin_port = h_to_be(port);
 	} else if (sa->sa_family == AF_INET6) {
-		reinterpret_cast<sockaddr_in6*>(sa)->sin6_port = htons(port);
+		reinterpret_cast<sockaddr_in6*>(sa)->sin6_port = h_to_be(port);
 	}
 }
 

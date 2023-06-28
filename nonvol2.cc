@@ -32,16 +32,9 @@ std::string desc(const nv_val::named& var)
 	return var.name + " (" + var.val->type() + ")";
 }
 
-template<typename T> T read_num(istream& is)
-{
-	T num;
-	is.read(reinterpret_cast<char*>(&num), sizeof(T));
-	return ntoh(num);
-}
-
 template<typename T> void write_num(ostream& os, T num)
 {
-	num = hton(num);
+	num = h_to_be(num);
 	os.write(reinterpret_cast<const char*>(&num), sizeof(T));
 }
 
@@ -623,9 +616,9 @@ istream& nv_string::read(istream& is)
 
 	if (!size) {
 		if (m_flags & flag_prefix_u8) {
-			size = read_num<uint8_t>(is);
+			size = nv_u8::read_num(is);
 		} else if (m_flags & flag_prefix_u16) {
-			size = read_num<uint16_t>(is);
+			size = nv_u16::read_num(is);
 		} else {
 			getline(is, val, '\0');
 			zstring = true;
@@ -724,7 +717,7 @@ nv_magic::nv_magic(const std::string& magic)
 nv_magic::nv_magic(uint32_t magic)
 : nv_magic()
 {
-	magic = hton(magic);
+	magic = h_to_be(magic);
 	parse_checked(string(reinterpret_cast<const char*>(&magic), 4));
 }
 

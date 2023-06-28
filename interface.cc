@@ -232,7 +232,7 @@ void bfc::do_elevate_privileges()
 		try {
 			wait_ready();
 			ram->space().check_offset(ct_instance, "bfc:conthread_instance");
-			uint32_t addr = ntoh(extract<uint32_t>(ram->read(ct_instance, 4)));
+			uint32_t addr = be_to_h(extract<uint32_t>(ram->read(ct_instance, 4)));
 			addr += ct_priv_off;
 			ram->space().check_offset(addr, "console_priv_flag");
 			ram->write(addr, "\x01"s);

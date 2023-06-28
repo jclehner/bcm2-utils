@@ -237,9 +237,9 @@ bool run_script_command(vector<string> args, sp<rwx> rwx)
 		uint32_t result;
 
 		if (width == 4) {
-			result = ntoh(extract<uint32_t>(buf));
+			result = be_to_h(extract<uint32_t>(buf));
 		} else if (width == 2) {
-			result = ntoh(extract<uint16_t>(buf));
+			result = be_to_h(extract<uint16_t>(buf));
 		} else {
 			result = buf[0];
 		}
@@ -257,9 +257,9 @@ bool run_script_command(vector<string> args, sp<rwx> rwx)
 		string buf;
 
 		if (width == 4) {
-			buf = to_buf(hton(value));
+			buf = to_buf(h_to_be(value));
 		} else if (width == 2) {
-			buf = to_buf(hton(uint16_t(value & 0xffff)));
+			buf = to_buf(h_to_be(uint16_t(value & 0xffff)));
 		} else {
 			buf += char(value & 0xff);
 		}

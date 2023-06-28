@@ -121,7 +121,7 @@ int main(int argc, char* argv[])
 				throw user_error("unknown variable type 0x" + to_hex(var.type));
 			}
 
-			size_t size = (var.type == boltenv_var::TYPE_VAR) ? (var.var.size - 1): ntoh(var.block_size_be);
+			size_t size = (var.type == boltenv_var::TYPE_VAR) ? (var.var.size - 1): be_to_h(var.block_size_be);
 
 			string raw(size, '\0');
 			if (in.readsome(&raw[0], size) != size) {

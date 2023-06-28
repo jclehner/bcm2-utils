@@ -52,22 +52,22 @@ class mono_header
 	}
 
 	bool valid() const
-	{ return ntoh(m_raw.magic) == 0x4d4f4e4f; }
+	{ return be_to_h(m_raw.magic) == 0x4d4f4e4f; }
 
 	uint16_t signature() const
-	{ return ntoh(m_raw.signature); }
+	{ return be_to_h(m_raw.signature); }
 
 	uint32_t length() const
-	{ return ntoh(m_raw.length); }
+	{ return be_to_h(m_raw.length); }
 
 	uint16_t unk1() const
-	{ return ntoh(m_raw.unk1); }
+	{ return be_to_h(m_raw.unk1); }
 
 	uint16_t unk2() const
-	{ return ntoh(m_raw.unk2); }
+	{ return be_to_h(m_raw.unk2); }
 
 	uint16_t unk3() const
-	{ return ntoh(m_raw.unk3); }
+	{ return be_to_h(m_raw.unk3); }
 
 	private:
 	raw m_raw;
@@ -157,7 +157,7 @@ void extract_image(istream& in)
 			// add 7, because sizeof(type + len) is 4, and
 			// sizeof(end-of-data) is 2. add 1 for next data.
 
-			auto len = ntoh(extract<uint16_t>(hbuf, 2)) + 7;
+			auto len = be_to_h(extract<uint16_t>(hbuf, 2)) + 7;
 			logger::i() << "asn.1 data, " << len << " b " << endl;
 
 			in.seekg(beg + len);

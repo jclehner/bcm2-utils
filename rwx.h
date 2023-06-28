@@ -201,10 +201,10 @@ class rwx //: public rwx_writer
 	private:
 	// XXX for now, we always assume big-endian!
 	template<class T> void write_num(uint32_t offset, T value)
-	{ write(offset, to_buf(hton(value))); }
+	{ write(offset, to_buf(h_to_be(value))); }
 
 	template<class T> T read_num(uint32_t offset)
-	{ return ntoh(extract<T>(read(offset, sizeof(T)))); }
+	{ return be_to_h(extract<T>(read(offset, sizeof(T)))); }
 
 	static void handle_sigint(int signal)
 	{ s_sigint = 1; }

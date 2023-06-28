@@ -74,7 +74,7 @@ template<class T> T hex_cast(const std::string& str)
 
 inline void patch32(string& buf, string::size_type offset, uint32_t n)
 {
-	patch<uint32_t>(buf, offset, hton(n));
+	patch<uint32_t>(buf, offset, h_to_be(n));
 }
 
 template<class T> T align_to(const T& num, const T& alignment)
@@ -348,7 +348,7 @@ bool bfc_ram::exec_impl(uint32_t offset)
 bool bfc_ram::write_chunk(uint32_t offset, const string& chunk)
 {
 	if (interface()->is_privileged()) {
-		uint32_t val = chunk.size() == 4 ? ntoh(extract<uint32_t>(chunk)) : chunk[0];
+		uint32_t val = chunk.size() == 4 ? be_to_h(extract<uint32_t>(chunk)) : chunk[0];
 		return interface()->run("/write_memory -s " + to_string(chunk.size()) + " 0x" +
 				to_hex(offset, 0) + " 0x" + to_hex(val, 0), "Writing");
 	} else {
@@ -411,7 +411,7 @@ string bfc_ram::parse_chunk_line(const string& line, uint32_t offset)
 	string linebuf;
 
 	for (int i = 0; i < (n - 1); ++i) {
-		linebuf += to_buf(ntoh(data[i]));
+		linebuf += to_buf(be_to_h(data[i]));
 	}
 
 	return linebuf;
@@ -495,7 +495,7 @@ class bfc_flash2 : public bfc_ram
 	void patch(const func& f)
 	{
 		for (auto p : f.patches()) {
-			if (p->addr && !write_chunk(p->addr | interface()->profile()->kseg1(), to_buf(hton(p->word)))) {
+			if (p->addr && !write_chunk(p->addr | interface()->profile()->kseg1(), to_buf(h_to_be(p->word)))) {
 				throw runtime_error("failed to patch word at 0x" + to_hex(p->addr));
 			}
 		}
@@ -644,7 +644,7 @@ void bfc_flash::cleanup()
 bool bfc_flash::write_chunk(uint32_t offset, const std::string& chunk)
 {
 	offset = to_partition_offset(offset);
-	uint32_t val = chunk.size() == 4 ? ntoh(extract<uint32_t>(chunk)) : chunk[0];
+	uint32_t val = chunk.size() == 4 ? be_to_h(extract<uint32_t>(chunk)) : chunk[0];
 	return interface()->run("/flash/write " + to_string(chunk.size()) + " 0x"
 			+ to_hex(offset) + " 0x" + to_hex(val), "successfully written");
 }
@@ -700,7 +700,7 @@ string bfc_flash::parse_chunk_line(const string& line, uint32_t offset)
 
 			linebuf += char(n);
 		} else {
-			linebuf += to_buf(ntoh(n));
+			linebuf += to_buf(be_to_h(n));
 		}
 	}
 
@@ -799,7 +799,7 @@ bool bootloader_ram::write_chunk(uint32_t offset, const string& chunk)
 		}
 
 		interface()->writeln(to_hex(offset, 0));
-		uint32_t val = ntoh(extract<uint32_t>(chunk));
+		uint32_t val = be_to_h(extract<uint32_t>(chunk));
 		interface()->writeln(to_hex(val));
 		return true;
 	} catch (const exception& e) {
@@ -830,7 +830,7 @@ string bootloader_ram::parse_chunk_line(const string& line, uint32_t offset)
 			throw bad_chunk_line::critical("offset mismatch");
 		}
 
-		return to_buf(hton(hex_cast<uint32_t>(line.substr(19, 8))));
+		return to_buf(h_to_be(hex_cast<uint32_t>(line.substr(19, 8))));
 	}
 
 	throw bad_chunk_line::regular();
@@ -928,7 +928,7 @@ class code_rwx : public parsing_rwx
 		}
 
 		for (string val : values) {
-			linebuf += to_buf(hton(hex_cast<uint32_t>(val)));
+			linebuf += to_buf(h_to_be(hex_cast<uint32_t>(val)));
 		}
 
 		return linebuf;
@@ -996,7 +996,7 @@ class code_rwx : public parsing_rwx
 
 		if (!m_write) {
 			uint32_t index = offset - m_rw_offset;
-			m_ram->write(m_loadaddr + offsetof(bcm2_read_args, index), to_buf(hton(index)));
+			m_ram->write(m_loadaddr + offsetof(bcm2_read_args, index), to_buf(h_to_be(index)));
 		} else {
 			// TODO: implement if we ever use on_chunk_retry for writes
 		}
@@ -1044,7 +1044,7 @@ class code_rwx : public parsing_rwx
 				code = to_buf(args);
 
 				for (uint32_t word : mips_read_code) {
-					code += to_buf(hton(word));
+					code += to_buf(h_to_be(word));
 				}
 			} else {
 				bcm2_write_args args = get_write_args(offset, length);
@@ -1052,17 +1052,17 @@ class code_rwx : public parsing_rwx
 				code = to_buf(args);
 
 				for (uint32_t word : mips_write_code) {
-					code += to_buf(hton(word));
+					code += to_buf(h_to_be(word));
 				}
 			}
 
 			size_t codesize = code.size() - m_entry;
 
 			uint32_t expected = 0xc0de0000 | crc16_ccitt(code.substr(m_entry, codesize));
-			uint32_t actual = ntoh(extract<uint32_t>(m_ram->read(m_loadaddr + codesize, 4)));
+			uint32_t actual = be_to_h(extract<uint32_t>(m_ram->read(m_loadaddr + codesize, 4)));
 			bool quick = (expected == actual);
 
-			code += to_buf(hton(expected));
+			code += to_buf(h_to_be(expected));
 
 #if 1
 			ofstream("code.bin").write(code.data(), code.size());
@@ -1103,8 +1103,8 @@ class code_rwx : public parsing_rwx
 
 		for (size_t i = 0; i < N && i < ps.size(); ++i) {
 			if (ps[i]->addr) {
-				dest[i].addr = hton(kseg1 | ps[i]->addr);
-				dest[i].word = hton(ps[i]->word);
+				dest[i].addr = h_to_be(kseg1 | ps[i]->addr);
+				dest[i].word = h_to_be(ps[i]->word);
 			} else {
 				memset(&dest[i], 0, sizeof(bcm2_patch));
 			}
@@ -1122,36 +1122,36 @@ class code_rwx : public parsing_rwx
 		auto fl_erase = funcs["erase"];
 
 		bcm2_write_args args = { ":%x:%x", "\r\n" };
-		args.flags = hton(fl_write.args() | fl_erase.args());
-		args.length = hton(length);
-		args.chunklen = hton(limits_read().max);
+		args.flags = h_to_be(fl_write.args() | fl_erase.args());
+		args.length = h_to_be(length);
+		args.chunklen = h_to_be(limits_read().max);
 		args.index = 0;
 		args.fl_write = 0;
 
 		if (space().is_ram()) {
-			args.buffer = hton(offset);
+			args.buffer = h_to_be(offset);
 			args.offset = 0;
 		} else {
-			args.buffer = hton(kseg1 | cfg["buffer"]);
-			args.offset = hton(offset);
+			args.buffer = h_to_be(kseg1 | cfg["buffer"]);
+			args.offset = h_to_be(offset);
 		}
 
-		args.printf = hton(cfg["printf"]);
+		args.printf = h_to_be(cfg["printf"]);
 
 		if (cfg["sscanf"] && cfg["getline"]) {
-			args.xscanf = hton(cfg["sscanf"]);
-			args.getline = hton(cfg["getline"]);
+			args.xscanf = h_to_be(cfg["sscanf"]);
+			args.getline = h_to_be(cfg["getline"]);
 		} else if (cfg["scanf"]) {
-			args.xscanf = hton(cfg["scanf"]);
+			args.xscanf = h_to_be(cfg["scanf"]);
 		}
 
 		if (fl_erase.addr()) {
-			args.fl_erase = hton(kseg1 | fl_erase.addr());
+			args.fl_erase = h_to_be(kseg1 | fl_erase.addr());
 			copy_patches(args.erase_patches, fl_erase, kseg1);
 		}
 
 		if (fl_write.addr()) {
-			args.fl_write = hton(kseg1 | fl_write.addr());
+			args.fl_write = h_to_be(kseg1 | fl_write.addr());
 			copy_patches(args.write_patches, fl_write, kseg1);
 		}
 
@@ -1176,20 +1176,20 @@ class code_rwx : public parsing_rwx
 		}
 
 		bcm2_read_args args = { ":%x", "\r\n" };
-		args.length = hton(length);
+		args.length = h_to_be(length);
 		args.index = 0;
-		args.chunklen = hton(limits_read().max);
-		args.printf = hton(kseg1 | cfg["printf"]);
+		args.chunklen = h_to_be(limits_read().max);
+		args.printf = h_to_be(kseg1 | cfg["printf"]);
 
 		if (m_space.is_mem()) {
-			args.buffer = hton(offset);
+			args.buffer = h_to_be(offset);
 			args.offset = 0;
 			args.fl_read = 0;
 		} else {
-			args.offset = hton(offset);
-			args.buffer = hton(kseg1 | cfg["buffer"]);
-			args.flags = hton(fl_read.args());
-			args.fl_read = hton(kseg1 | fl_read.addr());
+			args.offset = h_to_be(offset);
+			args.buffer = h_to_be(kseg1 | cfg["buffer"]);
+			args.flags = h_to_be(fl_read.args());
+			args.fl_read = h_to_be(kseg1 | fl_read.addr());
 		}
 
 		copy_patches(args.patches, fl_read, kseg1);

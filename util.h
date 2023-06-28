@@ -65,26 +65,6 @@ namespace bcm2dump {
 
 typedef void (*sigh_type)(int);
 
-#if 0
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#define DEF_BSWAP(type, func) \
-	template<> type cpu_to_be(type num) \
-	{ return num; } \
-	template<> type cpu_to_le(type num) \
-	{ return func(num); }
-#else
-#define DEF_BSWAP(type, func) \
-	template<> type cpu_to_be(type num) \
-	{ return func(num); } \
-	template<> type cpu_to_le(type num) \
-	{ return num; }
-#endif
-
-DEF_BSWAP(uint16_t, __builtin_bswap16)
-DEF_BSWAP(uint32_t, __builtin_bswap32)
-DEF_BSWAP(uint64_t, __builtin_bswap64)
-#endif
-
 std::string trim(std::string str);
 std::vector<std::string> split(const std::string& str, char delim, bool empties = true, size_t limit = 0);
 
@@ -242,22 +222,27 @@ class mstimer
 
 std::string transform(const std::string& str, std::function<int(int)> f);
 
-template<class T> T ntoh(const T& n);
-template<class T> T hton(const T& n);
+template<class T> T be_to_h(T n);
+template<class T> T le_to_h(T n);
+template<class T> T h_to_be(T n);
+template<class T> T h_to_le(T n);
 
-#define BCM2UTILS_DEF_BSWAPPER(type, f_ntoh, f_hton) \
-		template<> inline type ntoh(const type& n) \
-		{ return f_ntoh(n); } \
-		\
-		template<> inline type hton(const type& n) \
-		{ return f_hton(n); }
+#define BCM2UTILS_DEF_BSWAPPER(type, bits) \
+		template<> inline type be_to_h(type n) \
+		{ return be ## bits ## toh(n); } \
+		template<> inline type le_to_h(type n) \
+		{ return le ## bits ## toh(n); } \
+		template<> inline type h_to_be(type n) \
+		{ return htobe ## bits(n); } \
+		template<> inline type h_to_le(type n) \
+		{ return htole ## bits(n); }
 
-BCM2UTILS_DEF_BSWAPPER(uint8_t,,);
-BCM2UTILS_DEF_BSWAPPER(int8_t,,);
-BCM2UTILS_DEF_BSWAPPER(uint16_t, ntohs, htons);
-BCM2UTILS_DEF_BSWAPPER(int16_t, ntohs, htons);
-BCM2UTILS_DEF_BSWAPPER(uint32_t, ntohl ,htonl);
-BCM2UTILS_DEF_BSWAPPER(int32_t, ntohl, htonl);
+BCM2UTILS_DEF_BSWAPPER(uint16_t, 16);
+BCM2UTILS_DEF_BSWAPPER(int16_t, 16);
+BCM2UTILS_DEF_BSWAPPER(uint32_t, 32);
+BCM2UTILS_DEF_BSWAPPER(int32_t, 32);
+BCM2UTILS_DEF_BSWAPPER(uint64_t, 64);
+BCM2UTILS_DEF_BSWAPPER(int64_t, 64);
 
 #undef BCM2UTILS_DEF_BSWAPPER
 

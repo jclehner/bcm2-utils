@@ -145,7 +145,7 @@ string gws_decrypt(string buf, string& checksum, string& key, const csp<profile>
 	logger::d() << "decrypting with profile " << p->name() << endl;
 
 	if (flags & BCM2_CFG_FMT_GWS_LEN_PREFIX) {
-		auto len = ntoh(extract<uint32_t>(checksum));
+		auto len = be_to_h(extract<uint32_t>(checksum));
 		if (len == (buf.size() + 12)) {
 			checksum.erase(0, 4);
 			checksum.append(buf.substr(0, 4));
@@ -246,7 +246,7 @@ string gws_encrypt(string buf, const string& key, const csp<profile>& p, bool pa
 	}
 
 	if (flags & BCM2_CFG_FMT_GWS_LEN_PREFIX) {
-		buf.insert(0, to_buf(htonl(buf.size())));
+		buf.insert(0, to_buf(h_to_be(buf.size())));
 	} else if (flags & BCM2_CFG_FMT_GWS_CLEN_PREFIX) {
 		buf.insert(0, "Content-Length: " + to_string(buf.size()) + "\r\n\r\n");
 	}
@@ -576,14 +576,14 @@ class permdyn : public encryptable_settings
 		uint32_t sum = buf.size() + 8;
 
 		while (remaining >= 4) {
-			sum += ntoh(extract<uint32_t>(buf.substr(buf.size() - remaining, 4)));
+			sum += be_to_h(extract<uint32_t>(buf.substr(buf.size() - remaining, 4)));
 			remaining -= 4;
 		}
 
 		uint16_t half = 0;
 
 		if (remaining >= 2) {
-			half = ntoh(extract<uint16_t>(buf.substr(buf.size() - remaining, 2)));
+			half = be_to_h(extract<uint16_t>(buf.substr(buf.size() - remaining, 2)));
 			remaining -= 2;
 		}
 

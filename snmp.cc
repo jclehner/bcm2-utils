@@ -60,7 +60,7 @@ class snmp_bfc_ram : public rwx
 		auto data = intf()->get(cd_engr_mem_data);
 		// FIXME this shouldn't be here
 		update_progress(offset, length);
-		return to_buf(hton<uint32_t>(data.integer));
+		return to_buf(h_to_be<uint32_t>(data.integer));
 	}
 
 	virtual std::string read_special(uint32_t offset, uint32_t length) override
@@ -72,7 +72,7 @@ class snmp_bfc_ram : public rwx
 	{
 		uint32_t value;
 		if (chunk.size() == 4) {
-			value = hton(extract<uint32_t>(chunk));
+			value = h_to_be(extract<uint32_t>(chunk));
 		} else if (chunk.size() == 1) {
 			value = chunk[0] & 0xff;
 		} else {

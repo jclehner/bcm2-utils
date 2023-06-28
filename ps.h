@@ -75,13 +75,13 @@ class ps_header
 	std::string filename() const;
 
 	uint16_t signature() const
-	{ return ntoh(m_raw.signature); }
+	{ return be_to_h(m_raw.signature); }
 
 	uint32_t length() const
-	{ return ntoh(m_raw.length); }
+	{ return be_to_h(m_raw.length); }
 
 	uint16_t control() const
-	{ return ntoh(m_raw.control); }
+	{ return be_to_h(m_raw.control); }
 
 	uint16_t compression() const
 	{ return control() & 0x7; }
