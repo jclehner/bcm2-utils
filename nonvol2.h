@@ -147,6 +147,172 @@ template<class To, class From, class ToType = nv_type<To>> std::shared_ptr<To> n
 	return p;
 }
 
+template<class T, bool BigEndian,
+		T Min = std::numeric_limits<T>::min(),
+		T Max = std::numeric_limits<T>::max()>
+class nv_num : public nv_val
+{
+	public:
+	typedef T num_type;
+
+	static constexpr T min = Min;
+	static constexpr T max = Max;
+
+	explicit nv_num(bool hex = false) : m_val(0), m_hex(hex) {}
+	nv_num(T val, bool hex) : m_val(val), m_hex(hex) { m_set = true; }
+
+	virtual void hex(bool hex = true)
+	{ m_hex = hex; }
+
+	virtual std::string type() const override
+	{
+		std::string name;
+
+		if (m_hex) {
+			name = "x";
+		} else if (std::is_signed<T>::value) {
+			name = "i";
+		} else {
+			name = "u";
+		}
+
+		name += std::to_string(8 * sizeof(T));
+
+		if (sizeof(T) > 1) {
+			name += (BigEndian) ? "be" : "le";
+		}
+
+		if (Min != std::numeric_limits<T>::min() || Max != std::numeric_limits<T>::max()) {
+			name += "<" + std::to_string(Min) + "," + std::to_string(Max) + ">";
+		}
+
+		return name;
+	}
+
+	virtual std::string to_string(unsigned, bool pretty) const override
+	{
+		std::string str;
+
+		if (!m_hex) {
+			str = std::to_string(m_val);
+		} else {
+			str = "0x" + bcm2dump::to_hex(m_val);
+		}
+
+		if (pretty && (m_val < Min || m_val > Max)) {
+			str += " (out of range)";
+		}
+
+		return str;
+	}
+
+	virtual bool parse(const std::string& str) override
+	{
+		try {
+			T val = bcm2dump::lexical_cast<T>(str, 0);
+			if (val < Min || val > Max) {
+				return false;
+			}
+
+			m_val = val;
+			m_set = true;
+			return true;
+		} catch (const bcm2dump::bad_lexical_cast& e) {
+			return false;
+		}
+	}
+
+	virtual std::istream& read(std::istream& is) override
+	{
+		if (read(is, m_val)) {
+			m_set = true;
+		}
+
+		return is;
+	}
+
+	virtual std::ostream& write(std::ostream& os) const override
+	{ return write(os, m_val); }
+
+	virtual size_t bytes() const override
+	{ return sizeof(T); }
+
+	virtual const T& num() const
+	{ return m_val; }
+
+	virtual void num(const T& val)
+	{ m_val = val; }
+
+	bool operator!=(const nv_num<T, BigEndian>& other)
+	{ return m_val == other.m_val; }
+
+	static std::ostream& write(std::ostream& os, const T& num)
+	{
+		T raw;
+
+		if (sizeof(T) == 1) {
+			raw = num;
+		} else {
+			raw = BigEndian ? bcm2dump::h_to_be(num) : bcm2dump::h_to_le(num);
+		}
+
+		return os.write(reinterpret_cast<const char*>(&raw), sizeof(T));
+	}
+
+	static std::istream& read(std::istream& in, T& num)
+	{
+		if (in.read(reinterpret_cast<char*>(&num), sizeof(T))) {
+			if (sizeof(T) > 1) {
+				num = BigEndian ? bcm2dump::be_to_h(num) : bcm2dump::le_to_h(num);
+			}
+		}
+
+		return in;
+	}
+
+	static T read_num(std::istream& in)
+	{
+		T num;
+		if (!read(in, num)) {
+			throw std::runtime_error("failed to read number");
+		}
+		return num;
+	}
+
+	protected:
+	T m_val;
+	bool m_hex = false;
+};
+
+// defines name (unlimited range), name_r (custom range) and name_m (custom maximum)
+#define NV_NUM_DEF(name, num_type, be) \
+	template<num_type Min = std::numeric_limits<num_type>::min(), num_type Max = std::numeric_limits<num_type>::max()> \
+			using name ## _r = nv_num<num_type, be, Min, Max>; \
+	template<num_type Max> using name ## _m = name ## _r<std::numeric_limits<num_type>::min(), Max>; \
+	typedef name ## _r<> name
+
+// byte types
+NV_NUM_DEF(nv_u8, uint8_t, false);
+NV_NUM_DEF(nv_i8, int8_t, false);
+
+// big endian types
+NV_NUM_DEF(nv_u16, uint16_t, true);
+NV_NUM_DEF(nv_u32, uint32_t, true);
+NV_NUM_DEF(nv_u64, uint64_t, true);
+
+NV_NUM_DEF(nv_i16, int16_t, true);
+NV_NUM_DEF(nv_i32, int32_t, true);
+NV_NUM_DEF(nv_i64, int64_t, true);
+
+// little endian types
+NV_NUM_DEF(nv_u16le, uint16_t, false);
+NV_NUM_DEF(nv_u32le, uint32_t, false);
+NV_NUM_DEF(nv_u64le, uint64_t, false);
+
+NV_NUM_DEF(nv_i16le, int16_t, false);
+NV_NUM_DEF(nv_i32le, int32_t, false);
+NV_NUM_DEF(nv_i64le, int64_t, false);
+
 // TODO split this into nv_compound and nv_compound_base
 class nv_compound : public nv_val
 {
@@ -265,10 +431,9 @@ template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 	virtual std::istream& read(std::istream& is) override
 	{
 		if (L) {
-			if (!m_count && !is.read(reinterpret_cast<char*>(&m_count), sizeof(I))) {
+			if (!m_count && !nv_num<I, true>::read(is, m_count)) {
 				return is;
 			}
-			m_count = bcm2dump::be_to_h(m_count);
 		}
 
 		// FIXME ugly workaround for parsing an array of elements with non-constant width
@@ -290,12 +455,7 @@ template<class T, class I, bool L> class nv_array_generic : public nv_array_base
 	virtual std::ostream& write(std::ostream& os) const override
 	{
 		if (L) {
-			I count = bcm2dump::h_to_be(m_count);
-			if (!os.write(reinterpret_cast<const char*>(&count), sizeof(I))) {
-				return os;
-			}
-
-			if (!m_count) {
+			if (!nv_num<I, true>::write(os, m_count) || !m_count) {
 				return os;
 			}
 		}
@@ -511,180 +671,6 @@ typedef detail::nv_string_tmpl<nv_string::flag_require_nul | nv_string::flag_pre
 
 // u16-prefixed string that is to be interpreted as data
 typedef detail::nv_string_tmpl<nv_string::flag_is_data | nv_string::flag_prefix_u16> nv_p16data;
-
-template<class T, class H,
-		T MIN = std::numeric_limits<T>::min(),
-		T MAX = std::numeric_limits<T>::max()>
-class nv_num : public nv_val
-{
-	public:
-	typedef T num_type;
-
-	static constexpr T min = MIN;
-	static constexpr T max = MAX;
-
-	explicit nv_num(bool hex = false) : m_val(0), m_hex(hex) {}
-	nv_num(T val, bool hex) : m_val(val), m_hex(hex) { m_set = true; }
-
-	virtual void hex(bool hex = true)
-	{ m_hex = hex; }
-
-	virtual std::string type() const override
-	{
-		std::string name = H::name();
-		if (MIN != std::numeric_limits<T>::min() || MAX != std::numeric_limits<T>::max()) {
-			name += "<" + std::to_string(MIN) + "," + std::to_string(MAX) + ">";
-		}
-
-		return name;
-	}
-
-	virtual std::string to_string(unsigned, bool pretty) const override
-	{
-		std::string str;
-
-		if (!m_hex) {
-			str = std::to_string(m_val);
-		} else {
-			str = "0x" + bcm2dump::to_hex(m_val);
-		}
-
-		if (pretty && (m_val < MIN || m_val > MAX)) {
-			str += " (out of range)";
-		}
-
-		return str;
-	}
-
-	virtual bool parse(const std::string& str) override
-	{
-		try {
-			T val = bcm2dump::lexical_cast<T>(str, 0);
-			if (val < MIN || val > MAX) {
-				return false;
-			}
-
-			m_val = val;
-			m_set = true;
-			return true;
-		} catch (const bcm2dump::bad_lexical_cast& e) {
-			return false;
-		}
-	}
-
-	virtual std::istream& read(std::istream& is) override
-	{
-		if (is.read(reinterpret_cast<char*>(&m_val), sizeof(T))) {
-			if (sizeof(T) > 1) {
-				m_val = bcm2dump::be_to_h(m_val);
-			}
-			m_set = true;
-		}
-
-		return is;
-	}
-
-	virtual std::ostream& write(std::ostream& os) const override
-	{ return write(os, m_val); }
-
-	virtual size_t bytes() const override
-	{ return sizeof(T); }
-
-	virtual const T& num() const
-	{ return m_val; }
-
-	virtual void num(const T& val)
-	{ m_val = val; }
-
-	bool operator!=(const nv_num<T, H>& other)
-	{ return m_val == other.m_val; }
-
-	static std::ostream& write(std::ostream& os, const T& num)
-	{
-		T swapped = bcm2dump::h_to_be(num);
-		return os.write(reinterpret_cast<const char*>(&swapped), sizeof(T));
-	}
-
-	static T read(std::istream& in, T& num)
-	{
-		return read(in, num, nullptr);
-	}
-
-	static T read_num(std::istream& in)
-	{
-		T num;
-		bool success = false;
-		read(in, num, &success);
-		if (!success) {
-			throw std::runtime_error("failed to read number");
-		}
-		return num;
-	}
-
-	protected:
-	static T read(std::istream& in, T& num, bool* p_success)
-	{
-		bool success = !!in.read(reinterpret_cast<char*>(&num), sizeof(T));
-		if (success) {
-			if (sizeof(T) > 1) {
-				num = bcm2dump::be_to_h(num);
-			}
-		}
-
-		if (p_success) {
-			*p_success = success;
-		}
-
-		return num;
-	}
-
-	T m_val;
-	bool m_hex = false;
-};
-
-namespace detail {
-
-template<typename T> struct num_name
-{
-	static std::string name();
-};
-
-#define NV_NUM_NAME_DEF(t, n, h) \
-	template<> struct num_name<t> \
-	{ \
-		static std::string name() \
-		{ return n; } \
-		\
-		static bool hex() \
-		{ return h; } \
-	}
-
-#define NV_NUM_NAMES_DEF(bits) \
-	NV_NUM_NAME_DEF(uint ## bits ## _t, "u" #bits, false); \
-	NV_NUM_NAME_DEF(int ## bits ## _t, "i" #bits, false)
-
-NV_NUM_NAMES_DEF(8);
-NV_NUM_NAMES_DEF(16);
-NV_NUM_NAMES_DEF(32);
-NV_NUM_NAMES_DEF(64);
-}
-
-// defines name (unlimited range), name_r (custom range) and name_m (custom maximum)
-#define NV_NUM_DEF(name, num_type) \
-	template<num_type MIN = std::numeric_limits<num_type>::min(), num_type MAX = std::numeric_limits<num_type>::max()> \
-			using name ## _r = nv_num<num_type, detail::num_name<num_type>, MIN, MAX>; \
-	template<num_type MAX> using name ## _m = name ## _r<std::numeric_limits<num_type>::min(), MAX>; \
-	typedef name ## _r<> name \
-
-NV_NUM_DEF(nv_u8, uint8_t);
-NV_NUM_DEF(nv_u16, uint16_t);
-NV_NUM_DEF(nv_u32, uint32_t);
-NV_NUM_DEF(nv_u64, uint64_t);
-
-NV_NUM_DEF(nv_i8, int8_t);
-NV_NUM_DEF(nv_i16, int16_t);
-NV_NUM_DEF(nv_i32, int32_t);
-NV_NUM_DEF(nv_i64, int64_t);
 
 class nv_bool : public nv_u8_m<1>
 {

@@ -32,12 +32,6 @@ std::string desc(const nv_val::named& var)
 	return var.name + " (" + var.val->type() + ")";
 }
 
-template<typename T> void write_num(ostream& os, T num)
-{
-	num = h_to_be(num);
-	os.write(reinterpret_cast<const char*>(&num), sizeof(T));
-}
-
 string pad(unsigned level)
 {
 	return string(2 * (level + 1), ' ');
@@ -667,9 +661,9 @@ ostream& nv_string::write(ostream& os) const
 	size_t size = val.size() + ((m_flags & flag_size_includes_prefix) ? str_prefix_bytes(m_flags) : 0);
 
 	if (m_flags & flag_prefix_u8) {
-		write_num<uint8_t>(os, size);
+		nv_u8::write(os, size);
 	} else if (m_flags & flag_prefix_u16) {
-		write_num<uint16_t>(os, size);
+		nv_u16::write(os, size);
 	}
 
 	if (!(os << val)) {
