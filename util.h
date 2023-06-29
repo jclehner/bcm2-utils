@@ -19,8 +19,9 @@
 
 #ifndef BCM2UTILS_UTIL_H
 #define BCM2UTILS_UTIL_H
-#include <type_traits>
+#include <boost/endian/conversion.hpp>
 #include <system_error>
+#include <type_traits>
 #include <functional>
 #include <stdexcept>
 #include <typeinfo>
@@ -222,29 +223,25 @@ class mstimer
 
 std::string transform(const std::string& str, std::function<int(int)> f);
 
-template<class T> T be_to_h(T n);
-template<class T> T le_to_h(T n);
-template<class T> T h_to_be(T n);
-template<class T> T h_to_le(T n);
+template<class T> inline T be_to_h(T n)
+{
+	return boost::endian::big_to_native(n);
+}
 
-#define BCM2UTILS_DEF_BSWAPPER(type, bits) \
-		template<> inline type be_to_h(type n) \
-		{ return be ## bits ## toh(n); } \
-		template<> inline type le_to_h(type n) \
-		{ return le ## bits ## toh(n); } \
-		template<> inline type h_to_be(type n) \
-		{ return htobe ## bits(n); } \
-		template<> inline type h_to_le(type n) \
-		{ return htole ## bits(n); }
+template<class T> inline T le_to_h(T n)
+{
+	return boost::endian::little_to_native(n);
+}
 
-BCM2UTILS_DEF_BSWAPPER(uint16_t, 16);
-BCM2UTILS_DEF_BSWAPPER(int16_t, 16);
-BCM2UTILS_DEF_BSWAPPER(uint32_t, 32);
-BCM2UTILS_DEF_BSWAPPER(int32_t, 32);
-BCM2UTILS_DEF_BSWAPPER(uint64_t, 64);
-BCM2UTILS_DEF_BSWAPPER(int64_t, 64);
+template<class T> inline T h_to_be(T n)
+{
+	return boost::endian::native_to_big(n);
+}
 
-#undef BCM2UTILS_DEF_BSWAPPER
+template<class T> inline T h_to_le(T n)
+{
+	return boost::endian::native_to_little(n);
+}
 
 template<typename T> using sp = std::shared_ptr<T>;
 template<typename T> using csp = std::shared_ptr<const T>;
