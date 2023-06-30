@@ -629,8 +629,6 @@ class nv_string : public nv_val
 	int m_flags;
 	size_t m_width;
 	std::string m_val;
-
-	//{ return m_val.empty() ? 1 : 2 + m_val.size(); }
 };
 
 namespace detail {
