@@ -1872,8 +1872,8 @@ class nv_group_vendor : public nv_group
 		}
 
 		return {
-			NV_VAR(nv_u8, ""),
-			NV_VAR(nv_u8, ""),
+			NV_VAR(nv_u8, "unknown1"),
+			NV_VAR(nv_u8, "unknown2"),
 		};
 	}
 };
