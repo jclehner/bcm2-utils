@@ -1860,6 +1860,24 @@ class nv_group_arris : public nv_group
 	}
 };
 
+class nv_group_vendor : public nv_group
+{
+	public:
+	NV_GROUP_DEF_CTOR_AND_CLONE(nv_group_vendor, "BcmV", "vendor")
+
+	virtual list definition(int format, const nv_version& ver) const override
+	{
+		if (format == fmt_perm) {
+			return nv_group::definition(format, ver);
+		}
+
+		return {
+			NV_VAR(nv_u8, ""),
+			NV_VAR(nv_u8, ""),
+		};
+	}
+};
+
 struct registrar {
 	registrar()
 	{
@@ -1892,6 +1910,7 @@ struct registrar {
 			NV_GROUP(nv_group_docsis),
 			NV_GROUP(nv_group_tch),
 			NV_GROUP(nv_group_arris),
+			NV_GROUP(nv_group_vendor),
 		};
 
 		for (auto g : groups) {
