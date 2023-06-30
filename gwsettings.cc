@@ -17,7 +17,9 @@
  *
  */
 
+#include <boost/crc.hpp>
 #include <algorithm>
+#include "nonvoldef.h"
 #include "gwsettings.h"
 #include "crypto.h"
 using namespace std;
@@ -272,6 +274,9 @@ string group_header_to_string(int format, const string& checksum, bool is_chksum
 		break;
 	case nv_group::fmt_perm:
 		ostr << "perm";
+		break;
+	case nv_group::fmt_boltenv:
+		ostr << "boltenv";
 		break;
 	default:
 		ostr << "(unknown)";
@@ -902,6 +907,356 @@ class gwsettings : public encryptable_settings
 	string m_circumfix;
 	bool m_padded = false;
 };
+
+static constexpr uint8_t header_size = 0x1b;
+// big endian
+static constexpr uint32_t tlv_cheat = 0x011a0000;
+// little endian
+static constexpr uint32_t magic = 0xbabefeed;
+
+class boltenv : public encryptable_settings
+{
+	public:
+	class var : public nv_compound
+	{
+		public:
+		var() : nv_compound(false, "boltenv-var"), m_value(make_shared<nv_zstring>()), m_size(0)
+		{
+			m_parts.push_back({ "value", m_value });
+		}
+
+		istream& read_data(istream& is, size_t size)
+		{
+			string data(size, '\0');
+			is.read(&data[0], data.size());
+
+			auto tok = split(data, '=', true, 2);
+			if (!tok.empty()) {
+				m_key = tok[0];
+			} else {
+				logger::d() << "warning: empty boltenv variable" << endl;
+			}
+
+			// even an empty variable should be encoded as "NAME=", but we never know
+			if (tok.size() == 2) {
+				m_value->parse(tok[1]);
+			} else if (m_key.empty()) {
+				m_value->parse(data);
+			}
+
+			m_set = true;
+
+			return is;
+		}
+
+		ostream& write_data(ostream& os) const
+		{
+			string data(m_key + "=" + m_value->str());
+			// this can happen if the user sets a value using "NAME.value" instead of just "NAME"
+			if (data.size() > max_size()) {
+				throw runtime_error("variable size out of bounds");
+			}
+
+			return os.write(data.data(), data.size());
+		}
+
+		const string& key() const { return m_key; }
+
+		virtual size_t bytes() const override
+		{ return m_size; }
+
+		virtual bool parse(const string& str) override
+		{
+			size_t new_size = calc_size(str.size());
+			if (new_size <= max_size() && m_value->parse(str)) {
+				m_size = new_size;
+				m_set = true;
+				return true;
+			}
+			return false;
+		}
+
+		virtual std::string type() const override
+		{ return "boltenv-var"; }
+
+		protected:
+		virtual size_t calc_size(size_t size) const = 0;
+		virtual size_t max_size() const = 0;
+
+		virtual list definition() const override
+		{ throw runtime_error(__PRETTY_FUNCTION__); }
+
+		private:
+		sp<nv_zstring> m_value;
+		size_t m_size;
+		string m_key;
+	};
+
+	template<class PrefixType> class var_base : public var
+	{
+		public:
+		typedef typename PrefixType::num_type prefix_num_type;
+
+		istream& read_size(istream& is)
+		{
+			return PrefixType::read(is, m_size);
+		}
+
+		ostream& write_size(ostream& os) const
+		{
+			return PrefixType::write(os, m_size);
+		}
+
+		virtual size_t bytes() const override
+		{
+			return m_size;
+		}
+
+		protected:
+		virtual size_t max_size() const override
+		{ return PrefixType::max; }
+
+		private:
+		prefix_num_type m_size;
+	};
+
+	class var1 : public var_base<nv_u8>
+	{
+		public:
+		var1() : m_flags(make_shared<nv_u8>())
+		{
+			m_parts.push_back({ "flags", m_flags });
+		}
+
+		virtual istream& read(istream& is) override
+		{
+			if (!read_size(is) || !bytes()) {
+				return is;
+			}
+
+			m_flags->read(is);
+			return read_data(is, bytes() - 1);
+		}
+
+		virtual ostream& write(ostream& os) const override
+		{
+			os << '\x01';
+			write_size(os);
+			m_flags->write(os);
+			return write_data(os);
+		}
+
+		protected:
+		virtual size_t calc_size(size_t size) const override
+		{
+			// flags (1 byte), then key, then '=', then value
+			return (1 + key().size() + 1 + size);
+		}
+
+		private:
+		sp<nv_u8> m_flags;
+	};
+
+	class var2 : public var_base<nv_u16>
+	{
+		public:
+		var2() {}
+
+		virtual istream& read(istream& is) override
+		{
+			if (!read_size(is) || !bytes()) {
+				return is;
+			}
+
+			return read_data(is, bytes());
+		}
+
+		virtual ostream& write(ostream& os) const override
+		{
+			os << '\x02';
+			write_size(os);
+			return write_data(os);
+		}
+
+		protected:
+		virtual size_t calc_size(size_t size) const override
+		{
+			// key, then '=', then value
+			return (key().size() + 1 + size);
+		}
+	};
+
+	boltenv(const csp<bcm2dump::profile>& p, const string& key)
+	: encryptable_settings("boltenv", nv_group::fmt_boltenv, p), m_key(key)
+	{}
+
+	virtual size_t bytes() const override
+	{ return m_full_size; }
+
+	virtual size_t data_bytes() const override
+	{ return m_data_bytes; }
+
+	virtual string type() const override
+	{ return "boltenv"; }
+
+	virtual bool is_valid() const override
+	{ return m_valid; }
+
+	virtual void key(const string& key) override
+	{ m_key = key; }
+
+	virtual string key() const override
+	{ return m_key; }
+
+	virtual void padded(bool padded) override
+	{ m_padded = padded; }
+
+	virtual bool padded() const override
+	{ return m_padded; }
+
+	virtual istream& read(istream& is) override
+	{
+		string buf = read_stream(is);
+		if (!m_key.empty()) {
+			buf = crypt_aes_256_ecb(buf, m_key, false);
+		}
+
+		m_full_size = buf.size();
+
+		do {
+			istringstream istr(buf);
+
+			uint32_t n;
+			if (!nv_u32::read(istr, n) || n != tlv_cheat) {
+				break;
+			}
+
+			if (!nv_u32le::read(istr, n) || n != magic) {
+				break;
+			}
+
+			m_valid = true;
+
+			nv_u32le::read(istr, m_unknown1);
+			nv_u32le::read(istr, m_unknown2);
+			nv_u32le::read(istr, m_write_count);
+			nv_u32le::read(istr, m_data_bytes);
+			nv_u32le::read(istr, m_checksum);
+
+			// FIXME
+			m_checksum_valid = true;
+
+			if (!istr) {
+				break;
+			}
+
+			uint32_t data_bytes = 0;
+
+			nv_compound::list parts;
+
+			while(data_bytes < m_data_bytes) {
+				int type = istr.get();
+				if (type == EOF) {
+					logger::d() << "encountered premature EOF" << endl;
+					break;
+				} else if (type == 0x00) {
+					data_bytes += 1;
+					break;
+				} else if (type == 0x01 || type == 0x02) {
+					sp<var> var;
+
+					if (type == 0x01) {
+						var = make_shared<var1>();
+					} else {
+						var = make_shared<var2>();
+					}
+
+					var->read(istr);
+
+					logger::d() << "var: " << var->key() << ", size " << var->bytes() << ", type " << type << endl;
+
+					parts.push_back({ var->key(), var });
+					data_bytes += var->bytes() + 1;
+				} else {
+					throw runtime_error("unknown data type: " + to_hex(type));
+				}
+			}
+
+			logger::d() << "m_data_bytes " << m_data_bytes << ", read " << data_bytes << endl;
+
+			// FIXME account for the prefix lengths
+			//m_data_bytes_valid = data_bytes == m_data_bytes;
+
+			groups(parts);
+
+			return is;
+		} while (false);
+
+		throw runtime_error("failed to parse header");
+	}
+
+	virtual ostream& write(ostream& os) const override
+	{
+		ostringstream ostr(ios::ate);
+
+		nv_u32::write(ostr, tlv_cheat);
+		nv_u32le::write(ostr, magic);
+		nv_u32le::write(ostr, m_unknown1);
+		nv_u32le::write(ostr, m_unknown2);
+		nv_u32le::write(ostr, m_write_count + 1);
+
+		ostringstream data;
+		nv_compound::write(data);
+		// write end of data marker
+		data << '\0';
+
+		string databuf = data.str();
+
+		nv_u32le::write(ostr, databuf.size());
+		boost::crc_32_type crc;
+		crc.process_bytes(databuf.data(), databuf.size());
+		nv_u32le::write(ostr, crc.checksum());
+
+		ostr.write(databuf.data(), databuf.size());
+
+		// pad to 16 bytes, even if no encryption is used
+		if (ostr.tellp() % 16) {
+			ostr << string(16 - (ostr.tellp() % 16), '\0');
+		}
+
+		if (!m_key.empty()) {
+			ostr.str(crypt_aes_256_ecb(ostr.str(), m_key, true));
+		}
+
+		if (ostr.tellp() > m_full_size) {
+			throw runtime_error("new file size would exceed " + ::to_string(m_full_size) + " bytes");
+		} else {
+			ostr << string(m_full_size - ostr.tellp(), '\xff');
+		}
+
+		return os << ostr.str();
+	}
+
+	virtual string header_to_string() const override
+	{
+		return group_header_to_string(m_format, to_hex(m_checksum), m_checksum_valid,
+				m_data_bytes, m_data_bytes_valid, m_key, !m_key.empty(), "", false, "");
+	}
+
+	private:
+	uint32_t m_unknown1, m_unknown2;
+	uint32_t m_write_count;
+	uint32_t m_data_bytes;
+	uint32_t m_full_size;
+	uint32_t m_checksum;
+
+	bool m_checksum_valid = false;
+	bool m_data_bytes_valid = false;
+
+	std::string m_key;
+	bool m_valid = false;
+	bool m_padded = false;
+};
 }
 
 istream& settings::read(istream& is)
@@ -954,7 +1309,7 @@ sp<settings> settings::read(istream& is, int format, const csp<bcm2dump::profile
 	sp<settings> ret;
 	string start(16, '\0');
 
-	if (format != nv_group::fmt_gwsdyn) {
+	if (format != nv_group::fmt_gwsdyn && format != nv_group::fmt_boltenv) {
 		if (!is.read(&start[0], start.size())) {
 			throw runtime_error("failed to read file");
 		}
@@ -968,7 +1323,9 @@ sp<settings> settings::read(istream& is, int format, const csp<bcm2dump::profile
 		}
 	}
 
-	if (format != nv_group::fmt_gws) {
+	if (format == nv_group::fmt_boltenv) {
+		ret = make_shared<boltenv>(p, key);
+	} else if (format != nv_group::fmt_gws) {
 		ret = sp<permdyn>(new permdyn(format, p, key));
 	} else {
 		// if this is in fact a gwsettings type file, then start already contains the checksum
@@ -980,10 +1337,5 @@ sp<settings> settings::read(istream& is, int format, const csp<bcm2dump::profile
 	}
 
 	return ret;
-}
-
-
-
-
-
+};
 }

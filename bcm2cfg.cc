@@ -43,7 +43,7 @@ int usage(bool help = false)
 	os << "  -P <profile>     Force profile" << endl;
 	os << "  -p <password>    Encryption password" << endl;
 	os << "  -k <key>         Encryption key (hex string)" << endl;
-	os << "  -f <format>      Input file format (auto/gws/dyn/perm)" << endl;
+	os << "  -f <format>      Input file format (auto/gws/dyn/perm/boltenv)" << endl;
 	os << "  -z               Add padding when encrypting" << endl;
 	os << "  -q               Decrease verbosity" << endl;
 	os << "  -v               Increase verbosity" << endl;
@@ -321,16 +321,19 @@ int do_info(int argc, char** argv, const sp<settings>& settings)
 
 	os << argv[1] << endl;
 	os << settings->header_to_string() << endl;
-	for (auto p : settings->parts()) {
-		csp<nv_group> g = nv_val_cast<nv_group>(p.val);
-		string ugly = g->magic().to_str();
-		string pretty = g->magic().to_pretty();
-		os << ugly << "  " << (ugly == pretty ? "    " : pretty) << "  ";
-		string version = g->is_versioned() ? g->version().to_pretty() : "";
-		logger::i("%-6s  %-12s  %5lu b\n", version.c_str(), g->name().c_str(),
-				(unsigned long) g->bytes());
+
+	if (settings->format() != nv_group::fmt_boltenv) {
+		for (auto p : settings->parts()) {
+			csp<nv_group> g = nv_val_cast<nv_group>(p.val);
+			string ugly = g->magic().to_str();
+			string pretty = g->magic().to_pretty();
+			os << ugly << "  " << (ugly == pretty ? "    " : pretty) << "  ";
+			string version = g->is_versioned() ? g->version().to_pretty() : "";
+			logger::i("%-6s  %-12s  %5lu b\n", version.c_str(), g->name().c_str(),
+					(unsigned long) g->bytes());
+		}
+		os << endl;
 	}
-	os << endl;
 
 	return 0;
 }
@@ -389,6 +392,8 @@ int do_main(int argc, char** argv)
 				format = nv_group::fmt_perm;
 			} else if (optarg == "gwsdyn"s) {
 				format = nv_group::fmt_gwsdyn;
+			} else if (optarg == "boltenv"s) {
+				format = nv_group::fmt_boltenv;
 			} else if (optarg == "auto"s) {
 				format = nv_group::fmt_unknown;
 			} else {

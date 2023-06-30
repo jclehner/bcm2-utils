@@ -620,6 +620,8 @@ class nv_string : public nv_val
 
 	virtual size_t bytes() const override;
 
+	std::string str() const { return m_val; }
+
 	protected:
 	nv_string(int flags, size_t width);
 
@@ -952,6 +954,7 @@ class nv_group : public nv_compound, public cloneable
 	static constexpr int fmt_dyn = 2;
 	static constexpr int fmt_gws = 3;
 	static constexpr int fmt_gwsdyn = 4;
+	static constexpr int fmt_boltenv = 5;
 
 	nv_group(uint32_t magic, const std::string& name = "")
 	: nv_group(nv_magic(magic), name) {}
