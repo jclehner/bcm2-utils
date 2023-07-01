@@ -292,12 +292,9 @@ All currently known group definitions are found in [nonvoldef.cc](https://github
 
 # Writing a device profile
 
-A device profile is neccessary for most functions to work as advertised.
-All current definitions can be found in [profiledef.c](profiledef.c).
+A device profile is neccessary for most functions to work as advertised. All current definitions can be found in [profiledef.c](profiledef.c).
 
-If the device's bootloader serial console has been disabled, and you do
-not have access to the firmware console (either via serial connection,
-or telnet), there are ways to enable them (coming soon).
+For a great howoto, courtesy of the folks at [@ecos-wtf](https://github.com/ecos-wtf), check out [this blog post](https://ecos.wtf/2021/03/09/bcm2-utils-bootloader-dumping).
 
 The following information is required to add a new profile:
 
