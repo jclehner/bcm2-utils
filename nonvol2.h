@@ -246,28 +246,48 @@ class nv_num : public nv_val
 	bool operator!=(const nv_num<T, BigEndian>& other)
 	{ return m_val == other.m_val; }
 
-	static std::ostream& write(std::ostream& os, const T& num)
+	template<class U> static std::ostream& write(std::ostream& os, U num)
 	{
-		T raw;
-
-		if (sizeof(T) == 1) {
-			raw = num;
-		} else {
-			raw = BigEndian ? bcm2dump::h_to_be(num) : bcm2dump::h_to_le(num);
+		if (num > max) {
+			throw std::invalid_argument("value exceeds maximum of target type");
 		}
 
-		return os.write(reinterpret_cast<const char*>(&raw), sizeof(T));
+		T raw = num;
+
+		if (sizeof(raw) > 1) {
+			raw = BigEndian ? bcm2dump::h_to_be(raw) : bcm2dump::h_to_le(raw);
+		}
+
+		return os.write(reinterpret_cast<const char*>(&raw), sizeof(raw));
+	}
+
+	/*
+	static std::ostream& write(std::ostream& os, const T& num)
+	{
+		return write<T>(os, num);
+	}
+	*/
+
+	template<class U> static std::istream& read(std::istream& in, U& num)
+	{
+		static_assert(sizeof(U) >= sizeof(T));
+
+		T raw;
+
+		if (in.read(reinterpret_cast<char*>(&raw), sizeof(raw))) {
+			if (sizeof(raw) > 1) {
+				raw = BigEndian ? bcm2dump::be_to_h(raw) : bcm2dump::le_to_h(raw);
+			}
+
+			num = raw;
+		}
+
+		return in;
 	}
 
 	static std::istream& read(std::istream& in, T& num)
 	{
-		if (in.read(reinterpret_cast<char*>(&num), sizeof(T))) {
-			if (sizeof(T) > 1) {
-				num = BigEndian ? bcm2dump::be_to_h(num) : bcm2dump::le_to_h(num);
-			}
-		}
-
-		return in;
+		return read<T>(in, num);
 	}
 
 	static T read_num(std::istream& in)
@@ -620,7 +640,8 @@ class nv_string : public nv_val
 
 	virtual size_t bytes() const override;
 
-	std::string str() const { return m_val; }
+	const std::string& str() const { return m_val; }
+	void str(const std::string& str) { m_val = str; }
 
 	protected:
 	nv_string(int flags, size_t width);

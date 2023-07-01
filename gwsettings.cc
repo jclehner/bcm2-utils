@@ -908,21 +908,186 @@ class gwsettings : public encryptable_settings
 	bool m_padded = false;
 };
 
-static constexpr uint8_t header_size = 0x1b;
-// big endian
-static constexpr uint32_t tlv_cheat = 0x011a0000;
-// little endian
-static constexpr uint32_t magic = 0xbabefeed;
-
+/**
+ * This whole class is a bit of a hack, since the nv_* code wasn't
+ * really meant for anything else than the permnv/dynnv settings groups.
+ */
 class boltenv : public encryptable_settings
 {
 	public:
+	static constexpr uint8_t header_size = 0x1b;
+	// big endian
+	static constexpr uint32_t tlv_cheat = 0x011a0000;
+	// little endian
+	static constexpr uint32_t magic = 0xbabefeed;
+
+	/**
+	 * We're presenting as an nv_compound, but the members don't exactly
+	 * reflect the internal structure. By exposing the tag, and raw value,
+	 * one can "easily" do stuff like renaming or removing variables.
+	 */
 	class var : public nv_compound
 	{
 		public:
-		var() : nv_compound(false, "boltenv-var"), m_value(make_shared<nv_zstring>()), m_size(0)
+		static constexpr int end =  0x00;
+		static constexpr int var1 = 0x01;
+		static constexpr int var2 = 0x02;
+
+		var() : nv_compound(false, "boltenv-var")
 		{
-			m_parts.push_back({ "value", m_value });
+			m_parts.push_back({ "tag", m_tag });
+			m_parts.push_back({ "raw", m_raw });
+			m_parts.push_back({ "flags", m_flags });
+		}
+
+		const uint8_t tag() const { return m_tag->num(); }
+		const string& key() const { return m_key; }
+
+		virtual size_t bytes() const override
+		{
+			// 1 to account for the tag itself, and 1 if var1 (for flags)
+			return calc_raw_length(m_value) + (tag() == var1 ? 2 : 1);
+		}
+
+		virtual bool parse(const string& str) override
+		{
+			if (!tag()) {
+				throw runtime_error("can't set this variable");
+			}
+
+			if (calc_raw_length(str) < max_raw_length()) {
+				m_value = str;
+				m_raw->str(m_key + "=" + str);
+				m_set = true;
+			} else {
+				throw runtime_error("raw variable size cannot exceed " + ::to_string(max_raw_length()));
+			}
+
+			return true;
+		}
+
+		virtual std::string type() const override
+		{ return "boltenv-var"; }
+
+		virtual istream& read(istream& is) override
+		{
+			size_t length = read_header(is);
+			if (length) {
+				read_data(is, length);
+			}
+			return is;
+		}
+
+		virtual ostream& write(ostream& os) const override
+		{
+			if (m_tag->write(os) && tag()) {
+				if (tag() == var1) {
+					nv_u8::write(os, bytes() - 1);
+					m_flags->write(os);
+				} else if (tag() == var2) {
+					nv_u16::write(os, bytes() - 1);
+				} else {
+					throw runtime_error("attemtping to write variable with tag " + to_hex(tag()));
+				}
+
+				os << m_raw->str();
+			}
+			return os;
+		}
+
+		virtual void set(const string& name, const string& val) override
+		{
+			// now THIS is a hack...
+
+			if (name == "raw" && val.size() > max_raw_length()) {
+				throw runtime_error("raw variable size cannot exceed " + ::to_string(max_raw_length()));
+			} else if (name == "tag") {
+				decltype(m_tag)::element_type new_tag;
+				new_tag.parse_checked(val);
+				if (!new_tag.num()) {
+					throw runtime_error("refusing to set variable tag to 0");
+				} else if (new_tag.num() != var1 && m_flags->num()) {
+					logger::w() << "cannot preserve flags (" + m_flags->to_string(false, false) + ") for this tag type" << endl;
+				}
+			}
+
+			nv_compound::set(name, val);
+			maybe_hide_flags();
+		}
+
+		virtual std::string to_string(unsigned level, bool pretty) const override
+		{
+			if (!pretty) {
+				return nv_compound::to_string(level, pretty);
+			}
+
+			return m_value;
+		}
+
+		protected:
+		virtual list definition() const override
+		{ throw runtime_error(__PRETTY_FUNCTION__); }
+
+		private:
+		size_t max_raw_length() const
+		{
+			if (tag() == 0x01) {
+				return nv_u8::max - 1;
+			} else if (tag() == 0x02) {
+				return nv_u16::max;
+			} else {
+				return 0;
+			}
+		}
+
+		size_t calc_raw_length(const string& value) const
+		{
+			if (tag()) {
+				// 1 additional byte for '=' sign
+				return m_key.size() + 1 + value.size();
+			} else {
+				return 0;
+			}
+		}
+
+		size_t read_header(istream& is)
+		{
+			do {
+				if (!m_tag->read(is)) {
+					break;
+				}
+
+				size_t length = 0;
+
+				maybe_hide_flags();
+
+				if (tag() == var1) {
+					if (!nv_u8::read(is, length)) {
+						break;
+					}
+
+					if (!m_flags->read(is)) {
+						break;
+					}
+
+					// 'flags' is included in the length
+					length -= 1;
+				} else if (tag() == var2) {
+					if (!nv_u16::read(is, length)) {
+						break;
+					}
+
+					return length;
+				} else if (tag() != end) {
+					m_raw->disable(true);
+					throw runtime_error("unknown variable tag " + ::to_hex(tag()));
+				}
+
+
+				return length;
+			} while (false);
+
+			throw runtime_error("error parsing header");
 		}
 
 		istream& read_data(istream& is, size_t size)
@@ -930,18 +1095,20 @@ class boltenv : public encryptable_settings
 			string data(size, '\0');
 			is.read(&data[0], data.size());
 
+			m_raw->parse(data);
+
 			auto tok = split(data, '=', true, 2);
 			if (!tok.empty()) {
 				m_key = tok[0];
 			} else {
-				logger::d() << "warning: empty boltenv variable" << endl;
+				m_key = "";
 			}
 
 			// even an empty variable should be encoded as "NAME=", but we never know
 			if (tok.size() == 2) {
-				m_value->parse(tok[1]);
-			} else if (m_key.empty()) {
-				m_value->parse(data);
+				m_value = tok[1];
+			} else {
+				m_value = "";
 			}
 
 			m_set = true;
@@ -949,141 +1116,17 @@ class boltenv : public encryptable_settings
 			return is;
 		}
 
-		ostream& write_data(ostream& os) const
+		void maybe_hide_flags() const
 		{
-			string data(m_key + "=" + m_value->str());
-			// this can happen if the user sets a value using "NAME.value" instead of just "NAME"
-			if (data.size() > max_size()) {
-				throw runtime_error("variable size out of bounds");
-			}
-
-			return os.write(data.data(), data.size());
+			m_flags->disable(tag() != var1);
 		}
 
-		const string& key() const { return m_key; }
+		sp<nv_u8_m<2>> m_tag = make_shared<nv_u8_m<2>>();
+		sp<nv_zstring> m_raw = make_shared<nv_zstring>();
+		sp<nv_bitmask<nv_u8>> m_flags = sp<nv_bitmask<nv_u8>>(new nv_bitmask<nv_u8>(nv_bitmask<nv_u8>::valvec { "temp", "ro" }));
 
-		virtual size_t bytes() const override
-		{ return m_size; }
-
-		virtual bool parse(const string& str) override
-		{
-			size_t new_size = calc_size(str.size());
-			if (new_size <= max_size() && m_value->parse(str)) {
-				m_size = new_size;
-				m_set = true;
-				return true;
-			}
-			return false;
-		}
-
-		virtual std::string type() const override
-		{ return "boltenv-var"; }
-
-		protected:
-		virtual size_t calc_size(size_t size) const = 0;
-		virtual size_t max_size() const = 0;
-
-		virtual list definition() const override
-		{ throw runtime_error(__PRETTY_FUNCTION__); }
-
-		private:
-		sp<nv_zstring> m_value;
-		size_t m_size;
 		string m_key;
-	};
-
-	template<class PrefixType> class var_base : public var
-	{
-		public:
-		typedef typename PrefixType::num_type prefix_num_type;
-
-		istream& read_size(istream& is)
-		{
-			return PrefixType::read(is, m_size);
-		}
-
-		ostream& write_size(ostream& os) const
-		{
-			return PrefixType::write(os, m_size);
-		}
-
-		virtual size_t bytes() const override
-		{
-			return m_size;
-		}
-
-		protected:
-		virtual size_t max_size() const override
-		{ return PrefixType::max; }
-
-		private:
-		prefix_num_type m_size;
-	};
-
-	class var1 : public var_base<nv_u8>
-	{
-		public:
-		var1() : m_flags(make_shared<nv_u8>())
-		{
-			m_parts.push_back({ "flags", m_flags });
-		}
-
-		virtual istream& read(istream& is) override
-		{
-			if (!read_size(is) || !bytes()) {
-				return is;
-			}
-
-			m_flags->read(is);
-			return read_data(is, bytes() - 1);
-		}
-
-		virtual ostream& write(ostream& os) const override
-		{
-			os << '\x01';
-			write_size(os);
-			m_flags->write(os);
-			return write_data(os);
-		}
-
-		protected:
-		virtual size_t calc_size(size_t size) const override
-		{
-			// flags (1 byte), then key, then '=', then value
-			return (1 + key().size() + 1 + size);
-		}
-
-		private:
-		sp<nv_u8> m_flags;
-	};
-
-	class var2 : public var_base<nv_u16>
-	{
-		public:
-		var2() {}
-
-		virtual istream& read(istream& is) override
-		{
-			if (!read_size(is) || !bytes()) {
-				return is;
-			}
-
-			return read_data(is, bytes());
-		}
-
-		virtual ostream& write(ostream& os) const override
-		{
-			os << '\x02';
-			write_size(os);
-			return write_data(os);
-		}
-
-		protected:
-		virtual size_t calc_size(size_t size) const override
-		{
-			// key, then '=', then value
-			return (key().size() + 1 + size);
-		}
+		string m_value;
 	};
 
 	boltenv(const csp<bcm2dump::profile>& p, const string& key)
@@ -1155,37 +1198,28 @@ class boltenv : public encryptable_settings
 			nv_compound::list parts;
 
 			while(data_bytes < m_data_bytes) {
-				int type = istr.get();
-				if (type == EOF) {
-					logger::d() << "encountered premature EOF" << endl;
+				auto v = make_shared<var>();
+				if (!v->read(istr)) {
+					throw runtime_error("read error");
+				}
+
+				logger::d() << "read tag " << to_hex(v->tag()) << ": " << v->key() << ", " << v->bytes() << " b" << endl;
+
+				data_bytes += v->bytes();
+
+				if (!v->tag()) {
 					break;
-				} else if (type == 0x00) {
-					data_bytes += 1;
-					break;
-				} else if (type == 0x01 || type == 0x02) {
-					sp<var> var;
-
-					if (type == 0x01) {
-						var = make_shared<var1>();
-					} else {
-						var = make_shared<var2>();
-					}
-
-					var->read(istr);
-
-					logger::d() << "var: " << var->key() << ", size " << var->bytes() << ", type " << type << endl;
-
-					parts.push_back({ var->key(), var });
-					data_bytes += var->bytes() + 1;
 				} else {
-					throw runtime_error("unknown data type: " + to_hex(type));
+					parts.push_back({ v->key(), v });
 				}
 			}
 
-			logger::d() << "m_data_bytes " << m_data_bytes << ", read " << data_bytes << endl;
-
-			// FIXME account for the prefix lengths
-			//m_data_bytes_valid = data_bytes == m_data_bytes;
+			if (data_bytes > m_data_bytes) {
+				logger::w() << "read " << data_bytes << ", but reported size is " << m_data_bytes << " b" << endl;
+				m_data_bytes_valid = false;
+			} else {
+				m_data_bytes_valid = true;
+			}
 
 			groups(parts);
 
@@ -1208,7 +1242,7 @@ class boltenv : public encryptable_settings
 		ostringstream data;
 		nv_compound::write(data);
 		// write end of data marker
-		data << '\0';
+		data.put(var::end);
 
 		string databuf = data.str();
 
