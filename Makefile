@@ -41,18 +41,17 @@ endif
 bcm2dump = bcm2dump$(BINEXT)
 bcm2cfg = bcm2cfg$(BINEXT)
 psextract = psextract$(BINEXT)
-bcm2boltenv = bcm2boltenv$(BINEXT)
 
 define PackageRelease
-	zip bcm2utils-$(VERSION)-$(1).zip README.md $(bcm2dump) $(bcm2cfg) $(psextract) $(bcm2boltenv)
+	zip bcm2utils-$(VERSION)-$(1).zip README.md $(bcm2dump) $(bcm2cfg) $(psextract)
 endef
 
 .PHONY: all clean mrproper
 
-all: $(bcm2dump) $(bcm2cfg) $(psextract) $(bcm2boltenv)
+all: $(bcm2dump) $(bcm2cfg) $(psextract)
 
 release: clean all
-	$(STRIP) bcm2cfg$(BINEXT) bcm2dump$(BINEXT) psextract$(BINEXT) bcm2boltenv$(BINEXT)
+	$(STRIP) bcm2cfg$(BINEXT) bcm2dump$(BINEXT) psextract$(BINEXT)
 
 release-linux:
 	LDFLAGS="-static-libstdc++ -static-libgcc" make release
@@ -77,9 +76,6 @@ $(bcm2dump): $(bcm2dump_OBJ)
 
 $(psextract): $(psextract_OBJ)
 	$(CXX) $(CXXFLAGS) $(psextract_OBJ) -o $@ $(LDFLAGS)
-
-$(bcm2boltenv): bcm2boltenv.o util.o
-	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
 t_nonvol: $(t_nonvol_OBJ)
 	$(CXX) $(CXXFLAGS) $(t_nonvol_OBJ) -o $@ $(LDFLAGS)
@@ -108,7 +104,7 @@ check: t_nonvol
 	./t_nonvol
 
 clean:
-	rm -f t_nonvol $(bcm2cfg) $(bcm2dump) $(psextract) $(bcm2boltenv) *.o
+	rm -f t_nonvol $(bcm2cfg) $(bcm2dump) $(psextract) *.o
 
 mrproper: clean
 	rm -f *.inc
@@ -117,4 +113,3 @@ install: all
 	install -m 755 $(bcm2cfg) $(PREFIX)/bin
 	install -m 755 $(bcm2dump) $(PREFIX)/bin
 	install -m 755 $(psextract) $(PREFIX)/bin
-	install -m 755 $(bcm2boltenv) $(PREFIX)/bin
