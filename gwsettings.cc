@@ -990,7 +990,7 @@ class boltenv : public encryptable_settings
 					throw runtime_error("attemtping to write variable with tag " + to_hex(tag()));
 				}
 
-				os << m_raw->str();
+				os << m_key << "=" << m_value;
 			}
 			return os;
 		}
@@ -1012,7 +1012,12 @@ class boltenv : public encryptable_settings
 			}
 
 			nv_compound::set(name, val);
+
 			maybe_hide_flags();
+
+			if (name == "raw") {
+				split_raw();
+			}
 		}
 
 		virtual std::string to_string(unsigned level, bool pretty) const override
@@ -1094,10 +1099,22 @@ class boltenv : public encryptable_settings
 		{
 			string data(size, '\0');
 			is.read(&data[0], data.size());
-
 			m_raw->parse(data);
+			m_set = true;
 
-			auto tok = split(data, '=', true, 2);
+			split_raw();
+
+			return is;
+		}
+
+		void maybe_hide_flags()
+		{
+			m_flags->disable(tag() != var1);
+		}
+
+		void split_raw()
+		{
+			auto tok = split(m_raw->str(), '=', true, 2);
 			if (!tok.empty()) {
 				m_key = tok[0];
 			} else {
@@ -1110,15 +1127,6 @@ class boltenv : public encryptable_settings
 			} else {
 				m_value = "";
 			}
-
-			m_set = true;
-
-			return is;
-		}
-
-		void maybe_hide_flags() const
-		{
-			m_flags->disable(tag() != var1);
 		}
 
 		sp<nv_u8_m<2>> m_tag = make_shared<nv_u8_m<2>>();
