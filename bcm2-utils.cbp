@@ -45,23 +45,9 @@
 					<Add option="-s" />
 				</Linker>
 			</Target>
-			<Target title="bcm2boltenv">
-				<Option output="bcm2boltenv" prefix_auto="1" extension_auto="1" />
-				<Option object_output="obj/" />
-				<Option type="1" />
-				<Option compiler="gcc" />
-				<Compiler>
-					<Add option="-O2" />
-					<Add option="-Wall -Wno-sign-compare" />
-					<Add directory="include" />
-				</Compiler>
-				<Linker>
-					<Add option="-s" />
-				</Linker>
-			</Target>
 		</Build>
 		<VirtualTargets>
-			<Add alias="all" targets="bcm2cfg;bcm2dump;psextract;bcm2boltenv;" />
+			<Add alias="all" targets="bcm2cfg;bcm2dump;psextract;" />
 		</VirtualTargets>
 		<Compiler>
 			<Add option="-Wall" />
@@ -82,9 +68,6 @@
 		<Unit filename="asmdef.h">
 			<Option target="bcm2cfg" />
 			<Option target="bcm2dump" />
-		</Unit>
-		<Unit filename="bcm2boltenv.cc">
-			<Option target="bcm2boltenv" />
 		</Unit>
 		<Unit filename="bcm2cfg.cc">
 			<Option target="bcm2cfg" />
