@@ -8,7 +8,7 @@
 Features available for `bcm2dump` and `bcm2cfg` differ, depending on whether a device profile is available for your specific device or not. 
 It should be easy to add support for other devices. Some pointers can be found [below](#writing-a-device-profile).
 
-Binaries for macOS, Windows and Linux are available [here](https://github.com/jclehner/bcm2-utils/releases).
+Binaries for macOS, Windows and Linux are available [here](https://github.com/jclehner/bcm2-utils/releases) (outdated at the moment).
 
 For Arch-based Linux distros, there's [a package](https://aur.archlinux.org/packages/bcm2-utils-git) on the Arch User Repository. 
 
