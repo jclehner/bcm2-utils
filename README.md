@@ -3,31 +3,12 @@
 **Util**ities for **B**road**c**o**m**-based **c**able **m**odems.
 
 * [bcm2dump](#bcm2dump): A utility to dump ram/flash, primarily intended as a firmware dump tool for cable modems based on a Broadcom SoC. Works over serial connection (bootloader, firmware) and telnet (firmware).
-* [bcm2cfg](#bcm2cfg): A utility to modify/encrypt/decrypt the configuration
-   file (aka `GatewaySettings.bin`), but also NVRAM images.
+* [bcm2cfg](#bcm2cfg): A utility to modify/encrypt/decrypt configuration files (aka `GatewaySettings.bin`), but also NVRAM images, and BOLT environment variables.
 
-Fully supported devices:
+Features available for `bcm2dump` and `bcm2cfg` differ, depending on whether a device profile is available for your specific device or not. 
+It should be easy to add support for other devices. Some pointers can be found [below](#writing-a-device-profile).
 
-* Technicolor TC7200 (bootloader, shell)
-* Thomson TWG850-4 (shell)
-* Thomson TWG870 (shell)
-* Ubee EVM3236 (shell)
-* NetMASTER CBW-383ZN
-
-Partially supported:
-
-* Thomson TCW770
-* Netgear CG3000
-* Netgear CG3101
-* Motorola Surfboard SBG6580
-* Motorola MG7550
-* Motorola MB7420
-* Sagemcom F@ST 3686 AC
-* Technicolor TC7210
-
-Devices _not_ listed above may still be supported, but with less features! It should be easy to add support for other devices. Some pointers can be found [below](#writing-a-device-profile).
-
-Binaries for macOS and Windows are available [here](https://github.com/jclehner/bcm2-utils/releases).
+Binaries for macOS, Windows and Linux are available [here](https://github.com/jclehner/bcm2-utils/releases).
 
 For Arch-based Linux distros, there's [a package](https://aur.archlinux.org/packages/bcm2-utils-git) on the Arch User Repository. 
 
@@ -41,6 +22,7 @@ Options:
   -F               Force operation
   -P <profile>     Force profile
   -L <filename>    I/O log file
+  -O <opt>=<val>   Override option value
   -q               Decrease verbosity
   -v               Increase verbosity
 
@@ -62,11 +44,12 @@ Interfaces:
   192.168.0.1,foo,bar,233  Same as above, port 233
 
 Profiles:
-  gen2pslc, cg3000, cg3101, cbw383zn, ch7485e, c6300bd, sbg6580, 
-  fast3686, fast3890, fast3286, mg7550, mb7420, twg850, tcw770, 
-  twg870, evm3236, evw32c, tc8715, tc7200, generic
+  c6300bd, cbw383zn, cg3000, cg3100, cg3101, cga4233, ch7485e, debug, 
+  epc3008, evm3236, evw32c, fast3286, fast3686, fast3890, generic, 
+  mb7420, mg7550, sbg6580, tc7200, tc7210, tc8715, tcw770, tm902s, 
+  twg850, twg870
 
-bcm2dump v0.9.4 Copyright (C) 2016-2020 Joseph C. Lehner
+bcm2dump v0.9.7 Copyright (C) 2016-2023 Joseph C. Lehner
 Licensed under the GNU GPLv3; source code is available at
 https://github.com/jclehner/bcm2-utils
 ```
@@ -167,7 +150,6 @@ not require a profile.
 
 ##### Usage
 
-
 ```
 Usage: bcm2cfg [<options>] <command> [<arguments> ...]
 
@@ -175,7 +157,7 @@ Options:
   -P <profile>     Force profile
   -p <password>    Encryption password
   -k <key>         Encryption key (hex string)
-  -f <format>      Input file format (auto/gws/dyn/perm)
+  -f <format>      Input file format (auto/gws/dyn/perm/boltenv)
   -z               Add padding when encrypting
   -q               Decrease verbosity
   -v               Increase verbosity
@@ -188,28 +170,29 @@ Commands:
   list    <infile> [<name>]
   get     <infile> [<name>]
   set     <infile> <name> <value> [<outfile>]
+  remove  <infile> <group name> [<outfile>]
   dump    <infile> [<name>]
   type    <infile> [<name>]
   info    <infile>
   help
 
 Profiles:
-  gen2pslc, cg3000, cg3101, cbw383zn, ch7485e, c6300bd, 
-  sbg6580, fast3686, fast3890, fast3286, mg7550, mb7420, 
-  twg850, tcw770, twg870, evm3236, evw32c, tc8715, tc7200, 
-  generic
+  c6300bd, cbw383zn, cg3000, cg3100, cg3101, cga4233, ch7485e, debug, 
+  epc3008, evm3236, evw32c, fast3286, fast3686, fast3890, generic, 
+  mb7420, mg7550, sbg6580, tc7200, tc7210, tc8715, tcw770, tm902s, 
+  twg850, twg870
 
-bcm2cfg v0.9.4 Copyright (C) 2016-2020 Joseph C. Lehner
+bcm2cfg v0.9.7 Copyright (C) 2016-2023 Joseph C. Lehner
 Licensed under the GNU GPLv3; source code is available at
 https://github.com/jclehner/bcm2-utils
 ```
 
 `bcm2cfg` can be used to inspect and modify device configuration data. Currently supported formats are the
-`GatewaySettings.bin` file that can be downloaded via the web interface, and NVRAM dumps (such as those
-obtained by `bcm2dump`).
+`GatewaySettings.bin` file that can be downloaded via the web interface, CM NVRAM dumps/files (
+`cm_perm.bin` and `cm_dyn.bin` on newer devices), and BOLT bootloader variables (often located in a
+partition named `flash0.nvram` and `flash0.nvram1`
 
-The configuration data consists of a series of so-called settings groups. To display a list of settings
-groups, use:
+To display the contents, use:
 
 ```
 $ bcm2cfg info GatewaySettings.bin
