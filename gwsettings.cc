@@ -945,8 +945,8 @@ class boltenv : public encryptable_settings
 
 		virtual size_t bytes() const override
 		{
-			// 1 to account for the tag itself, and 1 if var1 (for flags)
-			return calc_raw_length(m_value) + (tag() == var1 ? 2 : 1);
+			// 1 to account for the tag itself, and 1 for flags
+			return calc_raw_length(m_value) + 2;
 		}
 
 		virtual bool parse(const string& str) override
@@ -983,12 +983,13 @@ class boltenv : public encryptable_settings
 			if (m_tag->write(os) && tag()) {
 				if (tag() == var1) {
 					nv_u8::write(os, bytes() - 1);
-					m_flags->write(os);
 				} else if (tag() == var2) {
 					nv_u16::write(os, bytes() - 1);
 				} else {
 					throw runtime_error("attemtping to write variable with tag " + to_hex(tag()));
 				}
+
+				m_flags->write(os);
 
 				os << m_key << "=" << m_value;
 			}
@@ -1001,22 +1002,14 @@ class boltenv : public encryptable_settings
 
 			if (name == "raw" && val.size() > max_raw_length()) {
 				throw runtime_error("raw variable size cannot exceed " + ::to_string(max_raw_length()));
-			} else if (name == "tag") {
-				decltype(m_tag)::element_type new_tag;
-				new_tag.parse_checked(val);
-				if (!new_tag.num()) {
-					throw runtime_error("refusing to set variable tag to 0");
-				} else if (new_tag.num() != var1 && m_flags->num()) {
-					logger::w() << "cannot preserve flags (" + m_flags->to_string(false, false) + ") for this tag type" << endl;
-				}
 			}
 
 			nv_compound::set(name, val);
 
-			maybe_hide_flags();
-
 			if (name == "raw") {
 				split_raw();
+			} else if (name == "tag" && !tag()) {
+				disable(true);
 			}
 		}
 
@@ -1039,7 +1032,7 @@ class boltenv : public encryptable_settings
 			if (tag() == 0x01) {
 				return nv_u8::max - 1;
 			} else if (tag() == 0x02) {
-				return nv_u16::max;
+				return nv_u16::max - 1;
 			} else {
 				return 0;
 			}
@@ -1064,32 +1057,25 @@ class boltenv : public encryptable_settings
 
 				size_t length = 0;
 
-				maybe_hide_flags();
+				m_raw->disable(false);
+				m_flags->disable(false);
 
-				if (tag() == var1) {
-					if (!nv_u8::read(is, length)) {
-						break;
-					}
-
-					if (!m_flags->read(is)) {
-						break;
-					}
-
-					// 'flags' is included in the length
-					length -= 1;
-				} else if (tag() == var2) {
-					if (!nv_u16::read(is, length)) {
-						break;
-					}
-
-					return length;
-				} else if (tag() != end) {
+				if (tag() == var1 && !nv_u8::read(is, length)) {
+					break;
+				} else if (tag() == var2 && !nv_u16::read(is, length)) {
+					break;
+				} else if (tag() == end) {
 					m_raw->disable(true);
-					throw runtime_error("unknown variable tag " + ::to_hex(tag()));
+					m_flags->disable(true);
+					return 0;
 				}
 
+				if (!m_flags->read(is)) {
+					break;
+				}
 
-				return length;
+				// flags are included in the length
+				return length - 1;
 			} while (false);
 
 			throw runtime_error("error parsing header");
@@ -1105,11 +1091,6 @@ class boltenv : public encryptable_settings
 			split_raw();
 
 			return is;
-		}
-
-		void maybe_hide_flags()
-		{
-			m_flags->disable(tag() != var1);
 		}
 
 		void split_raw()
