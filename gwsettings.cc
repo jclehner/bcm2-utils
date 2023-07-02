@@ -1226,8 +1226,14 @@ class boltenv : public encryptable_settings
 
 				if (!v->tag()) {
 					break;
-				} else {
-					parts.push_back({ v->key(), v });
+				} else if (!v->key().empty()) {
+					// BOLT doesn't seem to enforce any rules on valid variable names, so we're just playing safe here...
+					auto it = find_if(v->key().begin(), v->key().end(), [] (auto c) { return c > 0x7f || !isprint(c); });
+					if (it == v->key().end()) {
+						parts.push_back({ v->key(), v });
+					} else {
+						logger::w() << "ignoring variable name \"" << escape(v->key(), true) << "\"" << endl;
+					}
 				}
 			}
 

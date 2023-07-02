@@ -240,6 +240,8 @@ class mstimer
 
 std::string transform(const std::string& str, std::function<int(int)> f);
 
+std::string escape(std::string str, bool escape_quote = false);
+
 template<class T> inline T be_to_h(T n)
 {
 	return boost::endian::big_to_native(n);

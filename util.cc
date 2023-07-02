@@ -209,6 +209,21 @@ std::string transform(const std::string& str, std::function<int(int)> f)
 	return ret;
 }
 
+std::string escape(string str, bool escape_quote)
+{
+	string::size_type pos;
+	while ((pos = str.find_first_of(escape_quote ? "\\\"" : "\\")) != string::npos) {
+		str.insert(pos, 1, '\'');
+	}
+
+	string::iterator it = str.begin();
+	while ((it = find_if(it, str.end(), [] (auto c) { return !isprint(c); })) != str.end()) {
+		str.replace(it, it + 1, "\\x" + to_hex(*it));
+	}
+
+	return str;
+}
+
 int logger::s_loglevel = logger::info;
 bool logger::s_no_stdout = false;
 list<string> logger::s_lines;
