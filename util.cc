@@ -197,25 +197,6 @@ string from_hex(const string& hexstr)
 	return ret;
 }
 
-uint16_t crc16_ccitt(const void* buf, size_t size)
-{
-	uint32_t crc = 0xffff;
-	uint32_t poly = 0x1021;
-
-	for (size_t i = 0; i < size; ++i) {
-		for (size_t k = 0; k < 8; ++k) {
-			bool bit = (reinterpret_cast<const char*>(buf)[i] >> (7 - k) & 1);
-			bool c15 = (crc >> 15 & 1);
-			crc <<= 1;
-			if (c15 ^ bit) {
-				crc ^= poly;
-			}
-		}
-	}
-
-	return crc & 0xffff;
-}
-
 std::string transform(const std::string& str, std::function<int(int)> f)
 {
 	string ret;

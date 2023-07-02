@@ -20,6 +20,7 @@
 #ifndef BCM2UTILS_UTIL_H
 #define BCM2UTILS_UTIL_H
 #include <boost/endian/conversion.hpp>
+#include <boost/crc.hpp>
 #include <system_error>
 #include <type_traits>
 #include <functional>
@@ -194,7 +195,9 @@ template<class T> T align_right(const T& num, size_t alignment)
 	return num + (rem ? alignment - rem : 0);
 }
 
-uint16_t crc16_ccitt(const void* buf, size_t size);
+inline uint16_t crc16_ccitt(const void* buf, size_t size)
+{ return boost::crc<16, 0x1021, 0xffff, 0, false, false>(buf, size); }
+
 inline uint16_t crc16_ccitt(const std::string& buf)
 { return crc16_ccitt(buf.data(), buf.size()); }
 
