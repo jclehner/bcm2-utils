@@ -941,7 +941,8 @@ class boltenv : public encryptable_settings
 		}
 
 		const uint8_t tag() const { return m_tag->num(); }
-		const string& key() const { return m_key; }
+
+		virtual const string& name() const override { return m_name; }
 
 		virtual size_t bytes() const override
 		{
@@ -957,7 +958,7 @@ class boltenv : public encryptable_settings
 
 			if (calc_raw_length(str) < max_raw_length(tag())) {
 				m_value = str;
-				m_raw->str(m_key + "=" + str);
+				m_raw->str(m_name + "=" + str);
 				m_set = true;
 			} else {
 				throw runtime_error("raw variable size cannot exceed " + ::to_string(max_raw_length(tag())));
@@ -991,7 +992,7 @@ class boltenv : public encryptable_settings
 
 				m_flags->write(os);
 
-				os << m_key << "=" << m_value;
+				os << m_name << "=" << m_value;
 			}
 			return os;
 		}
@@ -1054,7 +1055,7 @@ class boltenv : public encryptable_settings
 		{
 			if (tag()) {
 				// 1 additional byte for '=' sign
-				return m_key.size() + 1 + value.size();
+				return m_name.size() + 1 + value.size();
 			} else {
 				return 0;
 			}
@@ -1109,9 +1110,9 @@ class boltenv : public encryptable_settings
 		{
 			auto tok = split(m_raw->str(), '=', true, 2);
 			if (!tok.empty()) {
-				m_key = tok[0];
+				m_name = tok[0];
 			} else {
-				m_key = "";
+				m_name = "";
 			}
 
 			// even an empty variable should be encoded as "NAME=", but we never know
@@ -1126,7 +1127,7 @@ class boltenv : public encryptable_settings
 		sp<nv_zstring> m_raw = make_shared<nv_zstring>();
 		sp<nv_bitmask<nv_u8>> m_flags = sp<nv_bitmask<nv_u8>>(new nv_bitmask<nv_u8>(nv_bitmask<nv_u8>::valvec { "temp", "ro" }));
 
-		string m_key;
+		string m_name;
 		string m_value;
 	};
 
@@ -1213,19 +1214,19 @@ class boltenv : public encryptable_settings
 					throw runtime_error("read error");
 				}
 
-				logger::d() << "read tag " << to_hex(v->tag()) << ": " << v->key() << ", " << v->bytes() << " b" << endl;
+				logger::d() << "read tag " << to_hex(v->tag()) << ": " << v->name() << ", " << v->bytes() << " b" << endl;
 
 				data_bytes += v->bytes();
 
 				if (!v->tag()) {
 					break;
-				} else if (!v->key().empty()) {
+				} else if (!v->name().empty()) {
 					// BOLT doesn't seem to enforce any rules on valid variable names, so we're just playing safe here...
-					auto it = find_if(v->key().begin(), v->key().end(), [] (auto c) { return c > 0x7f || !isprint(c); });
-					if (it == v->key().end()) {
-						parts.push_back({ v->key(), v });
+					auto it = find_if(v->name().begin(), v->name().end(), [] (auto c) { return c > 0x7f || !isprint(c); });
+					if (it == v->name().end()) {
+						parts.push_back({ v->name(), v });
 					} else {
-						logger::w() << "ignoring variable name \"" << escape(v->key(), true) << "\"" << endl;
+						logger::w() << "ignoring variable name \"" << escape(v->name(), true) << "\"" << endl;
 					}
 				}
 			}
