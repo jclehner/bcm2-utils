@@ -955,12 +955,12 @@ class boltenv : public encryptable_settings
 				throw runtime_error("can't set this variable");
 			}
 
-			if (calc_raw_length(str) < max_raw_length()) {
+			if (calc_raw_length(str) < max_raw_length(tag())) {
 				m_value = str;
 				m_raw->str(m_key + "=" + str);
 				m_set = true;
 			} else {
-				throw runtime_error("raw variable size cannot exceed " + ::to_string(max_raw_length()));
+				throw runtime_error("raw variable size cannot exceed " + ::to_string(max_raw_length(tag())));
 			}
 
 			return true;
@@ -1000,15 +1000,27 @@ class boltenv : public encryptable_settings
 		{
 			// now THIS is a hack...
 
-			if (name == "raw" && val.size() > max_raw_length()) {
-				throw runtime_error("raw variable size cannot exceed " + ::to_string(max_raw_length()));
+			uint8_t tag;
+
+			if (name == "tag") {
+				decltype(m_tag)::element_type new_tag;
+				new_tag.parse_checked(val);
+				tag = new_tag.num();
+			} else {
+				tag = m_tag->num();
+			}
+
+			const string& raw = ((name == "raw") ? val : m_raw->str());
+			if (raw.size() > max_raw_length(tag)) {
+				throw runtime_error("raw variable size cannot exceed " + ::to_string(max_raw_length(tag)) + " b");
 			}
 
 			nv_compound::set(name, val);
 
 			if (name == "raw") {
 				split_raw();
-			} else if (name == "tag" && !tag()) {
+			} else if (name == "tag" && !this->tag()) {
+				// this has the same effect as removing the variable from the list
 				disable(true);
 			}
 		}
@@ -1027,11 +1039,11 @@ class boltenv : public encryptable_settings
 		{ throw runtime_error(__PRETTY_FUNCTION__); }
 
 		private:
-		size_t max_raw_length() const
+		size_t max_raw_length(uint8_t tag) const
 		{
-			if (tag() == 0x01) {
+			if (tag == 0x01) {
 				return nv_u8::max - 1;
-			} else if (tag() == 0x02) {
+			} else if (tag == 0x02) {
 				return nv_u16::max - 1;
 			} else {
 				return 0;
