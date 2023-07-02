@@ -1194,12 +1194,21 @@ class boltenv : public encryptable_settings
 			nv_u32le::read(istr, m_data_bytes);
 			nv_u32le::read(istr, m_checksum);
 
-			// FIXME
-			m_checksum_valid = true;
-
 			if (!istr) {
 				break;
 			}
+
+			string databuf(m_data_bytes, '\0');
+			auto bytes = istr.readsome(&databuf[0], databuf.size());
+			databuf.resize(bytes);
+
+			if (m_data_bytes != databuf.size()) {
+				logger::w() << "read " << databuf.size() << " b, but reported size is " << m_data_bytes << " b" << endl;
+			}
+
+			m_checksum_valid = (m_checksum == crc32(databuf));
+
+			istr.str(databuf);
 
 			uint32_t data_bytes = 0;
 
@@ -1255,9 +1264,7 @@ class boltenv : public encryptable_settings
 		string databuf = data.str();
 
 		nv_u32le::write(ostr, databuf.size());
-		boost::crc_32_type crc;
-		crc.process_bytes(databuf.data(), databuf.size());
-		nv_u32le::write(ostr, crc.checksum());
+		nv_u32le::write(ostr, crc32(databuf));
 
 		ostr.write(databuf.data(), databuf.size());
 
