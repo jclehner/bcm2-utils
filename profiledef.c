@@ -1254,7 +1254,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		.versions = {
 			{
 				.intf = BCM2_INTF_BLDR,
-				.rwcode = 0x80002000,
+				.rwcode = 0x80004000,
 				.buffer = 0x82f10000
 			},
 			{
