@@ -1262,6 +1262,8 @@ struct bcm2_profile bcm2_profiles[] = {
 				.intf = BCM2_INTF_BLDR,
 				.magic = { 0x83f89f4c, "2.3.1" },
 				.printf = 0x83f878f4,
+				.sscanf = 0x83f882c8,
+				.getline = 0x83f875a0,
 				.spaces = {
 					{
 						.name = "flash",

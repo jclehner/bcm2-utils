@@ -263,23 +263,28 @@ class nv_group_snmp : public nv_group
 		if (type == fmt_perm) {
 			return {
 				NV_VAR(nv_bool, "allow_config"),
-				NV_VAR(nv_cdata<0x20>, ""),
-				NV_VAR(nv_cdata<0x80>, ""),
-				NV_VAR(nv_cdata<0x80>, ""),
+				NV_VAR(nv_cdata<0x20>, "vendor_name"),
+				NV_VAR(nv_cdata<0x80>, "sys_descr"),
+				NV_VAR(nv_cdata<0x80>, "sys_object_id"),
 				NV_VAR(nv_fzstring<0x80>, "sys_contact"),
 				NV_VAR(nv_fzstring<0x80>, "sys_name"),
 				NV_VAR(nv_fzstring<0x80>, "sys_location"),
-				NV_VAR(nv_cdata<0x80>, ""),
-				NV_VAR(nv_cdata<0x80>, ""),
-				NV_VAR(nv_u8, ""),
-				NV_VAR(nv_cdata<0x80>, ""),
+				NV_VAR(nv_cdata<0x80>, "sys_or_id"),
+				NV_VAR(nv_cdata<0x80>, "sys_or_descr"),
+				NV_VAR(nv_u8, "sys_services", true),
+				NV_VAR(nv_cdata<0x80>, "sw_current_version"),
 				NV_VAR(nv_fzstring<0x40>, "serial_number"),
 				// version 0.2
 				NV_VAR(nv_u8, "max_download_tries"),
 				// version 0.3
-				NV_VAR(nv_cdata<4>, ""),
+				NV_VAR2(nv_bitmask<nv_u32>, "features", {
+						"ignore_llc_unmatched_if_no_filters",
+						"ignore_ip_default_if_no_filters",
+						"disable_diag_agent_post_reg",
+						"show_ipstack_if_entries",
+				}),
 				// version 0.4
-				NV_VAR(nv_cdata<0x80>, ""),
+				NV_VAR(nv_cdata<0x80>, "sys_descr_2"),
 			};
 		} else {
 			return {

@@ -20,6 +20,7 @@
 #ifndef BCM2UTILS_UTIL_H
 #define BCM2UTILS_UTIL_H
 #include <boost/endian/conversion.hpp>
+#include <boost/crc.hpp>
 #include <system_error>
 #include <type_traits>
 #include <functional>
@@ -194,9 +195,25 @@ template<class T> T align_right(const T& num, size_t alignment)
 	return num + (rem ? alignment - rem : 0);
 }
 
-uint16_t crc16_ccitt(const void* buf, size_t size);
+template<class T> typename T::value_type crc_generic(const void* buf, size_t size)
+{
+	T crc;
+	crc.process_bytes(buf, size);
+	return crc.checksum();
+}
+
+inline uint16_t crc16_ccitt(const void* buf, size_t size)
+{
+	return crc_generic<boost::crc_ccitt_type>(buf, size);
+}
+
 inline uint16_t crc16_ccitt(const std::string& buf)
 { return crc16_ccitt(buf.data(), buf.size()); }
+
+inline uint32_t crc32(const std::string& buf)
+{
+	return crc_generic<boost::crc_32_type>(buf.data(), buf.size());
+}
 
 class mstimer
 {
@@ -222,6 +239,8 @@ class mstimer
 };
 
 std::string transform(const std::string& str, std::function<int(int)> f);
+
+std::string escape(std::string str, bool escape_quote = false);
 
 template<class T> inline T be_to_h(T n)
 {
