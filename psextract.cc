@@ -107,7 +107,8 @@ string read_hbuf(istream& in)
 
 void extract_ps(istream& in, const ps_header& ps)
 {
-	logger::i("0x%07lx  ", long(in.tellg()) - sizeof(ps_header::raw));
+	unsigned long off = static_cast<unsigned long>(in.tellg()) - sizeof(ps_header::raw);
+	logger::i("0x%07lx  ", off);
 	logger::i() << "image: " << ps.filename() << ", " << ps.length() << " b";
 	logger::v(", %04x", ps.signature());
 	logger::i() << endl;
