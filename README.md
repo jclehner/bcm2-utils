@@ -48,10 +48,6 @@ Profiles:
   epc3008, evm3236, evw32c, fast3286, fast3686, fast3890, generic, 
   mb7420, mg7550, sbg6580, tc7200, tc7210, tc8715, tcw770, tm902s, 
   twg850, twg870
-
-bcm2dump v0.9.7 Copyright (C) 2016-2023 Joseph C. Lehner
-Licensed under the GNU GPLv3; source code is available at
-https://github.com/jclehner/bcm2-utils
 ```
 
 This utility can be used to dump firmware or other flash contents.
@@ -181,10 +177,6 @@ Profiles:
   epc3008, evm3236, evw32c, fast3286, fast3686, fast3890, generic, 
   mb7420, mg7550, sbg6580, tc7200, tc7210, tc8715, tcw770, tm902s, 
   twg850, twg870
-
-bcm2cfg v0.9.7 Copyright (C) 2016-2023 Joseph C. Lehner
-Licensed under the GNU GPLv3; source code is available at
-https://github.com/jclehner/bcm2-utils
 ```
 
 `bcm2cfg` can be used to inspect and modify device configuration data. Currently supported formats are the
