@@ -1,5 +1,5 @@
-CC ?= $(CROSS)gcc
-CXX ?= $(CROSS)g++
+CC = $(CROSS)gcc
+CXX = $(CROSS)g++
 STRIP = $(CROSS)strip
 OBJCOPY = $(CROSS)objcopy
 LIBS ?=
@@ -43,7 +43,7 @@ bcm2cfg = bcm2cfg$(BINEXT)
 psextract = psextract$(BINEXT)
 
 define PackageRelease
-	zip bcm2utils-$(VERSION)-$(1).zip README.md $(bcm2dump) $(bcm2cfg) $(psextract)
+	zip bcm2-utils-$(VERSION)-$(1).zip README.md $(bcm2dump)$(2) $(bcm2cfg)$(2) $(psextract)$(2)
 endef
 
 .PHONY: all clean mrproper
