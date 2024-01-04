@@ -58,6 +58,7 @@
 			<Add option="-DWINVER=0x0600" />
 			<Add option="-D_WIN32_WINNT=0x0600" />
 			<Add option="-D__USE_MINGW_ANSI_STDIO" />
+			<Add directory="include" />
 		</Compiler>
 		<Linker>
 			<Add option="-O2" />
