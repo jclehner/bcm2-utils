@@ -90,7 +90,7 @@ void test_group()
 		"\xf0\x0f\x55\x55\xaa\xaa"s // nv_array<nv_i16, 3>
 		;
 
-	patch(data1, 0, h_to_be(data1.size()));
+	patch(data1, 0, h_to_be<uint16_t>(data1.size()));
 
 	sp<nv_group> group;
 	stringstream istr(data1);
