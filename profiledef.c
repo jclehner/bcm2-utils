@@ -1275,6 +1275,15 @@ struct bcm2_profile bcm2_profiles[] = {
 			},
 		},
 	},
+	{
+		.name = "cg2200",
+		.pretty = "KAON Media CG2200",
+		.cfg_flags = BCM2_CFG_DATA_USERIF_ALT_2,
+		.cfg_md5key = "3250736c633b752865676d64302d2778",
+		.spaces = {
+			{ .name = "ram" },
+		},
+	},
 	// end marker
 	{ .name = "" },
 };
