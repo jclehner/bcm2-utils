@@ -64,7 +64,7 @@ Some firmware files are so-called monolithic images, which contain multiple imag
 | 8      | u32      | len   | Image size (including this header)          |
 | 12     | u32      | images| Bitmask of image numbers contained in this file. |
 
-Individual images are padded to a 64k block size.
+Individual images are padded to a 64k (or 32k?) block size.
 
 The exact meaning of the image numbers specified im `images` varies, depending
 on the platform, although though `0` is usually the bootloader. Below are
