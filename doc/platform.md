@@ -7,11 +7,11 @@ An overview of the different SoCs can be found on [deviwiki](https://deviwiki.co
 
 The chipsets can be divided into 3 different categories, depending on their CPUs.
 
-##### BCM3382 and older
+### BCM3382 and older
 
 These use a single core big-endian MIPS processor. The CM firmware is based on eCos.
 
-##### BCM338x and BCM3384
+### BCM338x and BCM3384
 
 The SoC includes two big-endian MIPS processors, sharing the same RAM space.
 
@@ -30,7 +30,7 @@ to work as a basic modem/router.
 
 Communication between both processors is handled by various IPC mechanisms.
 
-##### BCM3390
+### BCM3390
 
 This SoC includes two processors of *differing endianness*.
 
