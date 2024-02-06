@@ -43,7 +43,7 @@ bcm2cfg = bcm2cfg$(BINEXT)
 psextract = psextract$(BINEXT)
 
 define PackageRelease
-	zip bcm2-utils-$(VERSION)-$(1).zip README.md $(bcm2dump)$(2) $(bcm2cfg)$(2) $(psextract)$(2)
+	zip bcm2-utils-$(VERSION)-$(1).zip README.md $(bcm2dump)$(2) $(bcm2cfg)$(2) $(psextract)$(2) doc/*.md
 endef
 
 .PHONY: all clean mrproper
