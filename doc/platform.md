@@ -2,7 +2,6 @@ BCM33xx
 =======
 
 The BCM33xx chipset, sometimes also referred to as BCM933xx, is a cable modem SoC.
-
 An overview of the different SoCs can be found on [deviwiki](https://deviwiki.com/wiki/Broadcom#tab=SoC).
 
 The chipsets can be divided into 3 different categories, depending on their CPUs.
