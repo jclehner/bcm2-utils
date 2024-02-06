@@ -167,16 +167,8 @@
 		<Unit filename="snmp.h">
 			<Option target="&lt;{~None~}&gt;" />
 		</Unit>
-		<Unit filename="util.cc">
-			<Option target="bcm2cfg" />
-			<Option target="bcm2dump" />
-			<Option target="psextract" />
-		</Unit>
-		<Unit filename="util.h">
-			<Option target="bcm2cfg" />
-			<Option target="bcm2dump" />
-			<Option target="psextract" />
-		</Unit>
+		<Unit filename="util.cc" />
+		<Unit filename="util.h" />
 		<Extensions />
 	</Project>
 </CodeBlocks_project_file>
