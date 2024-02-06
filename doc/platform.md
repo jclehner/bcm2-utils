@@ -36,6 +36,8 @@ This SoC includes two processors of *differing endianness*.
 * ARM, "Brahma B15", (dual core, ARMv7, Cortex-A15), little-endian
 * MIPS, big-endian
 
+RAM is shared between both processors, but the MIPS core can only access part of it.
+
 The boot processor is the ARM core. The device can be set to secure boot mode
 using OTP (one-time programmable) memory.
 
