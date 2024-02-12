@@ -248,10 +248,6 @@ class nv_num : public nv_val
 
 	template<class U> static std::ostream& write(std::ostream& os, U num)
 	{
-		if (num > max) {
-			throw std::invalid_argument("value exceeds maximum of target type");
-		}
-
 		T raw = num;
 
 		if (sizeof(raw) > 1) {
