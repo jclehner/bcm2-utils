@@ -54,7 +54,7 @@
 			<Add option="-std=c++14" />
 			<Add option="-std=c99" />
 			<Add option="-m32" />
-			<Add option='-DVERSION=&quot;\&quot;v0.9.7\&quot;&quot;' />
+			<Add option='-DVERSION=&quot;\&quot;v0.9.8\&quot;&quot;' />
 			<Add option="-DWINVER=0x0600" />
 			<Add option="-D_WIN32_WINNT=0x0600" />
 			<Add option="-D__USE_MINGW_ANSI_STDIO" />
