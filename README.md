@@ -44,10 +44,10 @@ Interfaces:
   192.168.0.1,foo,bar,233  Same as above, port 233
 
 Profiles:
-  c6300bd, cbw383zn, cg3000, cg3100, cg3101, cga4233, ch7485e, debug, 
-  epc3008, evm3236, evw32c, fast3286, fast3686, fast3890, generic, 
-  mb7420, mg7550, sbg6580, tc7200, tc7210, tc8715, tcw770, tm902s, 
-  twg850, twg870
+  c6300bd, cbw383zn, cg2200, cg3000, cg3100, cg3101, cga4233, 
+  ch7485e, debug, epc3008, evm3236, evw32c, fast3286, fast3686, 
+  fast3890, generic, mb7420, mg7550, sbg6580, tc7200, tc7210, tc8715, 
+  tcw770, tm902s, twg850, twg870
 ```
 
 This utility can be used to dump firmware or other flash contents.
@@ -173,10 +173,10 @@ Commands:
   help
 
 Profiles:
-  c6300bd, cbw383zn, cg3000, cg3100, cg3101, cga4233, ch7485e, debug, 
-  epc3008, evm3236, evw32c, fast3286, fast3686, fast3890, generic, 
-  mb7420, mg7550, sbg6580, tc7200, tc7210, tc8715, tcw770, tm902s, 
-  twg850, twg870
+  c6300bd, cbw383zn, cg2200, cg3000, cg3100, cg3101, cga4233, 
+  ch7485e, debug, epc3008, evm3236, evw32c, fast3286, fast3686, 
+  fast3890, generic, mb7420, mg7550, sbg6580, tc7200, tc7210, tc8715, 
+  tcw770, tm902s, twg850, twg870
 ```
 
 `bcm2cfg` can be used to inspect and modify device configuration data. Currently supported formats are the
