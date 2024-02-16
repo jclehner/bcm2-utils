@@ -47,8 +47,8 @@ them in a boltenv partition).
 | Offset | Type       | Name        | Comment                                     |
 |-------:|------------|-------------|---------------------------------------------|
 | 0      | u8         | type        | `0x02`                                      |
-| 1      | u16be      | size        | big endian!                                 |                               
-| 3      | u8         | length      | (same as above)                             |
+| 1      | u16be      | length      | big endian!                                 |                               
+| 3      | u8         | flags       | (same as above)                             |
 | 4      | u8[size-1] | value       |                                             |
 
 This type may be non-standard, as some `boltenv` utilities just skip over them.
