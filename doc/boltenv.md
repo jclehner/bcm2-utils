@@ -20,36 +20,35 @@ Numbers are stored in little-endian, unless otherwise noted.
 
 #### Variables
 
-The data (i.e. environment variables) is stored using the same TLV encoding as used by Broadcom's
+Environment variables are stored using the same TLV encoding as used by Broadcom's
 [CFE bootloader](https://github.com/blackfuel/asuswrt-rt-ax88u/blob/master/release/src-rt-5.02axhnd/cfe/cfe/main/env_subr.c).
 
 The `tlv_cheat` field makes the boltenv header appear as if it was just another data blob: type `0x01`, size `0x1a` (two padding
 `0x00`s + actual header size).
 
-A type of `0x00` means end of data.
+A type of `0x00` means end of data. For the other types, the `value` field contains a `name=value` string, where everything up
+to the first `=` sign is interpreted as the variable name. The code of Broadcom's `boltenv` tool doesn't make any effort to validate
+the characters used as the variable name.
 
-###### Type `0x01` (short variable)
+Variables that have the "temporary" flag set aren't saved when the variable store is committed to storage (so you won't usually encounter
+them in a boltenv partition).
+
+###### Type `0x01` (8 bit length prefix)
 
 | Offset | Type       | Name        | Comment                                     |
 |-------:|------------|-------------|---------------------------------------------|
-| 0      | u8         | type        | Always `0x01`                               |
-| 1      | u8         | size        |                             |
+| 0      | u8         | type        | `0x01`                                      |
+| 1      | u8         | length      |                             |
 | 2      | u8         | flags       | Bitmask: `0x01` = temporary, `0x02` = ro    |
-| 3      | u8[size-1] | data        |                                             |
+| 3      | u8[size-1] | value       |                                             |
 
-The `data` field contains a `name=value` string, where everything up to the first `=` sign is
-interpreted as the variable name. The code of Broadcom's `boltenv` tool doesn't make any effort
-to validate the characters used as the variable name.
-
-Variables marked temporary aren't saved when the variable store is committed to storage.
-
-###### Type `0x02` (long variable?)
+###### Type `0x02` (16 bit length prefix)
 
 | Offset | Type       | Name        | Comment                                     |
 |-------:|------------|-------------|---------------------------------------------|
-| 0      | u8         | type        | Always `0x02`                               |
-| 1      | u16be      | size        | (big endian!)                               |
-| 3      | u8         | flags       | (same as above)                             |
-| 4      | u8[size-1] | data        |                                             |
+| 0      | u8         | type        | `0x02`                                      |
+| 1      | u16be      | size        | big endian!                                 |                               
+| 3      | u8         | length      | (same as above)                             |
+| 4      | u8[size-1] | value       |                                             |
 
 This type may be non-standard, as some `boltenv` utilities just skip over them.
