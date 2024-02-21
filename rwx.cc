@@ -1064,7 +1064,7 @@ class code_rwx : public parsing_rwx
 
 			code += to_buf(h_to_be(expected));
 
-#if 1
+#if 0
 			ofstream("code.bin").write(code.data(), code.size());
 #endif
 
