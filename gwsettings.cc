@@ -215,7 +215,12 @@ string gws_encrypt(string buf, const string& key, const csp<profile>& p, bool pa
 	} else if (enc != BCM2_CFG_ENC_NONE) {
 		if (pad) {
 			int padding = p->cfg_padding();
-			if (padding == BCM2_CFG_PAD_ZEROBLK) {
+
+			if (enc == BCM2_CFG_ENC_SUB_16x16) {
+				if (buf.size() & 1) {
+					buf += '\x00';
+				}
+			} else if (padding == BCM2_CFG_PAD_ZEROBLK) {
 				buf += string(16, '\0');
 			} else {
 				unsigned blksize = gws_enc_blksize(p);
@@ -822,8 +827,13 @@ class gwsettings : public encryptable_settings
 		m_size_valid = m_size.num() == bufsize;
 
 		if (!m_size_valid && bufsize > m_size.num()) {
-			logger::v() << "data size exceeds reported file size" << endl;
-			m_size.num(bufsize);
+			if (m_profile->cfg_encryption() == BCM2_CFG_ENC_SUB_16x16 && (m_size.num() + 1) == bufsize && !(bufsize & 1)) {
+				// this "encryption" mode adds 1 NUL byte if the data size isn't a multiple of 2
+				m_size_valid = true;
+			} else {
+				logger::v("data size exceeds reported file size: %zu vs %d\n", bufsize, m_size.num());
+				m_size.num(bufsize);
+			}
 		}
 	}
 

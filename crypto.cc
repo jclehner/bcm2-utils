@@ -491,9 +491,20 @@ string crypt_motorola(string buf, const string& key)
 	return buf;
 }
 
+void swap16(string& buf)
+{
+	for (size_t i = 0; (i + 1) < buf.size(); i += 2) {
+		swap(buf[i], buf[i + 1]);
+	}
+}
+
 // ditto!
 string crypt_sub_16x16(string buf, bool encrypt)
 {
+	if (encrypt) {
+		swap16(buf);
+	}
+
 	for (size_t i = 0; i < (buf.size() / 16) * 16; i += 2) {
 		unsigned k = i & 0xff;
 
@@ -504,8 +515,8 @@ string crypt_sub_16x16(string buf, bool encrypt)
 		}
 	}
 
-	for (size_t i = 0; (i + 1) < buf.size(); i += 2) {
-		swap(buf[i], buf[i + 1]);
+	if (!encrypt) {
+		swap16(buf);
 	}
 
 	return buf;
