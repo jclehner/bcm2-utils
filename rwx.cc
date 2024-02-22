@@ -864,6 +864,56 @@ bool bootloader_ram::exec_impl(uint32_t offset)
  * A good candidate would be 'z' (Cause exception).
  */
 
+class bolt_ram : public parsing_rwx
+{
+	public:
+	virtual ~bolt_ram() {}
+
+	virtual limits limits_read() const override
+	{ return limits(4, 4, 0x8000); }
+
+	virtual limits limits_write() const override
+	{ return limits(1, 8, 8); }
+
+	virtual unsigned capabilities() const override
+	{ return cap_rwx; }
+
+	protected:
+	virtual bool write_chunk(uint32_t offset, const string& chunk) override;
+	virtual bool exec_impl(uint32_t offset) override;
+
+	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
+	virtual bool is_ignorable_line(const string& line) override;
+	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
+
+	private:
+	bool m_write = false;
+};
+
+bool bolt_ram::write_chunk(uint32_t offset, const string& chunk)
+{
+	string flag, data;
+
+	if (chunk.size() == 1) {
+		flag = "-b";
+		data = to_hex(chunk[0]);
+	} else if (chunk.size() == 2) {
+		flag = "-h";
+		data = to_hex(h_to_le(extract<uint16_t>(chunk)));
+	} else if (chunk.size() == 4) {
+		flag = "-w";
+		data = to_hex(h_to_le(extract<uint32_t>(chunk)));
+	} else if (chunk.size() == 8) {
+		flag = "-q";
+		data = to_hex(h_to_le(extract<uint64_t>(chunk)));
+	} else {
+		throw invalid_argument("invalid chunk size " + to_string(chunk.size()));
+	}
+
+	interface()->run("e " + flag + " 0x" + to_hex(offset) + " 0x" + data);
+	return true;
+}
+
 // this defines uint32 dumpcode[] and writecode[]
 #include "rwcode2.inc"
 
