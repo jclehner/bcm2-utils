@@ -129,6 +129,37 @@ uint32_t parse_num(const string& str)
 	return lexical_cast<uint32_t>(str, 0);
 }
 
+string parse_hex_data(const string& line, bool is_byte_data)
+{
+	auto tok = split(line, ' ', false);
+	if (tok.empty()) {
+		throw bad_chunk_line::regular();
+	}
+
+	string linebuf;
+
+	for (auto num : tok) {
+		uint32_t n;
+		try {
+			n = hex_cast<uint32_t>(num);
+		} catch (const exception& e) {
+			throw bad_chunk_line::regular(e);
+		}
+
+		if (is_byte_data) {
+			if (n > 0xff) {
+				throw bad_chunk_line::regular("invalid byte: 0x" + to_hex(n));
+			}
+
+			linebuf += char(n);
+		} else {
+			linebuf += to_buf(be_to_h(n));
+		}
+	}
+
+	return linebuf;
+}
+
 uint32_t read_image_length(rwx& rwx, uint32_t offset)
 {
 	rwx.silent(true);
@@ -678,33 +709,7 @@ bool bfc_flash::is_ignorable_line(const string& line)
 
 string bfc_flash::parse_chunk_line(const string& line, uint32_t offset)
 {
-	auto tok = split(line, ' ', false);
-	if (tok.empty()) {
-		throw bad_chunk_line::regular();
-	}
-
-	string linebuf;
-
-	for (auto num : tok) {
-		uint32_t n;
-		try {
-			n = hex_cast<uint32_t>(num);
-		} catch (const exception& e) {
-			throw bad_chunk_line::regular(e);
-		}
-
-		if (use_direct_read()) {
-			if (n > 0xff) {
-				throw bad_chunk_line::regular("invalid byte: 0x" + to_hex(n));
-			}
-
-			linebuf += char(n);
-		} else {
-			linebuf += to_buf(be_to_h(n));
-		}
-	}
-
-	return linebuf;
+	return parse_hex_data(line, use_direct_read());
 }
 
 uint32_t bfc_flash::to_partition_offset(uint32_t offset) const
@@ -845,6 +850,66 @@ bool bootloader_ram::exec_impl(uint32_t offset)
 	}
 	return false;
 }
+
+// some Netgear bootloaders have a hidden option `c`, that allows reading from flash directly
+class bootloader_flash : public parsing_rwx
+{
+	public:
+	virtual ~bootloader_flash() {}
+
+	virtual limits limits_write() const override
+	{ return limits(0, 0, 0); }
+
+	virtual limits limits_read() const override
+	{ return limits(4, 4, 0x4000); }
+
+	virtual unsigned capabilities() const override
+	{ return cap_read; }
+
+	static bool is_supported(const interface::sp& intf, const addrspace& space)
+	{
+		auto i = dynamic_pointer_cast<cmdline_interface>(intf);
+
+		if (i && enter_flash_read_mode(i)) {
+			// exit mode
+			i->writeln("");
+			return true;
+		}
+
+		return false;
+	}
+
+	protected:
+	virtual void do_read_chunk(uint32_t offset, uint32_t length) override
+	{
+		if (enter_flash_read_mode(interface())) {
+			interface()->writeln(to_hex(offset) + " " + to_string(length));
+		} else {
+			throw runtime_error("failed to enter flash read mode");
+		}
+	}
+
+	virtual bool is_ignorable_line(const string& line) override
+	{
+		return line.size() < 10 || line.substr(8, 2) != "h: ";
+	}
+
+	virtual string parse_chunk_line(const string& line, uint32_t offset) override
+	{
+		if (offset != hex_cast<uint32_t>(line.substr(0, 8))) {
+			throw bad_chunk_line::critical("offset mismatch");
+		}
+
+		return parse_hex_data(line.substr(10), true);
+	}
+
+	private:
+	static bool enter_flash_read_mode(const bcm2dump::sp<cmdline_interface>& intf)
+	{
+		intf->run("");
+		return intf->run("c", "read flash. offset(H) count:", true);
+	}
+};
 
 /**
  * TODO
@@ -1774,6 +1839,8 @@ rwx::sp rwx::create(const interface::sp& intf, const string& type, bool safe)
 			}
 		} else if (!safe) {
 			return create_code_rwx(intf, space);
+		} else if (bootloader_flash::is_supported(intf, space)) {
+			return create_rwx<bootloader_flash>(intf, space);
 		}
 	} else if (intf->name() == "bfc") {
 		if (space.is_mem()) {
