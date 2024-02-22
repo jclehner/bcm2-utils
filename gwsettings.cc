@@ -670,6 +670,11 @@ class gwsettings : public encryptable_settings
 
 		istringstream istr(buf.substr(m_magic.size()));
 		read_header(istr, buf.size());
+
+		if (!m_checksum_valid) {
+			validate_checksum(buf.substr(0, m_size.num()), profile());
+		}
+
 		settings::read(istr);
 		return is;
 	}
