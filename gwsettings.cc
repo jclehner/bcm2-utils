@@ -298,7 +298,7 @@ string group_header_to_string(int format, const string& checksum, bool is_chksum
 	if (!is_encrypted || !key.empty()) {
 		ostr << size << " " << (is_size_valid ? "(ok)" : "(bad)") << endl;
 	} else {
-		ostr << "(unknown)" << endl;
+		ostr << size << " (unknown)" << endl;
 	}
 
 	if (is_encrypted) {
@@ -709,8 +709,10 @@ class gwsettings : public encryptable_settings
 
 	virtual string header_to_string() const override
 	{
+		// special case, because this encryption method has an empty m_key variable
+		bool encrypted = m_encrypted && (!profile() || profile()->cfg_encryption() != BCM2_CFG_ENC_SUB_16x16);
 		return group_header_to_string(m_format, to_hex(m_checksum), m_checksum_valid,
-				m_size.num(), m_size_valid, m_key, m_encrypted, profile() ? profile()->name() : "",
+				m_size.num(), m_size_valid, m_key, encrypted, profile() ? profile()->name() : "",
 				m_is_auto_profile, m_circumfix);
 	}
 
