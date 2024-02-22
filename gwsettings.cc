@@ -121,9 +121,8 @@ bool gws_unpad(string& buf, const csp<profile>& p)
 			buf.resize(align_left(buf.size(), blksize));
 			return true;
 		}
-	} else if (pad == BCM2_CFG_PAD_ZEROBLK || pad == BCM2_CFG_PAD_01BLK) {
-		char ch = (pad == BCM2_CFG_PAD_ZEROBLK) ? 0x00 : 0x01;
-		string blk(blksize, ch);
+	} else if (pad == BCM2_CFG_PAD_ZEROBLK) {
+		string blk(blksize, 0x00);
 
 		if (buf.substr(buf.size() - blksize) == blk) {
 			buf.resize(buf.size() - blksize);

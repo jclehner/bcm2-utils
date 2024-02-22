@@ -62,8 +62,6 @@ enum bcm2_cfg_flags
 	//
 	BCM2_CFG_PAD_ANSI_ISH = 4 << 4,
 	BCM2_CFG_PAD_ZERO = 5 << 4,
-	// block of 01 bytes
-	BCM2_CFG_PAD_01BLK = 6 << 4,
 
 	BCM2_CFG_FMT_MASK = 0xf00,
 	BCM2_CFG_FMT_GWS_DYNNV = 1 << 8,
