@@ -138,7 +138,9 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "cg3100",
 		.pretty = "Netgear CG3100",
+		.arch = BCM2_3380,
 		.pssig = 0xa0e3,
+		.blsig = 0x3380,
 		.cfg_flags = BCM2_CFG_FMT_GWS_FULL_ENC | BCM2_CFG_ENC_SUB_16x16,
 		.cfg_md5key = "3250736c633b752865676d64302d2778",
 		.cfg_defkeys = {
