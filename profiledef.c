@@ -138,10 +138,25 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "cg3100",
 		.pretty = "Netgear CG3100",
-		.cfg_flags = BCM2_CFG_FMT_GWS_FULL_ENC | BCM2_CFG_ENC_SUB_16x16 | BCM2_CFG_FMT_GWS_CLEN_PREFIX | BCM2_CFG_PAD_01BLK,
+		.pssig = 0xa0e3,
+		.cfg_flags = BCM2_CFG_FMT_GWS_FULL_ENC | BCM2_CFG_ENC_SUB_16x16,
 		.cfg_md5key = "3250736c633b752865676d64302d2778",
+		.cfg_defkeys = {
+			"00" // XXX ugly hack
+		},
 		.spaces = {
-				{ .name = "ram" },
+			{ .name = "ram" },
+			{
+				.name = "flash",
+				.size = 16 * 1024 * 1024,
+				.parts = {
+					{ "bootloader", 0x000000, 0x010000 },
+					{ "permnv",     0x010000, 0x010000, "perm" },
+					{ "image1",     0x020000, 0x7e0000 },
+					{ "image2",     0x800000, 0x7f0000 },
+					{ "dynnv",      0xff0000, 0x010000, "dyn" }
+				}
+			},
 		},
 	},
 	{
