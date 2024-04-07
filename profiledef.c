@@ -1301,6 +1301,34 @@ struct bcm2_profile bcm2_profiles[] = {
 			{ .name = "ram" },
 		},
 	},
+	{
+		.name = "cm500",
+		.pretty = "Netgear CM500",
+		.arch = BCM2_3843,
+		.pssig = 0xc312,
+		.baudrate = 115200,
+		.spaces = {
+			{ 
+				.name = "ram",
+				.min = 0x80000000,
+				.size = 128 * 1024 * 1024,
+				.parts = {
+					{ "bootloader", 0x83f80000, 0x10000 },
+				}, 
+			},
+		},
+	    .versions = {
+			{
+			    .version = "2.5.0alpha8",
+			    .intf = BCM2_INTF_BLDR,
+			    .magic = { 0x83f8cc28, "2.5.0alpha8" },
+			    .printf = 0x83f8a0f4,
+			    .sscanf = 0x83f8aac8,
+			    .rwcode = 0x86000000,
+            	.buffer = 0x87000000,
+			},
+	    },
+	},
 	// end marker
 	{ .name = "" },
 };
