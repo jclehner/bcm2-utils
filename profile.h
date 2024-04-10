@@ -102,8 +102,8 @@ enum bcm2_arch
 	BCM2_338221 = 0x338221,
 	BCM2_3383 = 0x3383,
 	BCM2_3384 = 0x3384,
+	BCM2_33843 = 0x33843,
 	BCM2_3390 = 0x3390,
-	BCM2_3843 = 0x3843,
 };
 
 struct bcm2_partition {

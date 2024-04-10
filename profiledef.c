@@ -1304,7 +1304,7 @@ struct bcm2_profile bcm2_profiles[] = {
 	{
 		.name = "cm500",
 		.pretty = "Netgear CM500",
-		.arch = BCM2_3843,
+		.arch = BCM2_33843,
 		.pssig = 0xc312,
 		.baudrate = 115200,
 		.spaces = {
