@@ -470,12 +470,16 @@ bool bfc_telnet::login(const string& user, const string& pass)
 	bool have_pw_prompt = false;
 	bool send_newline = true;
 
+	logger::d() << "have_login_prompt=" << have_login_prompt << endl;
 
 	while (!have_login_prompt) {
+		logger::d() << "checking for login/password prompt" << endl;
 		have_login_prompt = foreach_line_raw([&have_pw_prompt] (const string& line) {
 			have_pw_prompt = is_bfc_password_prompt(line);
 			return is_bfc_login_prompt(line);
 		}, 3000);
+
+		logger::d() << "login?=" << have_login_prompt << ", pw?=" << have_pw_prompt << endl;
 
 		if (!have_login_prompt) {
 			if (send_newline) {
@@ -493,6 +497,7 @@ bool bfc_telnet::login(const string& user, const string& pass)
 	}
 
 	if (!have_pw_prompt) {
+		logger::d() << "checking for password prompt" << endl;
 		have_pw_prompt = foreach_line_raw([] (const string& line) {
 			return is_bfc_password_prompt(line);
 		}, 3000);
