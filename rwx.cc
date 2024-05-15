@@ -364,7 +364,7 @@ class bfc_ram : public parsing_rwx
 	virtual void set_interface(const interface::sp& intf) override;
 
 	unsigned capabilities() const override
-	{ return m_space.is_ram() ? cap_rwx : (cap_read | (m_space.is_writable() ? cap_write : 0)); }
+	{ return m_space.is_ram() ? m_ram_caps : (cap_read | (m_space.is_writable() ? cap_write : 0)); }
 
 	protected:
 	virtual bool exec_impl(uint32_t offset) override;
@@ -375,6 +375,7 @@ class bfc_ram : public parsing_rwx
 
 	private:
 	string m_diag_cmd;
+	unsigned m_ram_caps = cap_rwx;
 
 };
 
@@ -382,11 +383,21 @@ void bfc_ram::set_interface(const interface::sp& intf)
 {
 	parsing_rwx::set_interface(intf);
 	m_diag_cmd = "";
+	m_ram_caps = 0;
 
-	auto lines = interface()->run_raw("/find_command read_memory");
+	auto lines = interface()->run_raw("/find_command call");
+	if (find(lines.begin(), lines.end(), "/call") != lines.end()) {
+		m_ram_caps = cap_exec;
+	} else {
+		logger::d() << "no /call command found" << endl;
+	}
 
+	// TODO actually check for write capabilities too
+
+	lines = interface()->run_raw("/find_command read_memory");
 	if (find(lines.begin(), lines.end(), "/read_memory") != lines.end()) {
 		// we have a system-wide /read_memory command
+		m_ram_caps |= (cap_read | cap_write);
 		return;
 	}
 
@@ -398,12 +409,9 @@ void bfc_ram::set_interface(const interface::sp& intf)
 	if (it != lines.end()) {
 		m_diag_cmd = it->substr(0, it->size() - strlen(" readmem"));
 		logger::d() << "using " << m_diag_cmd << " command for memory access" << endl;
+		m_ram_caps |= (cap_read | cap_write);
 		return;
 	}
-
-	logger::w() << "interface doesn't support memory access" << endl;
-
-	// TODO also check for `/call`, and adjust return value of capabilities() accordingly
 }
 
 bool bfc_ram::exec_impl(uint32_t offset)
