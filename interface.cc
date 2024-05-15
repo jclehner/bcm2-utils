@@ -707,6 +707,19 @@ vector<string> cmdline_interface::run(const string& cmd, unsigned timeout)
 	return lines;
 }
 
+vector<string> cmdline_interface::run_raw(const string& cmd, unsigned timeout)
+{
+	call(cmd);
+	vector<string> lines;
+
+	foreach_line_raw([&lines] (const string& line) {
+		lines.push_back(line);
+		return false;
+	}, timeout);
+
+	return lines;
+}
+
 bool cmdline_interface::foreach_line_raw(function<bool(const string&)> f, unsigned timeout, bool restart) const
 {
 	mstimer t;

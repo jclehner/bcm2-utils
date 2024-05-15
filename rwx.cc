@@ -353,12 +353,15 @@ class bfc_ram : public parsing_rwx
 
 	virtual limits limits_write() const override
 	{
-		if (interface()->is_privileged()) {
+		// diag writemem only supports writing bytes
+		if (m_diag_cmd.empty()) {
 			return limits(4, 1, 4);
 		} else {
 			return limits(1, 1, 1);
 		}
 	}
+
+	virtual void set_interface(const interface::sp& intf) override;
 
 	unsigned capabilities() const override
 	{ return m_space.is_ram() ? cap_rwx : (cap_read | (m_space.is_writable() ? cap_write : 0)); }
@@ -369,7 +372,37 @@ class bfc_ram : public parsing_rwx
 	virtual bool is_ignorable_line(const string& line) override;
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
+
+	private:
+	string m_diag_cmd;
+
 };
+
+void bfc_ram::set_interface(const interface::sp& intf)
+{
+	parsing_rwx::set_interface(intf);
+	m_diag_cmd = "";
+
+	auto lines = interface()->run_raw("/find_command read_memory");
+
+	if (find(lines.begin(), lines.end(), "/read_memory") != lines.end()) {
+		// we have a system-wide /read_memory command
+		return;
+	}
+
+	lines = interface()->run_raw("/find_command readmem");
+	auto it = find_if(lines.begin(), lines.end(), [](auto l) {
+		return ends_with(l, "/diag readmem");
+	});
+
+	if (it != lines.end()) {
+		m_diag_cmd = it->substr(0, it->size() - strlen(" readmem"));
+		logger::d() << "using " << m_diag_cmd << " command for mem access" << endl;
+		return;
+	}
+
+	logger::w() << "interface doesn't support memory access" << endl;
+}
 
 bool bfc_ram::exec_impl(uint32_t offset)
 {
@@ -378,23 +411,22 @@ bool bfc_ram::exec_impl(uint32_t offset)
 
 bool bfc_ram::write_chunk(uint32_t offset, const string& chunk)
 {
-	if (interface()->is_privileged()) {
+	if (m_diag_cmd.empty()) {
 		uint32_t val = chunk.size() == 4 ? be_to_h(extract<uint32_t>(chunk)) : chunk[0];
 		return interface()->run("/write_memory -s " + to_string(chunk.size()) + " 0x" +
 				to_hex(offset, 0) + " 0x" + to_hex(val, 0), "Writing");
 	} else {
-		// diag writemem only supports writing bytes
-		return interface()->run("/system/diag writemem 0x" + to_hex(offset, 0) + " 0x" +
+		return interface()->run(m_diag_cmd + " writemem 0x" + to_hex(offset, 0) + " 0x" +
 				to_hex(chunk[0] & 0xff, 0), "Writing");
 	}
 }
 
 void bfc_ram::do_read_chunk(uint32_t offset, uint32_t length)
 {
-	if (interface()->is_privileged()) {
+	if (m_diag_cmd.empty()) {
 		interface()->writeln("/read_memory -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
 	} else {
-		interface()->writeln("/system/diag readmem -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
+		interface()->writeln(m_diag_cmd + " readmem -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
 	}
 }
 
