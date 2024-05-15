@@ -483,7 +483,7 @@ def dump_enck(enck, level=0):
             if kb.is_valid():
                 data = kb.decrypt(enck.data_as_bytes())
                 sao = SaoFile(enck.filename, enck.offset + 0x120, data)
-                dump_sao(sao, level + 1)
+                dump_sao(sao, level + 2)
 
                 if OUT_DIR is not None:
                     name = "%s_0x%08x_%s.bin" % (Path(sao.filename).name, sao.offset, sao.header.type.decode('ascii'))
