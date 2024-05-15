@@ -397,11 +397,13 @@ void bfc_ram::set_interface(const interface::sp& intf)
 
 	if (it != lines.end()) {
 		m_diag_cmd = it->substr(0, it->size() - strlen(" readmem"));
-		logger::d() << "using " << m_diag_cmd << " command for mem access" << endl;
+		logger::d() << "using " << m_diag_cmd << " command for memory access" << endl;
 		return;
 	}
 
 	logger::w() << "interface doesn't support memory access" << endl;
+
+	// TODO also check for `/call`, and adjust return value of capabilities() accordingly
 }
 
 bool bfc_ram::exec_impl(uint32_t offset)
