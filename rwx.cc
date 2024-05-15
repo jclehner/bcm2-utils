@@ -385,7 +385,7 @@ void bfc_ram::set_interface(const interface::sp& intf)
 	m_diag_cmd = "";
 	m_ram_caps = 0;
 
-	auto lines = interface()->run_raw("/find_command call");
+	auto lines = interface()->run_raw("/find_command call", 200);
 	if (find(lines.begin(), lines.end(), "/call") != lines.end()) {
 		m_ram_caps = cap_exec;
 	} else {
@@ -394,14 +394,14 @@ void bfc_ram::set_interface(const interface::sp& intf)
 
 	// TODO actually check for write capabilities too
 
-	lines = interface()->run_raw("/find_command read_memory");
+	lines = interface()->run_raw("/find_command read_memory", 200);
 	if (find(lines.begin(), lines.end(), "/read_memory") != lines.end()) {
 		// we have a system-wide /read_memory command
 		m_ram_caps |= (cap_read | cap_write);
 		return;
 	}
 
-	lines = interface()->run_raw("/find_command readmem");
+	lines = interface()->run_raw("/find_command readmem", 200);
 	auto it = find_if(lines.begin(), lines.end(), [](auto l) {
 		return ends_with(l, "/diag readmem");
 	});
