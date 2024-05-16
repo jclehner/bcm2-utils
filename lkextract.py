@@ -371,7 +371,7 @@ class EncryptedContainer(Container):
 
 class PkecKeyBlob:
     def __init__(self, offset, data, rsa):
-        dec = rsa._decrypt(int.from_bytes(data)).to_bytes()
+        dec = rsa._decrypt(int.from_bytes(data, 'big')).to_bytes()
         self.offset = offset
         self.__valid = False
         self.enc_type = 0xff
