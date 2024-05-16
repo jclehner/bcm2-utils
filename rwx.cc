@@ -402,7 +402,7 @@ void bfc_ram::set_interface(const interface::sp& intf)
 	}
 
 	bool strip_console_prefix = false;
-	interface->run("cd /");
+	interface()->run("cd /");
 
 	lines = interface()->run_raw("/find_command readmem", 200);
 	auto it = find_if(lines.begin(), lines.end(), [&strip_console_prefix](auto l) {
@@ -419,9 +419,9 @@ void bfc_ram::set_interface(const interface::sp& intf)
 
 	if (it != lines.end()) {
 		m_diag_cmd = it->substr(0, it->size() - strlen(" readmem"));
-		if (strip_console_prefix && starts_with(l, "/Console/")) {
+		if (strip_console_prefix && starts_with(m_diag_cmd, "/Console/")) {
 			// Keep the leading slash!
-			m_diag_cmd = m_diag_cmd.substr(strlen("/Console/"))
+			m_diag_cmd = m_diag_cmd.substr(strlen("/Console/"));
 		}
 		logger::d() << "using " << m_diag_cmd << " command for memory access" << endl;
 		m_ram_caps |= (cap_read | cap_write);
