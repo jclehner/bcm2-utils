@@ -348,8 +348,7 @@ class bfc_ram : public parsing_rwx
 	public:
 	virtual ~bfc_ram() {}
 
-	virtual limits limits_read() const override
-	{ return limits(4, 16, 2 * 8192); }
+	virtual limits limits_read() const override;
 
 	virtual limits limits_write() const override
 	{
@@ -378,6 +377,14 @@ class bfc_ram : public parsing_rwx
 	unsigned m_ram_caps = cap_rwx;
 
 };
+
+rwx::limits bfc_ram::limits_read() const
+{
+	auto v = interface()->version();
+	// FIXME unify this for all parsing_rwx types
+	return { 4, 16, v.get_opt_num("bfc:ram_readsize", 2 * 8192) };
+
+}
 
 void bfc_ram::set_interface(const interface::sp& intf)
 {
@@ -684,6 +691,7 @@ class bfc_flash : public parsing_rwx
 rwx::limits bfc_flash::limits_read() const
 {
 	auto v = interface()->version();
+	// FIXME unify this for all parsing_rwx types
 	auto readsize = v.get_opt_num("bfc:flash_readsize", 0);
 	if (readsize) {
 		return { readsize, readsize, readsize };
