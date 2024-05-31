@@ -1,0 +1,9 @@
+4		string		BNKR			BOLT BankerTable Entry
+>0		ulong		x				(CRC 0x%08x,
+>8		string		x				name: %s,
+>112	ulong		x				boot_order: (svc %x,
+>116	ulong		x				tbr %x,
+>120	ulong		x				skip %x,
+>124	ulong		x				once %x),
+>128	ulong		x				num %d
+
