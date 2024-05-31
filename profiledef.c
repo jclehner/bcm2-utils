@@ -1290,7 +1290,18 @@ struct bcm2_profile bcm2_profiles[] = {
 					},
 				},
 			},
+			{
+				.version = "TS0710144_032912",
+				.intf = BCM2_INTF_BFC,
+				.magic = { 0x82f00014, "TS0710144_032912" },
+				.options = {
+					{ "bfc:conthread_instance", { 0x809ffcd0 }},
+					{ "bfc:conthread_priv_off", { 0x70 }},
+				},
+			},
 		},
+
+
 	},
 	{
 		.name = "cg2200",
