@@ -634,7 +634,9 @@ void telnet::write(const string& str)
 void telnet::writeln(const string& str)
 {
 	write(str + "\r");
-	readln(200);
+	if (!str.empty()) {
+		readln(200);
+	}
 }
 
 int telnet::getc()

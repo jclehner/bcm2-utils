@@ -68,6 +68,11 @@ bool is_bfc_login_prompt(const string& line)
 		|| contains(line, "Username:") || contains(line, "username:");
 }
 
+bool is_bfc_password_prompt(const string& line)
+{
+	return (contains(line, "Password:") || contains(line, "password:"));
+}
+
 bool is_char_device(const string& filename)
 {
 	struct stat st;
@@ -461,36 +466,40 @@ void bfc_telnet::call(const string& cmd)
 
 bool bfc_telnet::login(const string& user, const string& pass)
 {
-	bool have_prompt = m_have_login_prompt;
+	bool have_login_prompt = m_have_login_prompt;
+	bool have_pw_prompt = false;
 	bool send_newline = true;
 
-	while (!have_prompt) {
-		have_prompt = foreach_line_raw([] (const string& line) {
-			return is_bfc_login_prompt(line);
+	while (!have_login_prompt) {
+		foreach_line_raw([&have_pw_prompt, &have_login_prompt] (const string& line) {
+			have_pw_prompt = is_bfc_password_prompt(line);
+			have_login_prompt = is_bfc_login_prompt(line);
+
+			return have_pw_prompt || have_login_prompt;
 		}, 3000);
 
-		if (!have_prompt) {
+		if (!have_login_prompt) {
 			if (send_newline) {
 				writeln();
 				send_newline = false;
 			} else {
 				logger::d() << "telnet: no login prompt" << endl;
-				return false;
+				break;
 			}
 		}
 	}
 
-	writeln(user);
+	if (have_login_prompt) {
+		writeln(user);
+	}
 
-	have_prompt = foreach_line_raw([] (const string& line) {
-		if (contains(line, "Password:") || contains(line, "password:")) {
-			return true;
-		}
+	if (!have_pw_prompt) {
+		have_pw_prompt = foreach_line_raw([] (const string& line) {
+			return is_bfc_password_prompt(line);
+		}, 3000);
+	}
 
-		return false;
-	}, 3000);
-
-	if (!have_prompt) {
+	if (!have_pw_prompt) {
 		logger::d() << "telnet: no password prompt" << endl;
 		return false;
 	}
@@ -685,6 +694,19 @@ vector<string> cmdline_interface::run(const string& cmd, unsigned timeout)
 	vector<string> lines;
 
 	foreach_line([&lines] (const string& line) {
+		lines.push_back(line);
+		return false;
+	}, timeout);
+
+	return lines;
+}
+
+vector<string> cmdline_interface::run_raw(const string& cmd, unsigned timeout)
+{
+	call(cmd);
+	vector<string> lines;
+
+	foreach_line_raw([&lines] (const string& line) {
 		lines.push_back(line);
 		return false;
 	}, timeout);

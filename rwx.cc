@@ -348,20 +348,22 @@ class bfc_ram : public parsing_rwx
 	public:
 	virtual ~bfc_ram() {}
 
-	virtual limits limits_read() const override
-	{ return limits(4, 16, 2 * 8192); }
+	virtual limits limits_read() const override;
 
 	virtual limits limits_write() const override
 	{
-		if (interface()->is_privileged()) {
+		// diag writemem only supports writing bytes
+		if (m_diag_cmd.empty()) {
 			return limits(4, 1, 4);
 		} else {
 			return limits(1, 1, 1);
 		}
 	}
 
+	virtual void set_interface(const interface::sp& intf) override;
+
 	unsigned capabilities() const override
-	{ return m_space.is_ram() ? cap_rwx : (cap_read | (m_space.is_writable() ? cap_write : 0)); }
+	{ return m_space.is_ram() ? m_ram_caps : (cap_read | (m_space.is_writable() ? cap_write : 0)); }
 
 	protected:
 	virtual bool exec_impl(uint32_t offset) override;
@@ -369,7 +371,70 @@ class bfc_ram : public parsing_rwx
 	virtual bool is_ignorable_line(const string& line) override;
 	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
 	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
+
+	private:
+	string m_diag_cmd;
+	unsigned m_ram_caps = cap_rwx;
+
 };
+
+rwx::limits bfc_ram::limits_read() const
+{
+	auto v = interface()->version();
+	// FIXME unify this for all parsing_rwx types
+	return { 4, 16, v.get_opt_num("bfc:ram_readsize", 2 * 8192) };
+
+}
+
+void bfc_ram::set_interface(const interface::sp& intf)
+{
+	parsing_rwx::set_interface(intf);
+	m_diag_cmd = "";
+	m_ram_caps = 0;
+
+	auto lines = interface()->run_raw("/find_command call", 200);
+	if (find(lines.begin(), lines.end(), "/call") != lines.end()) {
+		m_ram_caps = cap_exec;
+	} else {
+		logger::d() << "no /call command found" << endl;
+	}
+
+	// TODO actually check for write capabilities too
+
+	lines = interface()->run_raw("/find_command read_memory", 200);
+	if (find(lines.begin(), lines.end(), "/read_memory") != lines.end()) {
+		// we have a system-wide /read_memory command
+		m_ram_caps |= (cap_read | cap_write);
+		return;
+	}
+
+	bool strip_console_prefix = false;
+	interface()->run("cd /");
+
+	lines = interface()->run_raw("/find_command readmem", 200);
+	auto it = find_if(lines.begin(), lines.end(), [&strip_console_prefix](auto l) {
+		// Some devices show a CM/Console> prompt after telnet login,
+		// even after a `cd /` command. In that case, `/find_command readmem`
+		// might return `/Console/system/diag`, even though it must be called
+		// as `/system/diag`.
+		if (l.find("CM/Console>") != string::npos) {
+			strip_console_prefix = true;
+		}
+
+		return ends_with(l, "/diag readmem");
+	});
+
+	if (it != lines.end()) {
+		m_diag_cmd = it->substr(0, it->size() - strlen(" readmem"));
+		if (strip_console_prefix && starts_with(m_diag_cmd, "/Console/")) {
+			// Keep the leading slash!
+			m_diag_cmd = m_diag_cmd.substr(strlen("/Console"));
+		}
+		logger::d() << "using " << m_diag_cmd << " command for memory access" << endl;
+		m_ram_caps |= (cap_read | cap_write);
+		return;
+	}
+}
 
 bool bfc_ram::exec_impl(uint32_t offset)
 {
@@ -378,23 +443,22 @@ bool bfc_ram::exec_impl(uint32_t offset)
 
 bool bfc_ram::write_chunk(uint32_t offset, const string& chunk)
 {
-	if (interface()->is_privileged()) {
+	if (m_diag_cmd.empty()) {
 		uint32_t val = chunk.size() == 4 ? be_to_h(extract<uint32_t>(chunk)) : chunk[0];
 		return interface()->run("/write_memory -s " + to_string(chunk.size()) + " 0x" +
 				to_hex(offset, 0) + " 0x" + to_hex(val, 0), "Writing");
 	} else {
-		// diag writemem only supports writing bytes
-		return interface()->run("/system/diag writemem 0x" + to_hex(offset, 0) + " 0x" +
+		return interface()->run(m_diag_cmd + " writemem 0x" + to_hex(offset, 0) + " 0x" +
 				to_hex(chunk[0] & 0xff, 0), "Writing");
 	}
 }
 
 void bfc_ram::do_read_chunk(uint32_t offset, uint32_t length)
 {
-	if (interface()->is_privileged()) {
+	if (m_diag_cmd.empty()) {
 		interface()->writeln("/read_memory -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
 	} else {
-		interface()->writeln("/system/diag readmem -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
+		interface()->writeln(m_diag_cmd + " readmem -s 4 -n " + to_string(length) + " 0x" + to_hex(offset));
 	}
 }
 
@@ -627,6 +691,7 @@ class bfc_flash : public parsing_rwx
 rwx::limits bfc_flash::limits_read() const
 {
 	auto v = interface()->version();
+	// FIXME unify this for all parsing_rwx types
 	auto readsize = v.get_opt_num("bfc:flash_readsize", 0);
 	if (readsize) {
 		return { readsize, readsize, readsize };

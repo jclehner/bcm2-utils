@@ -93,6 +93,7 @@ class cmdline_interface : public interface
 {
 	public:
 	std::vector<std::string> run(const std::string& cmd, unsigned timeout = 0);
+	std::vector<std::string> run_raw(const std::string& cmd, unsigned timeout = 0);
 	bool run(const std::string& cmd, const std::string& expect, bool stop_on_match = false);
 
 	virtual bool is_ready(bool passive = false) = 0;

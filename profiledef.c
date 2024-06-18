@@ -1168,6 +1168,75 @@ struct bcm2_profile bcm2_profiles[] = {
 		}
 	},
 	{
+		.name = "cgm4331",
+		.pretty = "Technicolor CGM4331",
+		.arch = BCM2_3390,
+		.baudrate = 115200,
+		.pssig = 0xd01c,
+		.kseg1mask = 0x20000000,
+		.magic = {
+			{ 0x80000844, { 0xd0, 0x1c }, 2 },
+		},
+		.spaces = {
+			{
+				.name = "ram",
+				.min = 0x80000000,
+				.parts = {
+						{ "bootloader", 0xbfc00000, 0    },
+						{ "ukey",       0xd384bfe0, 0x20 },
+				},
+			},
+			{
+				.name = "emmc.boot0",
+				.size = 0x400000,
+				.parts = {
+						{ "bolt",       0x000000, 0x400000 },
+				},
+			},
+			{
+				.name = "emmc.gp0",
+				.size = 0x40000000,
+				.parts = {
+						{ "PCI0_A",     0x800000, 0x17c00000 },
+						{ "PCI0_B",   0x18400000, 0x17c00000 },
+				},
+			},
+			{
+				.name = "emmc.gp1",
+				.size = 0x10000000,
+				.parts = {
+						{ "nvram",            0x00100000, 0x00700000 },
+						{ "data",             0x00800000, 0x00700000 },
+						{ "factory_data",     0x00c00000, 0x00400000 },
+						{ "factory_data_bak", 0x00e00000, 0x00200000 },
+				},
+			},
+			{
+				.name = "emmc.user",
+				.size = 0x8a800000,
+				.parts = {
+						{ "p1", 0x00100000, 0x01400000 },
+						{ "p2", 0x01500000, 0x00100000 },
+						{ "p3", 0x01600000, 0x00100000 },
+						{ "p4", 0x01700000, 0x00100000 },
+						{ "p5", 0x01800000, 0x06400000 },
+				},
+			},
+		},
+		.versions = {
+			{
+				.intf = BCM2_INTF_BFC,
+				.version = "Prod_19.2_d31 (pc20_secure)",
+				.magic = { 0x80d3f8a0, "Prod_19.2_d31" },
+				.options = {
+					BCM2_VAL_U32("bfc:conthread_instance", 0x810912b0),
+					BCM2_VAL_U32("bfc:conthread_priv_off", 0x74),
+				},
+			},
+		},
+
+	},
+	{
 		.name = "tc7210",
 		.pretty = "Technicolor TC7210",
 		.pssig = 0xa82c,
@@ -1290,7 +1359,18 @@ struct bcm2_profile bcm2_profiles[] = {
 					},
 				},
 			},
+			{
+				.version = "TS0710144_032912",
+				.intf = BCM2_INTF_BFC,
+				.magic = { 0x82f00014, "TS0710144_032912" },
+				.options = {
+					{ "bfc:conthread_instance", { 0x809ffcd0 }},
+					{ "bfc:conthread_priv_off", { 0x70 }},
+				},
+			},
 		},
+
+
 	},
 	{
 		.name = "cg2200",
