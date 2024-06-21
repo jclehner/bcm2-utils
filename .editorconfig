@@ -4,6 +4,6 @@ root = true
 end_of_line = lf
 insert_final_newline = true
 
-[*.{c,cc,h,asm,rb}]
+[*.{c,cc,h,asm,rb,py,txt}]
 indent_style = tab
 tab_width = 4
