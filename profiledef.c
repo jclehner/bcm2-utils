@@ -1386,6 +1386,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		.pretty = "Netgear CM500",
 		.arch = BCM2_33843,
 		.pssig = 0xc312,
+        .blsig = 0x3384,
 		.baudrate = 115200,
 		.spaces = {
 			{ 
@@ -1396,6 +1397,17 @@ struct bcm2_profile bcm2_profiles[] = {
 					{ "bootloader", 0x83f80000, 0x10000 },
 				}, 
 			},
+            {
+                .name = "flash",
+                .size = 8 * 1024 * 1024,
+                .parts = {
+                    { "bootloader", 0x00000,  0x10000  },
+                    { "permnv",     0x10000,  0x20000  },
+                    { "image1",     0x30000,  0x3d0000 },
+                    { "image2",     0x400000, 0x3c0000 },
+                    { "dynnv",      0x7c0000, 0x40000  },
+                },
+            },
 		},
 	    .versions = {
 			{
