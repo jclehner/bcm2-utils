@@ -1418,6 +1418,12 @@ struct bcm2_profile bcm2_profiles[] = {
 			    .sscanf = 0x83f8aac8,
 			    .rwcode = 0x86000000,
             	.buffer = 0x87000000,
+                .spaces = {
+					{
+						.name = "flash",
+						.read = { 0x83f8128c, BCM2_READ_FUNC_OBL },
+					}
+				},
 			},
 	    },
 	},
