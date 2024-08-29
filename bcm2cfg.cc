@@ -87,6 +87,11 @@ int usage(bool help = false)
 		os << "\n    Set value of variable <name> to <value>, optionally writing\n"
 				"    the resulting file to <outfile>.\n\n";
 	}
+	os << "  setb     <infile> <name> <datafile> [<outfile>]" << endl;
+	if (help) {
+		os << "\n    Set value of variable <name> to contents of <datafile>, optionally writing\n"
+				"    the resulting file to <outfile>.\n\n";
+	}
 	os << "  remove  <infile> <group name> [<outfile>]" << endl;
 	if (help) {
 		os << "\n    Removes a settings groups from the input file, optionally writing\n"
@@ -224,6 +229,31 @@ int do_list_get_dump_type(int argc, char** argv, const sp<settings>& settings)
 		return usage(false);
 	}
 
+	return 0;
+}
+
+int do_setb(int argc, char** argv, const sp<settings>& settings)
+{
+	stringstream buffer;
+
+        if (!(argc == 4 || argc == 5)) {
+		cout << "argc=" << argc << endl;
+		return usage(false);
+	}
+
+	ifstream file(argv[3]);
+
+	if (!file.is_open()) {
+	  cerr << "error: failed to open file: " << argv[3] << endl;
+	  return 1;
+	}
+
+	buffer << file.rdbuf();
+
+	settings->set(argv[2], buffer.str());
+	logger::i() << argv[2] << " = " << settings->get(argv[2])->to_pretty() << endl;
+
+	write_file(argc == 5 ? argv[4] : argv[1], settings);
 	return 0;
 }
 
@@ -438,6 +468,8 @@ int do_main(int argc, char** argv)
 		return do_list_get_dump_type(argc, argv, settings);
 	} else if (cmd == "set" || cmd == "remove") {
 		return do_set_remove(argc, argv, settings);
+	} else if (cmd == "setb") {
+		return do_setb(argc, argv, settings);
 	} else if (cmd == "verify") {
 		return do_verify(argc, argv, settings);
 	} else if (cmd == "fix") {
