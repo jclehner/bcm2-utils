@@ -1226,7 +1226,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		.versions = {
 			{
 				.intf = BCM2_INTF_BFC,
-				.version = "Prod_19.2_d31 (pc20_secure)",
+				.version = "Prod_19.2_d31",
 				.magic = { 0x80d3f8a0, "Prod_19.2_d31" },
 				.options = {
 					BCM2_VAL_U32("bfc:conthread_instance", 0x810912b0),
