@@ -13,7 +13,8 @@ MIPS core (handling all DOCSIS related stuff).
 
 ## File format
 
-Non-ProgramStore files can be extracted using the `psextract` utility (still work in progress).
+Magic files for [binwalk](https://github.com/ReFirmLabs/binwalk) are available
+[in the repository](https://github.com/jclehner/bcm2-utils/tree/master/misc).
 
 Firmware files are usually encapsulated in Broadcom's [ProgramStore](https://github.com/Broadcom/aeolus/tree/master/ProgramStore) format,
 which uses a 92-byte header. Since
@@ -99,6 +100,6 @@ the following contents have been observed:
 Extracting UBI stuff is tricky. Some options are:
 
 * [nandsim](http://www.linux-mtd.infradead.org/faq/nand.html) (most reliable)
-* [ubi_reader](ttps://github.com/jrspruitt/ubi_reader/blob/master/README.md)
+* [ubi_reader](https://github.com/jrspruitt/ubi_reader/blob/master/README.md)
 
 (detailed instructions coming soon).
