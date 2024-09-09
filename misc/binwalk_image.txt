@@ -62,3 +62,26 @@
 >84		ushort		x
 >88		ushort		x               HCS: 0x%04x,
 >90		ulong		x               CRC: 0x%08x)
+
+0		ubyte		0x33			BCM33xx generic image
+>1		ubyte		>0x99			{invalid}
+>1		ubyte		<0x45			{invalid}
+>0		ushort		x				(signature: 0x%04x,
+>2		ushort		x               control: 0x%04x,
+>2		ubyte       >5				{invalid}
+>3		ubyte&0xfe	!0				{invalid}
+>4		ushort		x               major: 0x%04x,
+>6		ushort		x               minor: 0x%04x,
+>8		date		x               build time: %s,
+>8		date		<904608000      {invalid}
+>12		ulong		x               length: %d bytes,
+>12		ulong		x               {size:%d}
+>16		ulong		x				load address: 0x%08x,
+>20		string		x               filename: %s,
+>20		string		x               {name:%s}
+>68		string		x
+>76		ulong		x               #image1 length: %d,
+>80		ulong		x               #image2 length: %d,
+>84		ushort		x
+>88		ushort		x               HCS: 0x%04x,
+>90		ulong		x               CRC: 0x%08x)
