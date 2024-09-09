@@ -1,0 +1,24 @@
+0		string		SOBJ		BCM SAO image
+>4		ulong		x		#(header CRC: 0x%08x,
+>8		string		x               {strlen:4}
+>8		string		x               (type: {string}%s,
+>8		string		x               {name:%.4s.sao}
+>12		ushort		x		version: 0x%04x,
+>14		ushort		x		flags: 0x%x,
+>16		ulong+64	x		size: %d,
+>16		ulong+64	x		{size:%d}
+#>20            ulong		x		size 2: %d,
+>25		ubyte		x		code type 0x%02x,
+>26		ubyte		x		sign type 0x%02x,
+>52		ulong		x		data CRC: 0x%08x,
+>56		ulong		x		0x%08x,
+>60		ulong		x		0x%08x)
+
+4		string		ENCK	        SAO encryption header
+>0		ulelong		x		(header CRC: 0x%08x,
+>8		ulelong+0x120	x		size: %d
+>8		ulelong+0x120	x		{size:%d}
+>12		ulelong		x		data CRC: 0x%08x,
+>16		string		x		{strlen:4}
+>16		string		x		key id: {string}%s)
+
