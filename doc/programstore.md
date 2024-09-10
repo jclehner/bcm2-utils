@@ -13,7 +13,7 @@ MIPS core (handling all DOCSIS related stuff).
 
 ## File format
 
-Magic files for [binwalk](https://github.com/ReFirmLabs/binwalk) are available
+Magic files for [binwalk](https://github.com/OSPG/binwalk) are available
 [in the repository](https://github.com/jclehner/bcm2-utils/tree/master/misc).
 
 Firmware files are usually encapsulated in Broadcom's [ProgramStore](https://github.com/Broadcom/aeolus/tree/master/ProgramStore) format,
