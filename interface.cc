@@ -341,7 +341,7 @@ bool bootloader::is_ready(bool passive)
 	}
 
 	return foreach_line_raw([this] (const string& line) {
-		return check_for_prompt(line);	
+		return check_for_prompt(line);
 	}, 200);
 }
 
@@ -519,10 +519,12 @@ bool bfc_telnet::login(const string& user, const string& pass)
 	}, 3000);
 
 	if (m_status == authenticated) {
-		// in some cases, the shell prompt is CM/Console>, but
-		// switches to Console> after hitting enter, meaning that
-		// we're NOT rooted!
+		// After login, the shell prompt may be `CM/Console>`.
+		// On some devices, this changes to `Console>` after
+		// hitting enter, whereas on others it stays `CM/Console>`,
+		// even after a `cd /`. In both cases, we're NOT rooted!
 		writeln();
+		call("cd /");
 		writeln();
 		check_privileged();
 		return true;
