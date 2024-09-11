@@ -6,14 +6,10 @@
 # for BCM3383), but CM firmware images use an identifier unique to the
 # device, so we'll have to use other means.
 #
-#
-# For CM images, we can use the load address of 0x80004000 as our magic
-# value, and for bootloader images, we use the name "ram.sto" 
-#
 
 # All MIPS CM images so far are loaded at 0x80004000, so we'll use that
 # as our "magic" value.
-16		ulong		0x80004000		BCM33xx CM image
+16		ulong		0x80004000		BCM33xx ProgramStore CM image
 >0		ushort		x				(signature: 0x%04x,
 >2		ushort		x               control: 0x%04x,
 >2		ubyte&0xfe	!0				{invalid}
@@ -22,7 +18,7 @@
 >6		ushort		x               minor: 0x%04x,
 >8		date		x               build time: %s,
 >8		date		<904608000      {invalid}
->12		ulong+92	x               length: %d bytes, load address: 0x80004000,
+>12		ulong+92	x               size: %d bytes, load address: 0x80004000,
 >12		ulong+92	x               {size:%d}
 >20		string		x               filename: %s,
 >20		string		x               {name:%s.sto}
@@ -30,7 +26,7 @@
 >88		ulong		x               CRC: 0x%08x)
 
 # Bootloader images very often use "ram.sto" as the image name.
-20		string		ram.sto			BCM33xx bootloader image
+20		string		ram.sto			BCM33xx ProgramStore bootloader image
 >0		ushort		x				(signature: 0x%04x,
 >0		ushort		<0x3300			{invalid}
 >2		ushort		x               control: 0x%04x,
@@ -40,7 +36,7 @@
 >6		ushort		x               minor: 0x%04x,
 >8		date		x               build time: %s,
 >8		date		<904608000      {invalid}
->12		ulong+92	x               length: %d bytes,
+>12		ulong+92	x               size: %d bytes,
 >12		ulong+92	x               {size:%d}
 >16		ulong		x				load address: 0x%08x,
 >16		ulong		<0x80000000		{invalid}
@@ -50,7 +46,7 @@
 >88		ulong		x               CRC: 0x%08x)
 
 # Generic image detection, for signature 0x33xx
-0		ubyte		0x33			BCM33xx generic image
+0		ubyte		0x33			BCM33xx ProgramStore generic image
 >1		ubyte		>0x99			{invalid}
 >1		ubyte		<0x00			{invalid}
 >0		ushort		x				(signature: 0x%04x,
@@ -61,7 +57,7 @@
 >6		ushort		x               minor: 0x%04x,
 >8		date		x               build time: %s,
 >8		date		<904608000      {invalid}
->12		ulong+92	x               length: %d bytes,
+>12		ulong+92	x               size: %d bytes,
 >12		ulong+92	x               {size:%d}
 >16		ulong		x				load address: 0x%08x,
 >20		string		x               filename: %s,
@@ -73,12 +69,12 @@
 >>20	ubyte		>0x7a			{invalid}
 # require NUL terminated string
 >67		ubyte		!0				{invalid}
-# 8 NUL bytes, for padding
+# require NUL padding
 >68		uquad		!0				{invalid}
 # check for dual image
 >2		ubyte&0x01	1
->>76	ulong		x               image1 length: %d,
->>80	ulong		x               image2 length: %d,
+>>76	ulong		x               image1 size: %d,
+>>80	ulong		x               image2 size: %d,
 >84		ushort		x               HCS: 0x%04x,
 >88		ulong		x               CRC: 0x%08x)
 
@@ -88,6 +84,6 @@
 >4		ushort		>0x3399			{invalid}
 >6		ubyte		x               major: 0x%02x,
 >7		ubyte		x               minor: 0x%02x,
->8		ulong		x               length: %d bytes,
+>8		ulong		x               size: %d bytes,
 >8		ulong		x               {size:%d}
 >12		ulong		x				contents: 0x%08x)
