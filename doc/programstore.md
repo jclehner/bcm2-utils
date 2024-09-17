@@ -53,7 +53,7 @@ The low byte of the `ctrl` field encodes the compression algorithm:
 | 1      | LZ         |
 | 2      | LZO        |
 | 3      | Reserved   |
-| 4      | NRV2B      |
+| 4      | [NRV2B](http://www.oberhumer.com/opensource/ucl/) |
 | 5      | LZMA       |
 
 The high byte of `ctrl` encodes the image type: `0x00` is a regular image, `0x01` is a dual (split) image.
