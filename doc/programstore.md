@@ -26,22 +26,37 @@ images. The header format is detailed below (numbers are big endian):
 
 | Offset | Type     | Name | Comment                                     |
 |-------:|----------|------|---------------------------------------------|
-| 0      | u16      | sig  | Unique signature, (device dependent)        |
-| 2      | u16      | ctrl | Control flags (compression, split image, etc.)|
-| 4      | u16      | maj  | Major version |
-| 6      | u16      | min  | Minor version |
-| 8      | u32      | time | Build timestamp |
-| 12     | u32      | len  | Image size (including this header) |
-| 16     | u32      | addr | Image load address |
-| 20     | byte[48] | name | Image name |
-| 68     | byte[8]  |      | Reserved |
-| 76     | u32      | len1 | Image 1 size (for split images) |
-| 80     | u32      | len2 | Image 2 size (for split images) |
-| 84     | u16      | hcs  | Header checksum (CRC 16 CCITT)  |
-| 86     | u16      |      | Reserved |
-| 88     | u32a     | chk  | Image checksum (CRC32 of data following this header) |
+| 0      | `u16`    | sig  | Unique signature, (device dependent)        |
+| 2      | `u16`    | ctrl | Control flags (compression, split image, etc.)|
+| 4      | `u16`    | maj  | Major version |
+| 6      | `u16`    | min  | Minor version |
+| 8      | `u32`    | time | Build timestamp |
+| 12     | `u32`    | len  | Image size (including this header) |
+| 16     | `u32`    | addr | Image load address |
+| 20     |`byte[48]`| name | Image name |
+| 68     |`byte[8] `|      | Reserved |
+| 76     | `u32`    | len1 | Image 1 size (for split images) |
+| 80     | `u32`    | len2 | Image 2 size (for split images) |
+| 84     | `u16`    | hcs  | Header checksum (CRC 16 CCITT)  |
+| 86     | `u16`    |      | Reserved |
+| 88     | `u32`    | chk  | Image checksum (CRC32 of data following this header) |
 
 See the corresponding [source file](https://github.com/Broadcom/aeolus/blob/master/ProgramStore/ProgramStore.h).
+
+Note that some non-split images have the `len1` field set to the same value as `len`. Others have it set to `0`.
+
+The low byte of the `ctrl` field encodes the compression algorithm:
+
+| n      | Compression
+|-------:|------------|
+| 0      | (none)     |
+| 1      | LZ         |
+| 2      | LZO        |
+| 3      | (reserved) |
+| 4      | [NRV2B](http://www.oberhumer.com/opensource/ucl/) |
+| 5      | LZMA       |
+
+The high byte of `ctrl` encodes the image type: `0x00` is a regular image, `0x01` is a dual (split) image.
 
 
 ###### Signed firmware files
@@ -56,14 +71,14 @@ with `0x30 0x82 0x06 0x0d`, skip to offset `4 + 0x60d`, where you should find th
 Some firmware files are so-called monolithic images, which contain multiple image files. In these file, an additional
 16-byte header is found before the first ProgramStore header:
 
-| Offset | Type     | Name  | Comment                                     |
-|-------:|----------|-------|---------------------------------------------|
-| 0      | u32      | magic | `0x4d4f4e4f` (`MONO`)                       |
-| 4      | u16      | sig   | Device-dependent signature (similar to ProgramStore signature) |
-| 6      | byte     | vmaj  | Major version                               |
-| 7      | byte     | vmin  | Minor version
-| 8      | u32      | len   | Image size (including this header)          |
-| 12     | u32      | images| Bitmask of image numbers contained in this file. |
+| Offset | Type       | Name  | Comment                                     |
+|-------:|------------|-------|---------------------------------------------|
+| 0      | `u32`      | magic | `0x4d4f4e4f` (`MONO`)                       |
+| 4      | `u16`      | sig   | Device-dependent signature (similar to ProgramStore signature) |
+| 6      | `byte`     | vmaj  | Major version                               |
+| 7      | `byte`     | vmin  | Minor version
+| 8      | `u32`      | len   | Image size (including this header)          |
+| 12     | `u32`      | images| Bitmask of image numbers contained in this file. |
 
 Individual images are padded to a 64k (or 32k?) block size.
 
@@ -75,7 +90,7 @@ examples for the BCM338x and BCM3390 platforms:
 |-------:|---------------|-----------|
 | 0      | `bootloader`  | `BOOTL`   |
 | 1      | `image1`      | `DOCSIS`  |
-| 2      | `image2`      | `SVM`     |
+| 2      | `image2`      | `CM`      |
 | 3      | `linux`       | `RG`      |
 | 4      | `linuxapps`   | `STB`     |
 | 5      | `permv`       | `APPS`    |
@@ -83,6 +98,7 @@ examples for the BCM338x and BCM3390 platforms:
 | 7      | `dynnv`       | `DEVTREE` |
 | 8      | `linuxkfs`    | `HYP`     |
 | 9      | N/A           | `KERNEL`  |
+| 10     | N/A           | `PCI`     |
 
 ###### ProgramStore image
 
