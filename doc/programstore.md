@@ -83,6 +83,7 @@ examples for the BCM338x and BCM3390 platforms:
 | 7      | `dynnv`       | `DEVTREE` |
 | 8      | `linuxkfs`    | `HYP`     |
 | 9      | N/A           | `KERNEL`  |
+| 10     | N/A           | `PCI`     |
 
 ###### ProgramStore image
 
