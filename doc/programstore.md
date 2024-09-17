@@ -49,10 +49,10 @@ The low byte of the `ctrl` field encodes the compression algorithm:
 
 | n      | Compression
 |-------:|------------|
-| 0      | None       |
+| 0      | (none)     |
 | 1      | LZ         |
 | 2      | LZO        |
-| 3      | Reserved   |
+| 3      | (reserved) |
 | 4      | [NRV2B](http://www.oberhumer.com/opensource/ucl/) |
 | 5      | LZMA       |
 
