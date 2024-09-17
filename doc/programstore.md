@@ -75,7 +75,7 @@ examples for the BCM338x and BCM3390 platforms:
 |-------:|---------------|-----------|
 | 0      | `bootloader`  | `BOOTL`   |
 | 1      | `image1`      | `DOCSIS`  |
-| 2      | `image2`      | `SVM`     |
+| 2      | `image2`      | `CM`      |
 | 3      | `linux`       | `RG`      |
 | 4      | `linuxapps`   | `STB`     |
 | 5      | `permv`       | `APPS`    |
