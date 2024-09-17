@@ -43,6 +43,8 @@ images. The header format is detailed below (numbers are big endian):
 
 See the corresponding [source file](https://github.com/Broadcom/aeolus/blob/master/ProgramStore/ProgramStore.h).
 
+Note that some non-split images have the `len1` field set to the same value as `len`. Others have it set to `0`.
+
 The low byte of the `ctrl` field encodes the compression algorithm:
 
 | n      | Compression
@@ -53,6 +55,8 @@ The low byte of the `ctrl` field encodes the compression algorithm:
 | 3      | Reserved   |
 | 4      | NRV2B      |
 | 5      | LZMA       |
+
+The high byte of `ctrl` encodes the image type: `0x00` is a regular image, `0x01` is a dual (split) image.
 
 
 ###### Signed firmware files
