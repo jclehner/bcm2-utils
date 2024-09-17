@@ -43,6 +43,17 @@ images. The header format is detailed below (numbers are big endian):
 
 See the corresponding [source file](https://github.com/Broadcom/aeolus/blob/master/ProgramStore/ProgramStore.h).
 
+The low byte of the `ctrl` field encodes the compression algorithm:
+
+| n      | Compression
+|-------:|------------|
+| 0      | None       |
+| 1      | LZ         |
+| 2      | LZO        |
+| 3      | Reserved   |
+| 4      | NRV2B      |
+| 5      | LZMA       |
+
 
 ###### Signed firmware files
 
