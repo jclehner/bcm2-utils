@@ -56,14 +56,14 @@ with `0x30 0x82 0x06 0x0d`, skip to offset `4 + 0x60d`, where you should find th
 Some firmware files are so-called monolithic images, which contain multiple image files. In these file, an additional
 16-byte header is found before the first ProgramStore header:
 
-| Offset | Type     | Name  | Comment                                     |
-|-------:|----------|-------|---------------------------------------------|
-| 0      | u32      | magic | `0x4d4f4e4f` (`MONO`)                       |
-| 4      | u16      | sig   | Device-dependent signature (similar to ProgramStore signature) |
-| 6      | byte     | vmaj  | Major version                               |
-| 7      | byte     | vmin  | Minor version
-| 8      | u32      | len   | Image size (including this header)          |
-| 12     | u32      | images| Bitmask of image numbers contained in this file. |
+| Offset | Type       | Name  | Comment                                     |
+|-------:|------------|-------|---------------------------------------------|
+| 0      | `u32`      | magic | `0x4d4f4e4f` (`MONO`)                       |
+| 4      | `u16`      | sig   | Device-dependent signature (similar to ProgramStore signature) |
+| 6      | `byte`     | vmaj  | Major version                               |
+| 7      | `byte`     | vmin  | Minor version
+| 8      | `u32`      | len   | Image size (including this header)          |
+| 12     | `u32`      | images| Bitmask of image numbers contained in this file. |
 
 Individual images are padded to a 64k (or 32k?) block size.
 
