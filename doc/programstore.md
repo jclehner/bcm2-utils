@@ -26,20 +26,20 @@ images. The header format is detailed below (numbers are big endian):
 
 | Offset | Type     | Name | Comment                                     |
 |-------:|----------|------|---------------------------------------------|
-| 0      | u16      | sig  | Unique signature, (device dependent)        |
-| 2      | u16      | ctrl | Control flags (compression, split image, etc.)|
-| 4      | u16      | maj  | Major version |
-| 6      | u16      | min  | Minor version |
-| 8      | u32      | time | Build timestamp |
-| 12     | u32      | len  | Image size (including this header) |
-| 16     | u32      | addr | Image load address |
-| 20     | byte[48] | name | Image name |
-| 68     | byte[8]  |      | Reserved |
-| 76     | u32      | len1 | Image 1 size (for split images) |
-| 80     | u32      | len2 | Image 2 size (for split images) |
-| 84     | u16      | hcs  | Header checksum (CRC 16 CCITT)  |
-| 86     | u16      |      | Reserved |
-| 88     | u32a     | chk  | Image checksum (CRC32 of data following this header) |
+| 0      | `u16`    | sig  | Unique signature, (device dependent)        |
+| 2      | `u16`    | ctrl | Control flags (compression, split image, etc.)|
+| 4      | `u16`    | maj  | Major version |
+| 6      | `u16`    | min  | Minor version |
+| 8      | `u32`    | time | Build timestamp |
+| 12     | `u32`    | len  | Image size (including this header) |
+| 16     | `u32`    | addr | Image load address |
+| 20     |`byte[48]`| name | Image name |
+| 68     |`byte[8] `|      | Reserved |
+| 76     | `u32`    | len1 | Image 1 size (for split images) |
+| 80     | `u32`    | len2 | Image 2 size (for split images) |
+| 84     | `u16`    | hcs  | Header checksum (CRC 16 CCITT)  |
+| 86     | `u16`    |      | Reserved |
+| 88     | `u32`    | chk  | Image checksum (CRC32 of data following this header) |
 
 See the corresponding [source file](https://github.com/Broadcom/aeolus/blob/master/ProgramStore/ProgramStore.h).
 
