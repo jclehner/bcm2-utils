@@ -1,89 +1,82 @@
-# ProgramStore image definitions.
-#
-# One difficulty when dealing with these images is that there's no fixed
-# magic value. The images start with a two-byte signature, which in the
-# case of bootloader images is usually the chip's identifier (i.e. 0x3383
-# for BCM3383), but CM firmware images use an identifier unique to the
-# device, so we'll have to use other means.
-#
+# Since there's no fixed magic value, and due to particularities in binwalk's handling
+# of magic files, using the NUL byte at offset 67 is the most reliable way to detect
+# a ProgramStore header.
 
-# All MIPS CM images so far are loaded at 0x80004000, so we'll use that
-# as our "magic" value.
-16		ulong		0x80004000		BCM33xx ProgramStore CM image
->0		ushort		x				(signature: 0x%04x,
->2		ushort		x               control: 0x%04x,
->2		ubyte&0xfe	!0				{invalid}
->3		ubyte       >5				{invalid}
->4		ushort		x               major: 0x%04x,
->6		ushort		x               minor: 0x%04x,
->8		date		x               build time: %s,
->8		date		<904608000      {invalid}
->12		ulong+92	x               size: %d bytes, load address: 0x80004000,
->12		ulong+92	x               {size:%d}
->20		string		x               filename: %s,
->20		string		x               {name:%s.sto}
->84		ushort		x               HCS: 0x%04x,
->88		ulong		x               CRC: 0x%08x)
-
-# Bootloader images very often use "ram.sto" as the image name.
-20		string		ram.sto			BCM33xx ProgramStore bootloader image
->0		ushort		x				(signature: 0x%04x,
->0		ushort		<0x3300			{invalid}
->2		ushort		x               control: 0x%04x,
->2		ubyte&0xfe	!0				{invalid}
->3		ubyte       >5				{invalid}
->4		ushort		x               major: 0x%04x,
->6		ushort		x               minor: 0x%04x,
->8		date		x               build time: %s,
->8		date		<904608000      {invalid}
->12		ulong+92	x               size: %d bytes,
->12		ulong+92	x               {size:%d}
->16		ulong		x				load address: 0x%08x,
->16		ulong		<0x80000000		{invalid}
->20		string		x               filename: %s,
->20		string		x               {name:%s}
->84		ushort		x               HCS: 0x%04x,
->88		ulong		x               CRC: 0x%08x)
-
-# Generic image detection, for signature 0x33xx
-0		ubyte		0x33			BCM33xx ProgramStore generic image
->1		ubyte		>0x99			{invalid}
->1		ubyte		<0x00			{invalid}
->0		ushort		x				(signature: 0x%04x,
->2		ushort		x               control: 0x%04x,
->2		ubyte&0xfe	!0				{invalid}
->3		ubyte       >5				{invalid}
->4		ushort		x               major: 0x%04x,
->6		ushort		x               minor: 0x%04x,
->8		date		x               build time: %s,
->8		date		<904608000      {invalid}
->12		ulong+92	x               size: %d bytes,
->12		ulong+92	x               {size:%d}
->16		ulong		x				load address: 0x%08x,
->20		string		x               filename: %s,
->20		string		x               {name:%s}
-# require first character to be [a-zA-Z]
->20		ubyte		<0x41			{invalid}
->20		ubyte		>0x5a
->>20	ubyte		<0x61			{invalid}
->>20	ubyte		>0x7a			{invalid}
-# require NUL terminated string
->67		ubyte		!0				{invalid}
-# require NUL padding
->68		uquad		!0				{invalid}
+67		byte		0				BCM33xx ProgramStore image,
+# `padding` must be 0
+>68		ubequad		!0				{invalid}
+>0		ubeshort	x				signature: 0x%04x,
+>2		byte		0				dual: no,
+>2		byte		1				dual: yes,
+>2		byte		>1				{invalid}
+>3		byte		0				compression: none,
+>3		byte		1				compression: LZ,
+>3		byte		2				compression: LZO,
+>3		byte		3				compression: reserved,
+>3		byte		4				compression: NRV2B,
+>3		byte		5				compression: LZMA,
+>3		byte       >5				{invalid}
+>4		ubeshort	x               major: 0x%04x,
+>6		ubeshort	x               minor: 0x%04x,
+>8		bedate		x               build time: %s,
+# reject build times before initial release of eCos (1998-09-01)
+>8		bedate		<904608000      {invalid}
+>12		ubelong+92	x               size: %d b
+>12		ubelong+92	x               {size:%d}
 # check for dual image
->2		ubyte&0x01	1
->>76	ulong		x               image1 size: %d,
->>80	ulong		x               image2 size: %d,
->84		ushort		x               HCS: 0x%04x,
->88		ulong		x               CRC: 0x%08x)
+>2		byte&0x01	1
+>>76	ubelong		x               \b (image1: %d b,
+>>80	ubelong		x               image2: %d b)
+# require addresses to be 4-byte aligned, and >= 0x80000000 (MIPS)
+>16		ubelong		!0
+>>16	ubelong		<0x80000000		{invalid}
+>>16	ubelong&0x3 !0				{invalid}
+>16		ubelong		x				\b, load address: 0x%08x,
+# `name` must be NUL-delimited
+>67		byte		!0				{invalid}
+# require first character of `name` to be [a-zA-Z]
+>20		byte		<0x41			{invalid}
+>20		byte		>0x5a
+>>20	byte		<0x61			{invalid}
+>>20	byte		>0x7a			{invalid}
+>20		string		x               filename: %.48s,
+>20		string		x               {name:%.48s}
+>84		ubeshort	x               HCS: 0x%04x,
+>84		ubeshort	0				{invalid}
+# `reserved` must be 0
+>86		ubeshort	!0				{invalid}
+>88		ubelong		x               CRC: 0x%08x
+>88		ubelong		0				{invalid}
 
-0		string		MONO			BCM33xx monolithic image
->4		ushort		x				(signature: 0x%04x,
->4		ushort		<0x3300			{invalid}
->4		ushort		>0x3399			{invalid}
->6		ubyte		x               major: 0x%02x,
->7		ubyte		x               minor: 0x%02x,
->8		ulong		x               size: %d bytes,
->8		ulong		x               {size:%d}
->12		ulong		x				contents: 0x%08x)
+0		string			MONO			BCM33xx monolithic image,
+>4		ubeshort		x				signature: 0x%04x,
+>4		ubeshort		<0x3300			{invalid}
+>4		ubeshort		>0x3399			{invalid}
+>6		byte			x               version: %d.
+>7		byte			x               \b%d,
+>8		ubelong			x               size: %d bytes,
+>8		ubelong			x               {size:%d}
+>4		ubeshort		<0x3390			contents: [
+>>12	ubelong&0x01	!0				bootloader
+>>12	ubelong&0x02	!0				image1
+>>12	ubelong&0x04	!0				image2
+>>12	ubelong&0x08	!0				linux
+>>12	ubelong&0x10	!0				linuxapps
+>>12	ubelong&0x20	!0				permnv
+>>12	ubelong&0x40	!0				dhtml
+>>12	ubelong&0x80	!0				dynnv
+>>12	ubelong&0x100	!0				linuxkfs
+>>&0	ubyte			x				]
+>4		ubeshort		>0x3389			contents: [
+>>12	ubelong&0x01	!0				BOOTL
+>>12	ubelong&0x02	!0				DOCSIS
+>>12	ubelong&0x04	!0				CM
+>>12	ubelong&0x08	!0				RG
+>>12	ubelong&0x10	!0				STB
+>>12	ubelong&0x20	!0				APPS
+>>12	ubelong&0x40	!0				BOLT
+>>12	ubelong&0x80	!0				DEVTREE
+>>12	ubelong&0x100	!0				HYP
+>>12	ubelong&0x200	!0				KERNEL
+>>12	ubelong&0x400	!0				PCI
+>>&0	ubyte			x				]
