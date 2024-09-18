@@ -7,22 +7,25 @@
 >68		ubequad		!0				{invalid}
 >0		ubeshort	x				signature: 0x%04x,
 >2		byte		0				dual: no,
+# in single images, `size2` must be 0
+>>80	ubelong		!0				{invalid},
 >2		byte		1				dual: yes,
->2		byte		>1				{invalid}
+>2		byte		>1				dual: 0x%02x {invalid}
 >3		byte		0				compression: none,
 >3		byte		1				compression: LZ,
 >3		byte		2				compression: LZO,
 >3		byte		3				compression: reserved,
 >3		byte		4				compression: NRV2B,
 >3		byte		5				compression: LZMA,
->3		byte       >5				{invalid}
->4		ubeshort	x               major: 0x%04x,
->6		ubeshort	x               minor: 0x%04x,
+>3		byte       >5				compression: 0x%02x {invalid}
+>4		ubeshort	x               version: %d.
+>6		ubeshort	x               \b%d,
 >8		bedate		x               build time: %s,
 # reject build times before initial release of eCos (1998-09-01)
 >8		bedate		<904608000      {invalid}
 >12		ubelong+92	x               size: %d b
 >12		ubelong+92	x               {size:%d}
+>12		ubelong		0				{invalid}
 # check for dual image
 >2		byte&0x01	1
 >>76	ubelong		x               \b (image1: %d b,
@@ -57,26 +60,28 @@
 >8		ubelong			x               size: %d bytes,
 >8		ubelong			x               {size:%d}
 >4		ubeshort		<0x3390			contents: [
->>12	ubelong&0x01	!0				bootloader
->>12	ubelong&0x02	!0				image1
->>12	ubelong&0x04	!0				image2
->>12	ubelong&0x08	!0				linux
->>12	ubelong&0x10	!0				linuxapps
->>12	ubelong&0x20	!0				permnv
->>12	ubelong&0x40	!0				dhtml
->>12	ubelong&0x80	!0				dynnv
->>12	ubelong&0x100	!0				linuxkfs
+>>12	ubelong			&0x01			bootloader
+>>12	ubelong			&0x02			image1
+>>12	ubelong			&0x04			image2
+>>12	ubelong			&0x08			linux
+>>12	ubelong			&0x10			linuxapps
+>>12	ubelong			&0x20			permnv
+>>12	ubelong			&0x40			dhtml
+>>12	ubelong			&0x80			dynnv
+>>12	ubelong			&0x100			linuxkfs
+>>12	ubelong&0xfe00	!0				0x%04x
 >>&0	ubyte			x				]
 >4		ubeshort		>0x3389			contents: [
->>12	ubelong&0x01	!0				BOOTL
->>12	ubelong&0x02	!0				DOCSIS
->>12	ubelong&0x04	!0				CM
->>12	ubelong&0x08	!0				RG
->>12	ubelong&0x10	!0				STB
->>12	ubelong&0x20	!0				APPS
->>12	ubelong&0x40	!0				BOLT
->>12	ubelong&0x80	!0				DEVTREE
->>12	ubelong&0x100	!0				HYP
->>12	ubelong&0x200	!0				KERNEL
->>12	ubelong&0x400	!0				PCI
+>>12	ubelong			&0x01			BOOTL
+>>12	ubelong			&0x02			DOCSIS
+>>12	ubelong			&0x04			CM
+>>12	ubelong			&0x08			RG
+>>12	ubelong			&0x10			STB
+>>12	ubelong			&0x20			APPS
+>>12	ubelong			&0x40			BOLT
+>>12	ubelong			&0x80			DEVTREE
+>>12	ubelong			&0x100			HYP
+>>12	ubelong			&0x200			KERNEL
+>>12	ubelong			&0x400			PCI
+>>12	ubelong&0xf800	!0				0x%04x
 >>&0	ubyte			x				]
