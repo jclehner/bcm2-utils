@@ -21,6 +21,7 @@
 #include <iostream>
 #include <cstddef>
 #include <fstream>
+#include <algorithm>
 #include "progress.h"
 #include "rwcode2.h"
 #include "util.h"

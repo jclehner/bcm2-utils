@@ -17,6 +17,7 @@
  *
  */
 
+#include <algorithm>
 #include "profile.h"
 #include "util.h"
 using namespace std;
