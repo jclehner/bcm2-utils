@@ -29,7 +29,7 @@ then, starting at `size`, the following algorithm is employed:
 ```c
 uint32_t hcs32(const char* buf, size_t len)
 {
-	uint32_t checksum = 0;
+	uint32_t checksum = len + 8;
 
 	while (len >= 4) {
 		checksum += ntohl(*(uint32_t*)buf);
@@ -89,7 +89,7 @@ The offset of the active settings data, and the write counter is also determined
 by this "bitmask", using the following formulas:
 
 ```
-write_count = log2(-segment_size) - 1
+write_count = log2(-segment_bitmask) - 1
 segment_offset = segment_size * min(write_count, 16)
 ```
 
