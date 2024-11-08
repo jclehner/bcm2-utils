@@ -606,12 +606,30 @@ struct bcm2_profile bcm2_profiles[] = {
 			{
 				.name = "ram",
 				.min = 0x80000000,
+				.size = 128 * 1024 * 1024,
 			},
+			{
+				.name = "flash",
+				.size = 4 * 1024 * 1024,
+				// See FUN_83f871ac() in bootloader for offset computation.
+				.parts = {
+					{ "bootloader", 0x000000, 0x010000 },
+					{ "permnv",     0x010000, 0x020000, "perm" },
+					{ "image1",     0x030000, 0x1d0000 },
+					{ "image2",     0x200000, 0x1c0000 },
+					{ "dynnv",      0x3c0000, 0x040000, "dyn" },
+				}
+			}
 		},
 		.versions = {
 			{
 				.intf = BCM2_INTF_BFC,
 				.rwcode = 0x80002000,
+			},
+			{
+				.intf = BCM2_INTF_BLDR,
+				.rwcode = 0x80004000,
+				.buffer = 0x84000000
 			},
 			{
 				.version = "5.7.1.19 MAC14",
@@ -631,6 +649,22 @@ struct bcm2_profile bcm2_profiles[] = {
 					{ "bfc:conthread_priv_off", { 0x74 }},
 				}
 			},
+			{
+				.version = "2.5.0beta4",
+				.intf = BCM2_INTF_BLDR,
+				.magic = { 0x83f8b9f4, "2.5.0beta4" },
+				.printf = 0x83f88ec4,
+				.sscanf = 0x83f89898,
+				.getline = 0x83f88bfc,
+				.spaces = {
+					{
+						.name = "flash",
+						.read = { 0x83f810dc, BCM2_READ_FUNC_OBL },
+						.write = { 0x83f80f50, 0 },
+						.erase = { 0x83f812a4, BCM2_ERASE_FUNC_OL },
+					}
+				}
+			}
 		},
 	},
 	{
@@ -1234,7 +1268,6 @@ struct bcm2_profile bcm2_profiles[] = {
 				},
 			},
 		},
-
 	},
 	{
 		.name = "tc7210",
@@ -1369,8 +1402,6 @@ struct bcm2_profile bcm2_profiles[] = {
 				},
 			},
 		},
-
-
 	},
 	{
 		.name = "cg2200",
@@ -1386,7 +1417,7 @@ struct bcm2_profile bcm2_profiles[] = {
 		.pretty = "Netgear CM500",
 		.arch = BCM2_33843,
 		.pssig = 0xc312,
-        .blsig = 0x3384,
+		.blsig = 0x3384,
 		.baudrate = 115200,
 		.spaces = {
 			{ 
@@ -1397,35 +1428,35 @@ struct bcm2_profile bcm2_profiles[] = {
 					{ "bootloader", 0x83f80000, 0x10000 },
 				}, 
 			},
-            {
-                .name = "flash",
-                .size = 8 * 1024 * 1024,
-                .parts = {
-                    { "bootloader", 0x00000,  0x10000  },
-                    { "permnv",     0x10000,  0x20000  },
-                    { "image1",     0x30000,  0x3d0000 },
-                    { "image2",     0x400000, 0x3c0000 },
-                    { "dynnv",      0x7c0000, 0x40000  },
-                },
-            },
-		},
-	    .versions = {
 			{
-			    .version = "2.5.0alpha8",
-			    .intf = BCM2_INTF_BLDR,
-			    .magic = { 0x83f8cc28, "2.5.0alpha8" },
-			    .printf = 0x83f8a0f4,
-			    .sscanf = 0x83f8aac8,
-			    .rwcode = 0x86000000,
-            	.buffer = 0x87000000,
-                .spaces = {
+				.name = "flash",
+				.size = 8 * 1024 * 1024,
+				.parts = {
+					{ "bootloader", 0x00000,  0x10000  },
+					{ "permnv",     0x10000,  0x20000  },
+					{ "image1",     0x30000,  0x3d0000 },
+					{ "image2",     0x400000, 0x3c0000 },
+					{ "dynnv",      0x7c0000, 0x40000  },
+				},
+			},
+		},
+		.versions = {
+			{
+				.version = "2.5.0alpha8",
+				.intf = BCM2_INTF_BLDR,
+				.magic = { 0x83f8cc28, "2.5.0alpha8" },
+				.printf = 0x83f8a0f4,
+				.sscanf = 0x83f8aac8,
+				.rwcode = 0x86000000,
+				.buffer = 0x87000000,
+				.spaces = {
 					{
 						.name = "flash",
 						.read = { 0x83f8128c, BCM2_READ_FUNC_OBL },
 					}
 				},
 			},
-	    },
+		},
 	},
 	// end marker
 	{ .name = "" },
