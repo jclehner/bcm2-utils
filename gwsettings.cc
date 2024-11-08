@@ -510,6 +510,10 @@ class permdyn : public encryptable_settings
 			// set offset of the backup data to the end of the primary data
 			size_t segment_size = ostr.tellp();
 
+			// some firmwares will not consider a file valid unless each segment
+			// takes up at least 1/16th of the partition.
+			segment_size = max(segment_size, (m_raw_size + 8u) / 16lu);
+
 			// 8 bytes for the footer are already subtracted
 			ssize_t diff = m_raw_size - segment_size;
 
@@ -527,13 +531,15 @@ class permdyn : public encryptable_settings
 					segment_size = align_right(segment_size, 0x100);
 				}
 
+				diff = m_raw_size - segment_size;
+
 				// write padding between segments
 				os << string(segment_size - ostr.tellp(), '\xff');
 
 				// write backup segment
 				os << ostr.str();
 
-				diff -= segment_size;
+				diff -= ostr.tellp();
 			} else {
 				logger::i() << "no space to fit backup data" << endl;
 			}
