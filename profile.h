@@ -82,7 +82,8 @@ enum bcm2_interface
 	BCM2_INTF_NONE = 0,
 	BCM2_INTF_ALL = ~0,
 	BCM2_INTF_BLDR = 2,
-	BCM2_INTF_BFC = 3
+	BCM2_INTF_BFC = 3,
+	BCM2_INTF_BOLT = 4,
 };
 
 enum bcm2_mem

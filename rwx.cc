@@ -1896,7 +1896,7 @@ rwx::sp rwx::create(const interface::sp& intf, const string& type, bool safe)
 		throw invalid_argument("cannot create non-ram rwx object without a profile");
 	}
 
-	if (intf->name() == "bootloader") {
+	if (intf->name() == "bootloader_cm1") {
 		if (space.is_mem()) {
 			if (safe) {
 				return create_rwx<bootloader_ram>(intf, space);

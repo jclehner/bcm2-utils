@@ -33,7 +33,7 @@ using namespace std;
 namespace bcm2dump {
 namespace {
 
-bool is_bfc_prompt(const string& str, const string& prompt)
+bool is_chevron_prompt(const string& str, const string& prompt)
 {
 	return str.find(prompt + ">") != std::string::npos
 			|| str.find(prompt + "/") != std::string::npos;
@@ -41,20 +41,20 @@ bool is_bfc_prompt(const string& str, const string& prompt)
 
 bool is_bfc_prompt_privileged(const string& str)
 {
-	return is_bfc_prompt(str, "CM")
-		|| is_bfc_prompt(str, "RG");
+	return is_chevron_prompt(str, "CM")
+		|| is_chevron_prompt(str, "RG");
 }
 
 bool is_bfc_prompt_unprivileged(const string& str)
 {
-	return is_bfc_prompt(str, "RG_Console")
-		|| is_bfc_prompt(str, "CM_Console")
-		|| is_bfc_prompt(str, "Console");
+	return is_chevron_prompt(str, "RG_Console")
+		|| is_chevron_prompt(str, "CM_Console")
+		|| is_chevron_prompt(str, "Console");
 }
 
 bool is_bfc_prompt_rg(const string& str)
 {
-	return is_bfc_prompt(str, "RG_Console") || is_bfc_prompt(str, "RG");
+	return is_chevron_prompt(str, "RG_Console") || is_chevron_prompt(str, "RG");
 }
 
 bool is_bfc_prompt(const string& str)
@@ -317,11 +317,12 @@ bool bfc::is_crash_line(const string& line) const
 		|| starts_with(line, ">>> YIKES... ");
 }
 
-class bootloader : public cmdline_interface
+// old-style CM bootloader
+class bootloader_cm1 : public cmdline_interface
 {
 	public:
 	virtual string name() const override
-	{ return "bootloader"; }
+	{ return "bootloader_cm1"; }
 
 	virtual bool is_ready(bool passive) override;
 
@@ -334,7 +335,7 @@ class bootloader : public cmdline_interface
 	virtual bool check_for_prompt(const string& line) const override;
 };
 
-bool bootloader::is_ready(bool passive)
+bool bootloader_cm1::is_ready(bool passive)
 {
 	if (!passive) {
 		writeln();
@@ -345,7 +346,7 @@ bool bootloader::is_ready(bool passive)
 	}, 200);
 }
 
-bool bootloader::check_for_prompt(const string& line) const
+bool bootloader_cm1::check_for_prompt(const string& line) const
 {
 	if (!starts_with(line, "Main Menu")) {
 		return false;
@@ -355,13 +356,13 @@ bool bootloader::check_for_prompt(const string& line) const
 	return true;
 }
 
-void bootloader::call(const string& cmd)
+void bootloader_cm1::call(const string& cmd)
 {
 	m_io->write(cmd);
 }
 
 
-bool bootloader::is_crash_line(const string& line) const
+bool bootloader_cm1::is_crash_line(const string& line) const
 {
 	return starts_with(line, "******************** CRASH");
 }
@@ -549,7 +550,7 @@ sp<cmdline_interface> do_detect_interface(const io::sp &io)
 		return intf;
 	}
 
-	intf = make_shared<bootloader>();
+	intf = make_shared<bootloader_cm1>();
 	if (intf->is_active(io)) {
 		return intf;
 	}
