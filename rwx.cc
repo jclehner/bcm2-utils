@@ -998,27 +998,22 @@ class bootloader_flash : public parsing_rwx
 class bolt_ram : public parsing_rwx
 {
 	public:
-	virtual ~bolt_ram() {}
+	limits limits_read() const override
+	{ return limits(1, 1, 0x8000); }
 
-	virtual limits limits_read() const override
-	{ return limits(4, 4, 0x8000); }
-
-	virtual limits limits_write() const override
+	limits limits_write() const override
 	{ return limits(1, 8, 8); }
 
-	virtual unsigned capabilities() const override
+	unsigned capabilities() const override
 	{ return cap_rwx; }
 
 	protected:
-	virtual bool write_chunk(uint32_t offset, const string& chunk) override;
-	virtual bool exec_impl(uint32_t offset) override;
+	bool write_chunk(uint32_t offset, const string& chunk) override;
+	bool exec_impl(uint32_t offset) override;
 
-	virtual void do_read_chunk(uint32_t offset, uint32_t length) override;
-	virtual bool is_ignorable_line(const string& line) override;
-	virtual string parse_chunk_line(const string& line, uint32_t offset) override;
-
-	private:
-	bool m_write = false;
+	void do_read_chunk(uint32_t offset, uint32_t length) override;
+	bool is_ignorable_line(const string& line) override;
+	string parse_chunk_line(const string& line, uint32_t offset) override;
 };
 
 bool bolt_ram::write_chunk(uint32_t offset, const string& chunk)
@@ -1043,6 +1038,37 @@ bool bolt_ram::write_chunk(uint32_t offset, const string& chunk)
 
 	interface()->run("e " + flag + " 0x" + to_hex(offset) + " 0x" + data);
 	return true;
+}
+
+bool bolt_ram::exec_impl(uint32_t offset)
+{
+	interface()->run("go 0x" + to_hex(offset));
+	return true;
+}
+
+// b8020000: 36 00 00 00 42 72 6f 61 64 63 6f 6d 20 43 6f 72    6...Broadcom Cor
+
+void bolt_ram::do_read_chunk(uint32_t offset, uint32_t length)
+{
+	interface()->run("d -b 0x" + to_hex(offset) + " 0x" + to_hex(length));
+}
+
+bool bolt_ram::is_ignorable_line(const string& line)
+{
+	if (line.size() < 62) {
+		return false;
+	}
+
+	return line.substr(8, 2) == ": " && line.substr(58, 4) == "    ";
+}
+
+string bolt_ram::parse_chunk_line(const string& line, uint32_t offset)
+{
+	if (offset != hex_cast<uint32_t>(line.substr(0, 8))) {
+		throw bad_chunk_line::critical("offset mismatch");
+	}
+
+	return parse_hex_data(line.substr(10), true);
 }
 
 // this defines uint32 dumpcode[] and writecode[]
@@ -1907,6 +1933,10 @@ rwx::sp rwx::create(const interface::sp& intf, const string& type, bool safe)
 			return create_code_rwx(intf, space);
 		} else if (bootloader_flash::is_supported(intf, space)) {
 			return create_rwx<bootloader_flash>(intf, space);
+		}
+	} else if (intf->name() == "bootloader_bolt") {
+		if (space.is_mem()) {
+			return create_rwx<bolt_ram>(intf, space);
 		}
 	} else if (intf->name() == "bfc") {
 		if (space.is_mem()) {

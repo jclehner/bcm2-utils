@@ -392,6 +392,39 @@ bool bootloader2::is_ready(bool passive)
 }
 #endif
 
+class bootloader_bolt : public cmdline_interface
+{
+	string name() const override
+	{ return "bolt"; }
+
+	bool is_ready(bool passive) override;
+
+	bcm2_interface id() const override
+	{ return BCM2_INTF_BOLT; }
+
+	protected:
+	void call(const string& cmd) override;
+	bool is_crash_line(const string& line) const override;
+	bool check_for_prompt(const string& line) const override;
+};
+
+bool bootloader_bolt::check_for_prompt(const string& line) const
+{
+	return is_chevron_prompt(line, "BOLT");
+}
+
+void bootloader_bolt::call(const string& cmd)
+{
+	m_io->write(cmd);
+}
+
+
+bool bootloader_bolt::is_crash_line(const string& line) const
+{
+	// XXX
+	return false;
+}
+
 class bfc_telnet : public bfc, public telnet
 {
 	public:
