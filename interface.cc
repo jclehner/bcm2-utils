@@ -394,35 +394,47 @@ bool bootloader2::is_ready(bool passive)
 
 class bootloader_bolt : public cmdline_interface
 {
+	public:
+	virtual ~bootloader_bolt() override {}
+
 	string name() const override
-	{ return "bolt"; }
+	{ return "bootloader_bolt"; }
 
 	bool is_ready(bool passive) override;
 
 	bcm2_interface id() const override
 	{ return BCM2_INTF_BOLT; }
 
+	void writeln(const string& line = "") override
+	{
+		m_io->write(line + "\r\n");
+	}
+
 	protected:
-	void call(const string& cmd) override;
 	bool is_crash_line(const string& line) const override;
 	bool check_for_prompt(const string& line) const override;
 };
+
+bool bootloader_bolt::is_ready(bool passive)
+{
+	if (!passive) {
+		writeln();
+	}
+
+	return foreach_line_raw([this] (const string& line) {
+		return check_for_prompt(line);
+	});
+
+}
 
 bool bootloader_bolt::check_for_prompt(const string& line) const
 {
 	return is_chevron_prompt(line, "BOLT");
 }
 
-void bootloader_bolt::call(const string& cmd)
-{
-	m_io->write(cmd);
-}
-
-
 bool bootloader_bolt::is_crash_line(const string& line) const
 {
-	// XXX
-	return false;
+	return line.find("CPU exception:") != string::npos;
 }
 
 class bfc_telnet : public bfc, public telnet
@@ -584,6 +596,11 @@ sp<cmdline_interface> do_detect_interface(const io::sp &io)
 	}
 
 	intf = make_shared<bootloader_cm1>();
+	if (intf->is_active(io)) {
+		return intf;
+	}
+
+	intf = make_shared<bootloader_bolt>();
 	if (intf->is_active(io)) {
 		return intf;
 	}

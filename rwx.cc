@@ -1002,7 +1002,7 @@ class bolt_ram : public parsing_rwx
 	{ return limits(1, 1, 0x8000); }
 
 	limits limits_write() const override
-	{ return limits(1, 8, 8); }
+	{ return limits(8, 8, 8); }
 
 	unsigned capabilities() const override
 	{ return cap_rwx; }
@@ -1036,7 +1036,7 @@ bool bolt_ram::write_chunk(uint32_t offset, const string& chunk)
 		throw invalid_argument("invalid chunk size " + to_string(chunk.size()));
 	}
 
-	interface()->run("e " + flag + " 0x" + to_hex(offset) + " 0x" + data);
+	interface()->run("e " + flag + " 0x" + to_hex(offset) + " 0x" + data + "   ", "*** command status =", true);
 	return true;
 }
 
@@ -1046,7 +1046,7 @@ bool bolt_ram::exec_impl(uint32_t offset)
 	return true;
 }
 
-// b8020000: 36 00 00 00 42 72 6f 61 64 63 6f 6d 20 43 6f 72    6...Broadcom Cor
+// b8020000  36 00 00 00 42 72 6f 61 64 63 6f 6d 20 43 6f 72  6...Broadcom Cor
 
 void bolt_ram::do_read_chunk(uint32_t offset, uint32_t length)
 {
@@ -1055,11 +1055,12 @@ void bolt_ram::do_read_chunk(uint32_t offset, uint32_t length)
 
 bool bolt_ram::is_ignorable_line(const string& line)
 {
-	if (line.size() < 62) {
-		return false;
+	if (line.size() < 60) {
+		return true;
 	}
 
-	return line.substr(8, 2) == ": " && line.substr(58, 4) == "    ";
+	return false;
+	//return line.substr(8, 2) == "  " && line.substr(58, 2) == "  ";
 }
 
 string bolt_ram::parse_chunk_line(const string& line, uint32_t offset)
@@ -1068,7 +1069,7 @@ string bolt_ram::parse_chunk_line(const string& line, uint32_t offset)
 		throw bad_chunk_line::critical("offset mismatch");
 	}
 
-	return parse_hex_data(line.substr(10), true);
+	return parse_hex_data(line.substr(10, 48), true);
 }
 
 // this defines uint32 dumpcode[] and writecode[]
